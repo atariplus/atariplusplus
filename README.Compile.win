@@ -1,0 +1,36 @@
+Compilation of Atari++ for win32 platforms:
+Starting with Atari++, win32 is a possible target platform
+for the emulator. You need to provide the following for
+using Atari++:
+
+o) ROM images, as for all other platforms.
+o) The SDL library. Copy the sdl.dll file into the directory
+containing the atari++ emulator binary.
+
+For compiling,
+o) the includes and libraries for SDL 1.2.5 or better.
+o) Visual Studio C++ 7.1 (part of .NET 2003) or better.
+
+
+Steps for compiling Atari++ on win32:
+o) extract the archive (e.g. with WinZip),
+o) rename wintypes.h to types.h. This file contains
+specific adaptions for the target compiler.
+o) Start Visual Studio C++ 7.1
+o) Open the "atari++.vcproj" file; this contains the
+atari++ project settings for the compiler.
+o) Possibly modify the include and library paths for
+the SDL library. For once, SDL/SDL.h must be in the
+include path (preprocessor settings) and sdl.lib must be
+linked to the binary.
+o) Let the compiler go.
+o) Have fun!
+
+
+Restrictions of the win32 port
+==============================
+
+o) no PNG screen snapshots. Only PNM and BMP.
+o) no zlib support for compressed images/files.
+o) The Atari++ native file system interface, the H: handler,
+does not support locking/unlocking of files.

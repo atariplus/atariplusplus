@@ -1,0 +1,75 @@
+*********************** CREDITS *******************************************
+
+It is rather impossible to write a larger software project without the
+direct or indirect help from "outside". Atari++ is of course no
+difference in this respect. This file collects various people I'd like to
+thank for their help in making this software possible.
+
+- Waldemar Pawlaszek for finding and fixing several bugs in the 65C02
+  CPU emulation.
+
+- Sebastian Pachuta (again!) for pointing me at some bugs in the player
+  missile timing logic. It is still not perfect, but much closer than
+  before.
+
+- Bennet (beipdev@yahoo.com) for providing me with very detailed information
+  about the antic DMA timing that got incoprorated into the 1.50 release.
+
+- Alexander N. Müller for hunting down bugs concerning the 64 bit and
+  FreeBSD port of atari++.
+
+- Don Fanning for helping me debugging the R: RS232 support and sending
+  me configurations to reproduce the problem.
+
+- Sebastian Pachuta for reporting a lot of bugs concerning the emulation
+  core and providing reproducable errors helping me to fix them.
+
+- Matthias Reichl for the AtariSIO emulation and the help concering the
+integration of his kernel interface into the emulator.
+
+- James ("Slor") for his work on the Atari++ win port.
+
+- Mark Keates for the AMD Flash chip support.
+
+- David Firth for his Atari800 emulator. Atari++ is not based on this
+earlier work, though influenced. Atari++ was entirely and completely
+rewritten from scratch, in C++, avoiding some of the constructional
+difficulties of David's work. Especially, the way how graphics output is
+constructed and how player/missile graphic priorities are generated is quite
+different from his implementation.
+
+- Ron Fries for the Pokey emulation routine that got used in early releases of
+the Atari800 emulator. The strategy that has been utilized for sound
+build-up has been used in the pokey emulation of this emulator as well,
+though the implementation details are a bit different and the overall
+quality of the sound emulation has been improved heavily. Specifically,
+high-pass filters, sound muting and anti-aliasing are new to the emulation
+model.
+
+- Jean-loup Gailly and Mark Adler for the Z compression library that gets
+used if available for .gz compressed disk images.
+
+- Sam Lantinga and the SDL group for the Simple DirectMedia Layer library, or
+short, SDL, that offers one of the possible front-ends of the Atari++
+emulator if it is available.
+
+- Petr Stehlik and the remaining atari800 team for cooperation and for working
+out the licencing conditions of this emulator. Specifically, I thank Petr for
+keeping cool in the hot days of working out all the details of making this
+project available.
+
+- Jindroush and the Atari Cartridge Dumping project for providing
+insight into the details of the cart emulation. Specifically, SDX and
+XEGS cart emulation would have been impossible without him.
+
+- Andreas Magenheimer and the ABBUC team for providing some hardware insight
+that was otherwise not available. Specifically, emulation of various bank
+switching logics is due to ABBUC.
+
+- Jason Duerstock's for its analyzation of the RT8 cartridge. Unfortunately,
+something seems to be still not quite right with it. The current 
+implementation in Atari++ uses a somewhat different route how the register
+assignment *might* work. This is all an educated guess, though.
+
+- Steven J. Trucker for the description of the AtariMax flash-ROM cart.
+This is refered to as "Flash" cartridge type.

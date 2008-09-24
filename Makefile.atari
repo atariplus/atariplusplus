@@ -1,0 +1,168 @@
+#! make
+###################################################################################
+## Makefile.atari                                                                
+##                                                                               
+## This makefile defines compiler-independent dependencies                       
+## $Id: Makefile.atari,v 1.91 2008/08/25 16:42:57 thor Exp $
+##
+###################################################################################
+
+.PHONY:		all clean distclean realclean program atari debug profile dox final
+
+all	:	atari
+
+final	:	atari
+
+###################################################################################
+
+FILES		=	new list adrspace monitor instruction serialdevice \
+			diskdrive imagestream filestream zstream \
+			diskimage xfdimage atrimage binaryimage dcmimage \
+			analogjoystick digitaljoystick sdlanalog sdldigital \
+			display osrom osdist ram sio atarisioport atarisio \
+			antic exceptions siopatch \
+			audiobuffer sound \
+			osssound osshqsound wavsound sdlsound \
+			alsasound dxsoundfront directxsound \
+			argparser gamecontrollernode \
+			gamecontroller page yconnector \
+			atari gameport patch timer \
+			basicrom gtia pdevice rdevice types \
+			cartctrl hdevice edevice pia vbiaction hbiaction \
+			cartrom cartridge cart8k cart16k cart32k \
+			cartoss cartossb cartsdx cartxegs cartrt8 \
+			cartbbob cartflash cartmega cartatrax cartwill \
+			cartdb32 cartright8k cart32kee16 \
+			cartphoenix cartatmax \
+			amdchip flashpage \
+			keyboard pokey \
+			x11_mappedbuffer x11_truecolorbuffer x11_displaybuffer \
+			chip machine printer interfacebox x11_frontend dpms \
+			configurable main rampage xfront \
+			cpu memcontroller rompage \
+			deviceadapter device mmu \
+			ramextension xeextension axlonextension \
+			romxlchecksum mathpackpatch \
+			patchprovider sighandler \
+			irqsource keyboardstick \
+			sdlport sdlclient sdl_frontend \
+			screendump cmdlineparser curses_frontend \
+			optioncollector menuoption menutopic \
+			menu renderport bufferport \
+			requester warningrequester errorrequester \
+			choicerequester filerequester \
+			saveable snapshot snapshotwriter snapshotreader \
+			event gadget gadgetgroup verticalgroup \
+			buttongadget booleangadget slidergadget stringgadget \
+			filebuttongadget filegadget filelist requesterentry \
+			textgadget separatorgadget \
+			radiogadget rangegadget topicgadget \
+			listbrowsergadget \
+			titlemenu \
+			menuitem menuseparatoritem menuactionitem \
+			menuboolitem menuselectionitem menufileitem \
+			menusuperitem menurootitem menuvertitem \
+			charmap licence serialstream \
+			xepbuffer \
+			directory stdlib string unistd \
+			stdio time termios curses
+
+INCLUDES	=	types.h $(foreach file,$(FILES),$(file).hpp)	
+SOURCES		=	$(foreach file,$(FILES),$(file).cpp)
+OBJECTS		=	$(foreach file,$(FILES),$(file).o)
+
+###################################################################################
+
+debug	:	
+	$(MAKE) -f $(MAKEFILE) atari++ \
+	ADDFLAGS="$(DEBUGGER)" ADDLIBS="$(DBLIBS)"
+
+atari	:	
+	$(MAKE) -f $(MAKEFILE) atari++ \
+	ADDFLAGS="$(OPTIMIZER)" ADDLIBS=""
+
+efence:
+	$(MAKE) -f $(MAKEFILE) atari++ \
+	ADDFLAGS="$(DEBUGGER)" ADDLIBS="-lefence $(DBLIBS)"
+
+valgrind:	
+	$(MAKE) -f $(MAKEFILE) atari++ \
+	ADDFLAGS="$(VALGRIND)" ADDLIBS=""
+
+profile	:
+	$(MAKE) -f $(MAKEFILE) atari++ \
+	ADDFLAGS="$(OPTIMIZER) $(PROFILER)" ADDLIBS="$(LDPROF)"
+
+distclean:	clean
+
+clean	:
+	@ rm -rf $(OBJECTS) $(OBJECTS:.o=.s) $(OBJECTS:.o=.d) $(OBJECTS:.o=.il) \
+	*.dpi atari++ gmon.out core dox/html
+
+realclean:	clean
+	$(MAKE) -f Makefile clean
+
+###################################################################################
+# The following lines keep care of the autoconf mechanism and rebuild the
+# required files for autoconf
+# We do not require a private aclocal here, hence it has been removed from
+# the dependencies.
+###################################################################################
+
+configure:	configure.in
+	autoconf
+
+# autoheader might not change config.h.in, so touch a stamp file.
+config.h.in:	stamp-h.in
+
+stamp-h.in:	configure.in
+	autoheader
+	echo timestamp > stamp-h.in
+
+config.h:	stamp-h
+
+stamp-h:	config.h.in config.status
+	./config.status
+
+Makefile:	Makefile.in config.status
+	./config.status
+
+config.status:	configure
+	./config.status --recheck
+
+
+###################################################################################
+# If this next line is active, automatic dependency checking is ON.
+# It's a bit slower than normal.
+###################################################################################
+
+-include $(OBJECTS:.o=.d)
+
+###################################################################################
+
+%.d: %.cpp
+	@ $(SHELL) -ec '$(CC) $(CFLAGS) -MM $< \
+		| sed '\''s/\($*\)\.o[ :]*/\1.o $@ : /g'\'' > $@; \
+		[ -s $@ ] || rm -f $@'
+
+%.o: %.cpp %.hpp
+	@ $(ECHO) "Compiling" $*.cpp
+	@ $(CXX) $(CFLAGS) $(ADDFLAGS) $*.cpp
+
+%.o: %.cpp
+	@ $(ECHO) "Compiling" $*.cpp
+	@ $(CXX) $(CFLAGS) $(ADDFLAGS) $*.cpp
+
+%.s: %.cpp %.hpp
+	@ $(ECHO) "Compiling" $*.cpp
+	@ $(CXX) $(CFLAGS) $(ADDFLAGS) $(OPTIMIZER) $(TOASM) $*.cpp
+
+%.s: %.cpp
+	@ $(ECHO) "Compiling" $*.cpp
+	@ $(CXX) $(CFLAGS) $(ADDFLAGS) $(OPTIMIZER) $(TOASM) $*.cpp
+
+atari++		:	$(OBJECTS)
+	@ $(LD) $(OBJECTS) $(LDFLAGS) $(LDLIBS) $(ADDLIBS) -o atari++
+
+dox		:	$(SOURCES) $(INCLUDES)
+	doxygen Doxyfile

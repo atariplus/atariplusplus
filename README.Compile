@@ -1,0 +1,60 @@
+Quickstart: How to compile the Atari++ emulator?
+
+1) Unpack the archive to a separate directory and read the
+README.Compile flag. You are obviously doing this already.
+
+2) Read the software licence in README.licence like this
+
+$ less README.licence
+
+3) Run the configure script in a shell like this: (Here, and
+in the following, "$" is the shell prompt)
+
+$ ./configure
+
+For that step to succeed, your system must at least provide the
+X11 includes and development files. You might have to install
+them to be able to compile the emulator.
+
+If you want to use a different compiler than the one found by
+the configure script automatically, run it like this:
+
+$ ./configure CC=<my_compiler> CXX=<my_compiler>
+
+Please note that you have to pass the compiler twice.
+
+4) Build the emulator with "make"
+
+$ make
+
+5) Optinally, get some of the atari Os ROMs. They are not 
+included in the distribution for copyright reasons, however,
+an emulated ROM code is built into the emulator that should
+do fine for almost all purposes. 
+To get the original ROM, save for example the ROM of the Atari XL
+series as RomXL. Then, run the emulator like this:
+
+$ atari++ -OsXLPath RomXL
+
+Similar options for all other roms exist. Alternatively, create
+a subdirectory named "roms" within the build-directory of the 
+emulator and copy the rom images as "atariosa.rom", "atariosb.rom"
+and "atarixl.rom" into this directory. Use
+
+$ atari++ --help
+
+to get all the remaining options. The emulator will enable the
+built-in ROM emulation in case the Os ROM is missing. Note that
+this ROM will not work on the original machine.
+
+
+6) Once the emulator is up and running, press the F1 key to enter
+the configuration menu. On the left hand side, press the "Prefs"
+key. Save the configuration to the ".atari++.conf" file. This will
+keep the configuration for the next time you run the emulator.
+
+7) Read the manual by
+
+$ man ./atari++.man
+
+You may also make this the first step. (-;

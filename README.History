@@ -1,0 +1,705 @@
+#
+# $Id: README.History,v 1.74 2008/09/24 14:33:48 thor Exp $
+#
+
+Atari++ 1.00:
+	-The first public release.
+
+Atari++ 1.01:
+	- Improved the disk-drive built-in .EXE bootstrap code.
+	- Added snapshot files
+	- Fixed bug in list management that sometimes
+	  crashed the directory requester of the menu.
+	- Fixed bug in the menu configuration saver that
+	  put simply invalid options into the configuration file.
+	- Paddle management: No longer enables/links paddles #0,#1
+	  by default to avoid kludging with the digital joysticks.
+	- Integrated 5200 game console emulation.
+	- Fixed/improved cartridge management: The menu will now show
+	  only the useful cart types for the selected file.
+	- Added SDL sound support.
+
+Atari++ 1.02:
+	- Fixed several cartridge related bugs left from the 1.01.
+
+Atari++ 1.10:
+	- Major change: Atari++ is now cycle based rather than scanline
+	based. This means that games using a horizontal kernel will work
+	now correctly. Hence, a completely new CPU concept has been used,
+	and GTIA and ANTIC have been reworked to a major degree.
+
+Atari++ 1.11:
+	- Forgot to catch an Io exception in the menu class causing
+	the emulator to abort if a file could not be found.
+	- Fixed GTIA modes 0x40, 0x80 horizontal COLBK register change
+	- Adjusted timing defaults to fix Alternate Reality.
+
+Atari++ 1.12:
+	- Re-worked cart-management completely now, this is more expandable
+	  and easier to manage than previous versions.
+	- Various minor bug fixes.
+
+Atari++ 1.13:
+	- Fixed the BRK emulation of the CPU.
+	- Fixed X11 frontend reaction if it has no focus.
+	- Added emulation of XEGS cartridges
+	- Fixed a GTIA player/player collision detection bug
+	  introduced in the 1.10 release.
+	- Enhanced the cart emulation again.
+	- Added emulation of the RTime8 real-time clock
+	  pass-thru cart.
+
+Atari++ 1.14:
+	- Added emulation of the Bounty Bob cartridge.
+	- Fixed some bugs in the SDL frontend.
+	- Fixed a bug in the user menu that lost the command
+	  line defaults when switching the front-end.
+	- Added a new OssHQ audio frontend that provides excellent
+	  quality without requiring a very precise Oss interface.
+	- Enhanced and updated the SDL sound output noticably. It is
+	  now able to generate software speech as well.
+
+Atari++ 1.15
+	- Added emulation of Axlon like RAM-Disks.
+	- Moved 130XE Ram disk into a separate module, reworked MMU 
+	  ramkdisk handling.
+	- Reworked file requester.
+	- Fixed H: handler directory handling.
+	- Fixed ATR image handling.
+	- Added "install" and "uninstall" make targets.
+	- Moved archive into a separate subdirectory.
+
+Atari++ 1.16
+	- Added support for .dcm images and for .gz compressed
+	  images of all kinds in general.
+	- Fixed an ANTIC timing problem for LMS instructions for
+	  text-based mode lines.
+	- Fixed the directory requester of the GUI, again.
+	- Fixed the cycle count for several CPU instructions that
+	  seem to have escaped earlier test.
+	- Added more autoconf tests for working compilers, most
+	  notably for working exceptions and for icc specific
+	  compiler setttings.
+	- Added autoconf specialization for the intel icc
+	  compiler for better performance.
+	- Made several adaptions and stronger typing that
+	  might help porting the code on other compilers.
+	- Several other minor bugfixes.
+
+Atari++ 1.19
+	- Changed the licence conditions to TPL (almost identical
+	  to the MPL).
+	- fixed a fatal bug in the SDL audio output that could
+	  have caused buffer overruns.
+	- Fixed audio sample counter to reduce complexity.
+	- Modified RT8 cart support. The current emulation model
+	  makes a bit more sense than the old implementation.
+	- ANTIC modeline speedup by using a different lookup table
+	  concept.
+	- Changed the WSYNC logic for CPU and ANTIC.
+	- Simplified GTIA/CPU cycle coordination.
+	- POKEY audio generation makes now use of some LUTs to 
+	  speedup the polycounter usage.
+	- Added proper error handling: Run time error conditions
+	  are now properly reported by a graphical requester.
+	- Added a warning log: Warnings get now reported within
+	  the GUI and not on the command line.
+	- Added a licence agreement requester.
+	- Added an interface for SDL joystick emulation.
+	- Improved compatibility of the code by adding even
+	  more autoconf tests.
+	- Split the CPU instruction build-up into several
+	  subroutines to avoid some branch-distance problems
+	  on some platforms.
+	- Added a requester before shutting down the program.
+	- Made handling of missing Os ROM images more user
+	  friendly.
+	- Added a flag to disable the monitor for novice
+	  users.
+	- Added a pretty-printer for the command-line help.
+	- Removed an unnecessary window-pop up that sneaked
+	  into the code in 1.18.
+	- Implemented precise POT reading emulation for
+	  POKEY.
+	- Modified and fixed boot loader for binary image
+	  files.
+	- Fixed BASIC Rom handling on an error.
+	- added various workarounds for popular compiler bugs.
+	  The existing code should be easier to port now.
+	- Added abstraction layers for time and curses
+	  includes.
+	- The OsROM layer will now check a "roms" subdirectory
+	  for missing ROM images automatically.
+
+Atari++ 1.20:
+	- Fixed name resolution in the generic device handler.
+	- Fixed handling of DD disks.
+	- Fixed error handling within the menu.
+	- Added emulation of various XE like RAM expansions
+	  that use bankswitching controlled by PIA Port B.
+	- Fixed endian dependentness of Antic emulation.
+	- Fixed a possible CPU pipeline trash on the G.M
+	  monitor command.
+
+Atari++ 1.21:
+	- internal pre-release that already covered a lot of
+	  1.22 options but didn't make it to the public.
+
+Atari++ 1.22:
+	- fixed another set of bugs in the audio frontends that
+	  could have caused memory trashes for stereo or 16bit
+	  output.
+	- added a separate palette for GTIA in NTSC mode
+	  (thanks, James!)
+	- integrated a lot of James' Win32 adaptions. Maybe
+	  this code now compiles under Windows.
+	- added ALSA sound front-end for high-quality/
+	  low-complexity sound.
+	- Added Matthias' AtariSIO frontend allowing you to
+	  connect real 1050 or 810 drives to the emulator.
+	- Fixed a bug in the monitor that rendered it 
+	  useless if compiled in "release" mode.
+	- Added partial "Us-Doubler" emulation for the 
+	  diskdrive.
+	- Improved the SDL GUI front-end for better
+	  performance in rendering the user menu.
+	- Fixed Shift+TAB for the X11 front-end.
+	- Finetuning on the Autoconf process.
+	- Finetuning in the timing.
+	- Added schematics of the "ElCheapo" joystick
+	  interface.
+	
+Atari++ 1.23
+	- Updated the AtariSIO interface to the 0.11 version
+	  of AtariSIO (Thanks, Hias!)
+	- Fixed the "TraceOnReset" option.
+	- Added options to hold the two other console keys
+	  ("select" and "start") on reset, for symmetry
+	  reasons.
+	- Made several fixes to the H: handler that should now
+	  be compatible to the DOS 2.XL/XA XIO command set except
+	  for "binary load".
+	- Improved the detection of the HATABS init location that
+	  no longer uses fixed ROM addresses.
+	- Added rules to generate documentations by doxygen.
+	- Fixed Pokey XMTDone interrupt handling.
+	- Internal cleanup in the memory management.
+	- Added a new optional Os patch: The MathPackPatch
+	  replaces all entries of the MathPack by calls to the 
+	  host system math library, making mathematics on the 8 bit
+	  noticably faster. Especially AtariBasic profits from this
+	  patch. TurboBasic, on the other hand, has its on set of
+	  math routines that are not covered by the patch.
+	- Reworked gtia heavily. GTIA emulation now includes proper
+	  intra-scanline modification of PRIOR, i.e. toggling
+	  between a processed mode like Gr.9..Gr.11 and an un-
+	  processed mode in a horizontal kernel. GTIA also 
+	  supports horizontal splitting of players, proper
+	  collision detection for these splittings and support for
+	  some wierd undocumented GTIA modes (RIP,HIP,...), as
+	  for example disabling of modes 0x40 and 0xc0 within a
+	  horizontal scanline.
+	
+Atari++ 1.24
+	- Worked around a g++ 3.2.2 bug that trashed the GTIA code
+	  successfully if compiled in release mode. g++ 2.95 or icc 7.1
+	  do not show this bug in the code generator.
+	- Fixed again pokey XmtDone interrupt handling.
+	- Added a "quick" user menu that provides the most important
+	  options by pressing the left mouse button if the mouse hasn't
+	  been used as a game port input device.
+	- Fixed a couple of minor preferences handling bugs on the way.
+	- Fixed a bug in the mathpack emulation core that forgot to
+	  set two registers in the BCD->ASCII conversion.
+	- Added an emulation of the 850 interface box. This emulation
+	  supports all the private SIO commands of the 850 interface,
+	  allowing you to use the serial port of the PC by the emulator.
+	  Unlike the 850, only one serial line is available, but otherwise
+	  all options are supported. The only exception are some of the
+	  wierder baud rates the 850, but not the UART in the PC, is able
+	  to generate.
+	- Enlarged/completed autoconf; added a couple of options to
+	  enable/disable subcomponents of the emulator on demand.
+
+Atari++ 1.25
+	- Fixed a couple of bugs of the 850 interface and the R: driver
+	  built into. This includes fixes in the handler startup,
+	  fixes in the baud rate selector that didn't get forwarded to
+	  pokey, and fixes in the buffer handling.
+	- Redesigned the audio output interface drivers.
+	- Added the emulation of the stereo pokey hardware hack and
+	  added apropriate options. Thanks once again to Andreas
+	  Magenheimer for providing demo programs for testing this
+	  new feature.
+	- Improved PIA PortA/BCtrl register emulation.
+	- Improved Pokey audio emulation by also including the function
+	  of the serial port control register SkCtrl into the audio
+	  generation.
+	- Improved audio emulation is now also able to generate the SIO
+	  "sound effects"; this is an optional feature as some users
+	  might consider the native Atari SIO sound as anoying.
+	- Improved Pokey serial timing that is now computed from the
+	  pokey timers and the serial transfer mode.
+	- Added more graphic formats for the screen snapshot feature.
+	  Atari++ now also supports BMP and, if the libpng is available,
+	  PNG snapshots. This is configurable thru the SDL or X11 inter-
+	  face options.
+	- Fixed H: handler EOF handling and delete protection of write-
+	  protected files.
+	- Modified SIO interface routines to allow synchronous single
+	  byte transfers.
+	- Added workaround against some SDL bugs.
+	- Fixed CPU Sync() bug that could have caused segfaults.
+	- Fixed ALSA channel allocation bug.
+	- Fixed disk drive HD format; this used to generate invalid
+	  ATR files, but not any more.
+	- Added disk "Eject" button.
+	- Fixed various SIO related error reporting bugs.
+	- Fixed CPU BRK instruction stack.
+	- Fixed ANTIC VBI generation.
+	- Various other minor bugfixes.
+
+Atari++ 1.26
+	- Restructured the serial device/SIO interface for the
+	  user space SIO by Hias
+	- Fixed fixpoint rounding for the math pack emulation
+	- Fixed possible SegFault in the .wav audio front-end
+	- Added Visual Studio C++ 7.1 compilation target.
+	- Adaptions/modifications for g++-3.3
+
+Atari++ 1.27
+	- Fixed the overly picky user menu that did not catch exceptions
+	  due to invalid configurations.
+	- Reworked the Basic interface that now also accepts generic 8K
+	  cartridges as ROM images.
+	- Heavily bugfixed the AtariSIO interface, also in DirectSerial
+	  mode. This should work fine now.
+	- Extended the printer emulation; it now also allows printing to
+	  files.
+	- Added zlib support for the win32 platform and hence support for
+	  .gz compressed disk image image files.
+
+Atari++ 1.28
+	- Fixed a bug in the 130XE RamDisk handling that checked the
+	  wrong bit to test for CPU access.
+	- Fixed a missing screen refresh in the SDL frontend.
+	- Fixed H: device directory handling, win32 delivers an error
+	  code here unlike POSIX.
+	- Added smarter speed control that also allows the emulator 
+	  to run faster than a real Atari. Updated sound support 
+	  for that.
+	- Added a html version of the guide.
+
+Atari++ 1.29
+	- The console key "keypress generator" is now a bit more
+	  conservative and tries to avoid faked key events for
+	  warm starts.
+	- The analog joystick interface and its SDL counterpart
+	  support now up to 16 buttons.
+	- The binary loader analyses and checks now the images
+	  before loading them into the emulator. This test is
+	  now also able to perform some simple repair algorithms
+	  on the images for typical failure cases.
+	- The H: device supports now the XIO 41 "binary load"
+	  command using some higher trickery. This emulation
+	  should be compatible to some auto-loaders, e.g.
+	  TurboBasic.
+	- Fixed another bug in the pattern matching code of the
+	  H: device.
+	- Added open mode modifiers for the H: handler similar to
+	  those supported by Dos 2.XL:
+	  /A: Open in append mode,
+	  /D: Open for directory,
+	  /N: Do not run programs.
+	- Default for win32 architecture frontend is now the
+	  window'd mode, full screen can be enabled by the user
+	  in the full configuration menu.
+	- Added emulation of the 1200XL and its 1200ROM. This
+	  ROM requires special threadment due to an Os bug.
+	- Fixed gameport search for multiple joysticks.
+
+Atari++ 1.30
+	- Added double-buffering option for the SDL frontend
+	  if the SDL implementation provides it. Currently, only
+	  the win32 port can do that.
+	- Added support for Steven J. Truckers Flash Rom (ATARIMAX)
+	  cartridge. Thanks, Steven!
+	- Added more call-ins for the mathpack patch that are
+	  inofficial but called by Basic and Mac/65.
+	- Fixed Math-pack patch ZFR1 call-in.
+	- Fixed several AtariSIO memory leaks.
+	- Reworked parts of the cartridge management, making cart
+	  type selection simpler.
+	- Added MegaROM and Atrax cartridge types.
+	- Fixed again a bug in the H: device, it did not accept
+	  some valid file names.
+	- Fixed error reporting in the disk insertion code.
+	- Fixed XFD image validity checks.
+	- Added a built-in OsROM. Now Atari++ does no longer require
+	  an external binary ROM to function. This built-in ROM is
+	  an AtariXL type ROM under my copyright that, however, lacks
+	  the math pack that cannot be rewritten without copying the
+	  original binary. Thanks to the mathpack patch, the new Os
+	  ROM will work nevertheless correctly with programs requiring
+	  the math-pack.
+
+Atari++ 1.31
+	- Fixed keyboard support for the 5200 games system.
+	- Fixed reset/console key support on reset.
+	- Added display postprocessor resp. de-blocking filter for the
+	  SDL frontend. This generates smoother graphics on upsampling
+	  the low-resolution Atari displays.
+	- Added emulation of special PAL color mixing artifacts.
+	- Added flicker fixer that emulates slow TV screens used by some
+	  programs to generate more colors by altering fast between two
+	  color sets.
+	- Added more cartridge types.
+	- Reworked cartridge support subsystem a bit.
+
+Atari++ 1.32
+	- Fixed a bug in the string gadget that caused a race condition
+	  in the file requester.
+	- Improved timing issues for GTIA and ANTIC. Users of previous
+	  releases might want to set the DLIDelayCycles to 12 and the
+	  BeforeDisplayCylces to 16 to adapt to the new settings.
+	- Fixed a potential segfault in the X11 display when switching
+	  between PAL and NTSC output.
+	- Fixed command line parser for the win32 front-end. This was a
+	  bit hairy since a custom startup code for win was required for
+	  that.
+	- Added an optional console output window for the win32 port that
+	  is used for the monitor. Sorry, there is no ncurses/curses
+	  support because no suitable curses library is available for the
+	  win-world. The monitor will not be able to provide the SPLT
+	  command because of that, but everything else will work (just
+	  not that fancy...)
+	- Fixed disassembly of some ANTIC commands.
+	- Fixed a missing initialization in the line drawer of Os++.
+	- Fixed default behaviour of printer emulation of no print
+	  spooler is available. PrintToFile is then the default.
+	- Speedup GTIA priority engine a bit.
+
+Atari++ 1.33
+	- Improved the runtime behaivour of the CPU a little bit, it might
+	  be a bit (likely unnoticably) faster.
+	- Added proper emulation of artifacts on colored background. Thanks
+	  to Slor for making pictures of the real NTSC artefacts. The
+	  resulting emulation is an emulation and not yet 100% accurate, though
+	  much closer than before.
+	- Fixed a compilation/configuration error. On some systems, libSDL
+	  requires explicit linkage against libpthread.
+	- Added a keyboard type-ahead buffer that allows you to type faster
+	  than the emulated Atari is able to react. This avoids swallowed
+	  keyboard events.
+	- The Percom/815 and Happy floppy drive extended command sets can now
+	  be disabled or enabled to avoid compatibility problems with software
+	  that requires that certain commands fail on the disk drive.
+	- The GUI supports and recognizes now the scroll wheel available on most
+	  modern USB and PS/2 mice.
+
+Atari++ 1.35
+	- Fixed a segfault in the file/directory requester due to a buffer overrun
+	  when extracting the file or path-part of the selected path.
+	- Pokey emulation of the low-part of 16 bit counters was incorrect up to
+	  this release. This fixes sound effects of various Basic type-in listings.
+	- Added finer Pokey volume control.
+	- Added emulation of Pokey nonlinearities.
+	- Antic DLI timing was partially incorrect, the DLI signal was generated
+	  one cycle too late with DMA registers sampled too early. Users of earlier
+	  releases should adjust their preferences and set the "BeforeDLIClocks" to
+	  eleven (11) instead of twelve.
+	- Added emulation of Antic DLI behaviour if the CPU is stopped. ANTIC does
+	  not generate an NMI signal immediately, but waits again for the next
+	  possible NMI generation slot in its horizontal scanline.
+	- Fixed the behaviour of the backspace key/control code in the S: handler of
+	  the built-in Os emulation. This fixes a couple of Basic games.
+	- Fixed a critical bug in the Pokey emulation that could have caused crashes
+	  on startup due to non-initialized variables.
+
+Atari++ 1.36
+	- Fixed broken gadgets when the scrollwheel was used.
+	- Fixed ANTIC instruction fetch for disabled DMACtrl. This fixes one
+	  wierd demo.
+	- Added a monitor stack traceback command.
+	- Fixed cycle allocation for pre/post VBI gap of the ANTIC display list.
+	- Fixed parsing of memory extensions.
+	- Fixed a valgrind hit in the CartROM initialization.
+	- Made patch-device support (P:,H:,D:) a bit safer by testing for 
+	  valid IOCBs.
+	- Fixed x11 truecolor buffering that sometimes forgot to offer an RGB
+	  frame buffer.
+	- Fixed handling of non-ASCII keyboard events (e.g. german umlauts) that
+	  were not properly ignored before.
+	- Fixed length of VBI, the Antic emulation stole nine cycles too many
+	  for out-of-display length.
+	- Fixed GTIA/CTIA detection and output of undefined registers for GTIA.
+	- Added a new sound front-end, namely DirectX sound support for the
+	  win32 platform. Audio output is much smoother now.
+	- Fixed MMU emulation for XE-style extended RAM disks.
+
+	
+Atari++ 1.37
+	- Fixed two files that did not compile correctly without the SDL devel
+	  libraries available.
+	- Fixed the flashrom cartridge disabling logic.
+
+Atari++ 1.38
+	- Fixed again a wrong timing in the antic module.
+	- Modified Pokey SIO sound generation, should be better now.
+	- Fixed horizontal changes of the Antic character generator.
+	- Fixed handling of the Numpad keys for some X11 implementations
+	- Minor adaptions for g++-3.4.1
+
+Atari++ 1.39
+	- Added a serial transport interface allowing portable serial
+	  communications from Linux and Win32. This allows this release
+	  to enable the 850 Interface box and AtariSIO implementation
+	  for Win32.
+
+Atari++ 1.40
+	- Fixed random generator for Win32 platforms. This might have
+	  broken some games.
+	- Fixed attract mode in Os++, both generation counter as
+	  well its application in Gr. 9/10/11 with text window.
+
+Atari++ 1.41
+	- Fixed the location of the VBI interrupt. It happened one line 
+	  too late.
+	- Fixed unitialized accesses in Pokey.
+	- Fixed NMI status read in antic, the lowest bits are always set.
+	- Fixed VSCROLL overflow emulation for 8 line text modes.
+	- Added 65C02 emulation (experimental)
+	- Added more joystick buttons, to be used to trigger 5200
+	  keyboard events.
+	- Added emulation of a mathpack feature, namely to terminate
+	  the ASCII converted floating points with a decimal dot even
+	  if the number is an integer.
+	- Fixed the configure script, works now fine on MacOs.
+
+Atari++ 1.42
+	- Fixed race condition when switching the resolution, could
+	  cause crashes.
+	- Fixed Antic CHARBASE switches, did not keep care of
+	  horizontal scrolling correctly.
+	- Fixed leaking key presses from the GUI to the core.
+	- Fixed PIA Port A handling, Port A input is non-buffered.
+	- Fixed Monitor backspace key on some broken ncurses
+	  implementations.
+	- Added "graphical" single-step trace command for the monitor.
+	- History of the monitor is now a tad smarter and buffers un-
+	  finished lines.
+	- Fixed "dummy writes" for INC and DEC commands.
+	- Fixed player horizontal split, did erraneously remove the
+	  old player.
+	- Fixed timing of the pokey timers, should be more precise
+	  now.
+	- Fixed XIO for serial baud generator, argument zero leaves
+	  baud rate alone.
+	- Fixed serial input counter for concurrent mode
+	- Fixed state parser, is now less sensitive to CF/LF vs. LF
+	  confusion.
+	
+	
+Atari++ 1.43
+	- Added a resident R: handler that can be patched in as a
+	  replacement for the 6502-based R: handler that is 
+	  bootstrapped from the interface box.
+	- The R: handler code now resets the replacement character
+	  that is dropped in whenever a non-ATASCII character arrives
+	  at the serial input.
+	- Worked around the sound problems that appear due to the
+	  unbalanced audio output; this release offers an additional
+	  high-pass filter in the pokey output that avoids any offset.
+	- The pokey keyboard disable bit was not emulated at all.
+	  Setting this bit now disables all keyboard activity.
+	- Fixed the emulation of the Atari/INVERSEVID key and related
+	  keys; the corresponding key-up event was never forwarded
+	  to the kernel.
+	- Updated the manual; forgot to include the position of the
+	  Atari/INVERSEVID key in the manual.
+
+Atari++ 1.44
+	- Fixed the SetIRQ service routine of the built-in Os.
+	- Fixed (again) the Antic NMI/DLI generation.
+	- Fixed CPU handling of the WSYNC register (broke Atlantis)
+	- Fixed the keyboard handler of the 5200 emulation which
+	  did not generate the up/down bits properly.
+	- Fixed the light pen code generation.
+	- Fixed parts of the 65C02 emulation, zero page access was
+	  not extending properly to page 1.
+	- Fixed a lot of compilation problems on 64 bit architectures,
+	  special thanks goes to Alexander Müller for helping me to
+	  hunt down these bugs.
+	- Fixed the SDL detection in configure.
+	- Fixed the player generation logic again a bit, did not
+	  support horizontal player splitting quite as it should.
+	- Improved the emulator handling of warnings, you can now
+	  go back to the menu.
+	- Added emulation of 1050 internal diagnostic commands.
+	- Fixed SIO return codes for SIO bypass routines.
+
+	
+Atari++ 1.45
+	- Added settings for the Visual Studio 8.00 compiler.
+	- Fixed makefile/configure script to support the GNU g++-4.xx
+	  series.
+	- Fixed the flash ROM size detection.
+	- Added code to disable the DPMS driven monitor disable. This
+	  will only work with the raw X11 screen blanker, not with the
+	  KDE or GNOME screen blanker.
+	- Late modifications of the HSCROLL register are now honored.
+	- Player DMA in empty antic lines are now handled correctly.
+	- Stereo pokey activation was broken and could cause crashes.
+	- The H: handler binary load driver overwrote the run vector
+	  too early, breaking the DUP Run command.
+	- The FMS drive buffer check was off by one, disabling D2:
+	- The FMS did not close the binary load file properly before
+	  running the file.
+	- The H: Open for Append mode did not work.
+	
+Atari++ 1.46:
+	- This release is mainly due to Mark Keates (thanks, Mark!) by
+	  emulating the flash process for Steve Trucker's flash ROM
+	  carts. That is, Steve's software is now able to erase and re-
+	  flash the flash ROMs.
+	- Added emulation code for the Phoenix, Blizzard and ATMax
+	  cartridges.
+	- New cartridges (for the Flash code) and new disk images can now
+	  be created by the emulator on the fly. For that, just type in
+	  a non-existing file name in the file requester and either
+	  format this virtual disk, or set the cart type to Flash and
+	  supply a flash image.
+	- The FMS directory operations were complete rewritten, reducing
+	  the amount of required buffer memory by 128 bytes. Furthermore,
+	  the default number of buffers was reduced to the standard set
+	  of two drives, three files, again leaving more memory to BASIC.
+	- The FMS is now even more compatible to Dos 2.0S by offering the
+	  same memory locations for the drive write mode, the number of
+	  drive buffers and the number of file buffers. All these are now
+	  available by standard peeks/pokes documented in Dos 2.0S.
+	- The FMS is now read-compatible to Dos 2.5 and makes the extended
+	  files visible in the directory listing.
+	- This release fixes a couple of minor bugs in the OS
+	  implementation. The text window modes of Graphics 9,10 and 11
+	  flickered during SIO operation, and the ROM got streamlined
+	  a bit.
+	- The monitor offers now a command to log the commands executed
+	  by the CPU to a file. Check for the ENVI command. Note that the
+	  logs can grow very fast very long.
+
+
+Atari++ 1.50
+	- This release is mainly a bug-fix release that addresses a couple
+	  of issues especially on 64 bit systems:
+	- Fixed various erraneous varargs usages, mainly active during
+	  error handling, that caused crashes on AMD64 systems.
+	- Fixed reference to the linux joystick device. Newer kernels place
+	  this device at /dev/input/jsx instead of /dev/jsx, fixed.
+	- The H: device handler wildcard matcher now also finds files whose
+	  extender consists of blanks.
+	- The joystick handler contains now a workaround against some faulty
+	  implementations of the emu10k1 (SoundBlaster) gameport interface
+	  and got basically self-calibrating by using the second unused
+	  joystick axis.
+	- The DMA timing got reworked heavily. Thanks for that goes to
+	  Bennet (beipdev@yahoo.com) for providing me with more detailed
+	  information.
+	- The way how horizontal timing is organized changed heavily, and
+	  the timing constants for ANTIC and GTIA changed. Thus, new items
+	  in the menu will adjust the timing, and old ones got removed.
+	- The player/missile generator changed a bit and is now aware of
+	  some internal GTIA reaction times. Thanks for providing examples
+	  for this goes to Sebastian Pachuta (thanks again!)
+	- Some heavy bugs got fixed in the X11 interface that could have
+	  caused conflicts with at least some window managers because it
+	  re-opened windows to fast. These problems are now avoided by using
+	  a more careful logic.
+	- An out-of-bounds memory write in the mathpack emulation got fixed.
+	- Error handling in the complete menu and error requesters itself
+	  got improved.
+	- Errors from the X11 subsystem are now captured and reported in a
+	  more user-friendly way.
+	- The complete user menu creates now string-gadgets for numeric 
+	  values whose numeric range is too large to be fine-tunable by
+	  a slider alone.
+	- Improved the speed of the X11 true-color output by enlarging the
+	  output/color buffer.
+ 
+
+Atari++ 1.51
+	- Added a force-stereo output for all audio output modules for
+	  Linux to work around a bug in alsa that fails to generate
+	  suitable mono output if a midi sound font is loaded.
+	- Reformatted the monitor output of some modules and make them
+	  more consistently.
+
+Atari++ 1.52
+	- Reworked the CPU emulation, especially the 65C02 emulation got fixed
+	  at several ends. Thanks goes to Waldemar Pawlaszek for detecting
+	  several bugs in the 65C02 emulation.
+	- Reworked the monitor disassembly to be better suited for extended CPU
+	  models. The CPU now defines addressing modes and instructions for the
+	  disassembler, thus requiring only one single CPU instruction database
+	  instead of two.
+
+Atari++ 1.53
+	- Fixed the ADC command, creates now the proper results in
+	  decimal mode even for non-BCD input.
+	- SDL keyboard input is now a bit more careful about the
+	  ALT key. Only the left ALT key is now understood as the
+	  Atari/InverseVID key.
+	- Improved building on VS8.0.
+	- Improved handling of files/disks on network directories.
+
+Atari++ 1.54
+	- Fixed the handling of the initial keystroke.
+	- Added a curses (text-based) front-end.
+	- GTIA artifacts now support various GTIA models.
+	- GTIA supports now user-defined color maps.
+	- The GUI can now be used entirely by the keyboard or the
+	  joystick, use the cursor keys to move the pointer from
+	  gadget to gadget and press RETURN to click on an object.
+	- Added a RelMouseStick input device that reacts on the
+	  relative mouse movements rather than its abstract position.
+	- Fixed the POKEY audio muting, it is now able to detect
+	  situations in which a lower mixing frequency is audible
+	  even though the channel itself is not.
+	- Fixed initial timing/speed setting, could have caused
+	  audio-drop outs or slow play-back.
+
+Atari++ 1.55
+	- Fixed a couple of bugs in the disk emulation, thanks to
+	  Konrad Kokoszkiewicz for finding them. Specifically,
+	- Read and write capacity (815 commands) did not check for
+	  all supported disk layout types and hard-disk partitions,
+	- Speedy commands were recognized and interfered even if
+	  the speedy emulation was turned off,
+	- Disk status wasn't returned correctly for high-density
+	  drives
+	- Fixed a parsing/error handling bug if the initial con-
+	  figuration files were incorrect.
+	- Fixed the implementation of ZFR1 in the mathpack patch.
+	- Fixed the implementation of FFRAC in mathpack patch.
+	- Added constants required by BASIC for the patch.
+	- This release comes with a new release of Os++, the
+	  emulator operating system. For the first time, this
+	  release is complete and includes a math-pack whose
+	  functions should be both faster and more precise than the
+	  original implementation. Thanks to B. Watson for
+	  continuously pushing me - it's done now.
+	- Minor streamlining in the CIO implementation in Os++.
+	- This release adds a STDIO interface to atari++, allowing
+	  it to read keyboard or editor input from the command line,
+	  and echo-ing output to stdout. This feature can be used
+	  for batch-processing.
+	- Compared to the beta release, this version fixes one bug
+	  in the BCDToInt math pack routine (also known as FPI) which
+	  did not handle carry-over correctly.
+	- Writing 0 to SKCTL now also resets the pokey timers as it
+	  emulates the POKEY soft reset.
+	- Pokey STIMER also resets the poly-counters now, as it 
+	  should.
+	- Os++ includes minor fixes for the cursor rendering and
+	  interaction of S: with E:. Writing to S: now shields the
+	  cursor correctly.
+

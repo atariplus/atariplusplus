@@ -1,0 +1,38 @@
+			LEGAL
+
+The contents of this file are subject to the THOR Public License
+Version 1.0 (the "License"); you may not use this file except in
+compliance with the License. 
+
+Software distributed under the License is distributed on an "AS IS"
+basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
+the License for the specificlanguage governing rights and limitations
+under the License.
+
+The Original Code is Atari++ ("Atari 8 Bit Emulator").
+
+The Initial Developer of the Original Code is Thomas Richter. 
+
+Portions created by  ______________________ are 
+Copyright (C) ______ _______________________. 
+
+All Rights Reserved.
+
+Contributor(s): ______________________________________.
+
+Alternatively, the contents of this file may be used under the terms
+of the "GNU Public Licence" license (the "GPL" License), in which case
+the provisions of "GNU Public Licence" License are applicable instead
+of those above.  If you wish to allow use of your version of this file
+only under the terms of the "GPL" License and not to allow others to
+use your version of this file under the TPL, indicate your decision by
+deleting the provisions above and replace them with the notice and
+other provisions required by the "GPL" License.  If you do not delete
+the provisions above, a recipient may use your version of this file
+under either the TPL or the "GPL" License."
+
+[NOTE: The text of this file applies to all sources in the distribution.
+It was not inlcuded in the sources directly but gets presented here
+instead. The sources are understood as the header files (.hpp) the
+source files (.cpp) the makefiles, the configuration script and the
+autoconf input script "configure.in".]

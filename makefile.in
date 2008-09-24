@@ -1,0 +1,60 @@
+###################################################################################
+##
+## GNU g++ makefile.in for the Atari++ emulator
+##
+## $Id: makefile.in,v 1.17 2005/09/05 20:18:36 thor Exp $
+##
+##
+###################################################################################
+
+.PHONY:		install uninstall distrib deb
+
+CXX		= @CXX@
+MAKEFILE	= makefile
+CFLAGS		= @CPPFLAGS@ @X_CFLAGS@ @SDL_CFLAGS@ -x c++ -c @WARNING_FLAGS@ #-no-rtti breaks exception handling
+
+OPTIMIZER	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 @OPTIMIZER_FLAGS@
+		  #-fschedule-insns # These give "register spill" errors.
+		  #-fschedule-insns2 #-fomit-frame-pointer breaks exception handling for 3.2
+
+VALGRIND	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 @OPTIMIZER_FLAGS@ -ggdb3
+PROFILER	= -pg @PROFILER_FLAGS@
+LDPROF		= -pg
+DEBUGGER	= @DEBUGGER_FLAGS@ -DDEBUG_LEVEL=2 -DCHECK_LEVEL=3
+TOASM           = -S
+DBLIBS          = #-lefence # does also break exception handling
+LD		= @CXX@
+LDFLAGS		= @X_LIBS@ @SDL_LDFLAGS@
+LDLIBS		= @X_PRE_LIBS@ @X_EXTRA_LIBS@ @LIBS@
+ECHO		= echo
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+datadir		= @datadir@
+BIN_PATH	= @bindir@
+MAN_PATH	= @datadir@/man
+###################################################################################
+
+include Makefile.atari
+
+install:
+		mkdir -p $(BIN_PATH)
+		cp atari++ $(BIN_PATH)
+		chmod a+rx $(BIN_PATH)/atari++
+		mkdir -p $(MAN_PATH)/man6
+		gzip -9 <atari++.man >$(MAN_PATH)/man6/atari++.6.gz
+		chmod a+r $(MAN_PATH)/man6/atari++.6.gz	
+		mkdir -p $(datadir)/doc/atari++
+		cp COPYRIGHT $(datadir)/doc/atari++/copyright
+		chmod a+r $(datadir)/doc/atari++/copyright
+
+uninstall:
+		rm $(BIN_PATH)/atari++
+		rm $(MAN_PATH)/man6/atari++.6.gz
+
+distrib:	$(SOURCES) $(INCLUDES)
+		rm -f atari++.tgz
+		$(MAKE) -f Makefile distrib
+
+deb:		$(SOURCES) $(INCLUDES)
+		$(MAKE) clean
+		$(MAKE) -f Makefile deb

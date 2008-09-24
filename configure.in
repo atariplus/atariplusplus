@@ -1,0 +1,608 @@
+#***********************************************************************************
+#**
+#** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
+#**
+#** $Id: configure.in,v 1.109 2008/09/12 14:21:53 thor Exp $
+#**
+#** In this module: autoconf script for atari++
+#**********************************************************************************/
+#
+# Process this file with autoconf to produce a configure script.
+AC_INIT(atari++,1.55,thor@math.tu-berlin.de)
+AC_CONFIG_SRCDIR([types.hpp])
+AC_CONFIG_HEADER([types.h])
+#AC_PREFIX_DEFAULT([/usr])
+
+#
+# Parse some compile time configuration options
+#
+AC_ARG_ENABLE(SDL,
+[AC_HELP_STRING([--enable-SDL=bool],[provide graphics and sound thru the Simple Direct Media Library (default='yes')])],
+[ac_arg_SDL=$enableval],[ac_arg_SDL='yes'])
+AC_ARG_ENABLE(X11,
+[AC_HELP_STRING([--enable-X11=bool],[provide graphics output thru the X11 Library (default='yes')])],
+[ac_arg_X11=$enableval],[ac_arg_X11='yes'])
+AC_ARG_ENABLE(OSS,
+[AC_HELP_STRING([--enable-OSS=bool],[provide audio output thru the OSS sound system (default='yes')])],
+[ac_arg_OSS=$enableval],[ac_arg_OSS='yes'])
+AC_ARG_ENABLE(ALSA,
+[AC_HELP_STRING([--enable-ALSA=bool],[provide audio output thru the ALSA sound system (default='yes')])],
+[ac_arg_ALSA=$enableval],[ac_arg_ALSA='yes'])
+AC_ARG_ENABLE(ZLIB,
+[AC_HELP_STRING([--enable-ZLIB=bool],[provide disk image compression thru the ZLib (default='yes')])],
+[ac_arg_ZLIB=$enableval],[ac_arg_ZLIB='yes'])
+AC_ARG_ENABLE(JOYSTICK,
+[AC_HELP_STRING([--enable-JOYSTICK=bool],[provide linux joystick support (default='yes')])],
+[ac_arg_JOYSTICK=$enableval],[ac_arg_JOYSTICK='yes'])
+AC_ARG_ENABLE(CURSES,
+[AC_HELP_STRING([--enable-CURSES=bool],[provide enhanced editing of the build-in monitor thru curses (default='yes')])],
+[ac_arg_CURSES=$enableval],[ac_arg_CURSES='yes'])
+AC_ARG_ENABLE(MATH,
+[AC_HELP_STRING([--enable-MATH=bool],[provide optional mathpack support by host FPU (default='yes')])],
+[ac_arg_MATH=$enableval],[ac_arg_MATH='yes'])
+AC_ARG_ENABLE(SIO,
+[AC_HELP_STRING([--enable-SIO=bool],[provide original Atari hardware support thru AtariSIO (default='yes')])],
+[ac_arg_SIO=$enableval],[ac_arg_SIO='yes'])
+AC_ARG_ENABLE(PNG,
+[AC_HELP_STRING([--enable-PNG=bool],[provide screen snapshots in PNG format (default='yes')])],
+[ac_arg_PNG=$enableval],[ac_arg_PNG='yes'])
+AC_ARG_ENABLE(MONITOR,
+[AC_HELP_STRING([--enable-MONITOR=bool],[enable the built-in 6502 monitor (default='yes')])],
+[ac_arg_MONITOR=$enableval],[ac_arg_MONITOR='yes'])
+
+# Checks for programs.
+AC_PROG_CXX([g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ icc c++ gpp cxx cc++])
+AC_PROG_CC
+AC_PROG_CC_STDC
+AC_C_BIGENDIAN
+#
+# Set some compiler specific macros, dependent on whether we have a GNU C
+# or a generic compiler
+if test ${CXX} = icc; then
+   # Set flags for the icc intel compiler. We could do without it, but it performs better with it.
+   AC_SUBST(OPTIMIZER_FLAGS,["-Xa -align -Zp16 -fno-rtti"])
+   AC_SUBST(PROFILIER_FLAGS,["-ip_no_inlining"])
+   AC_SUBST(DEBUGGER_FLAGS,["-g"])
+else if test ${ac_compiler_gnu} = yes; then
+   # -no-rtti breaks exception handling for 2.95
+   # -Winline works for 3.3, but causes unnecessary warnings.
+   # -ffast-math breaks with 3.3.1
+   AC_SUBST(WARNING_FLAGS,["-Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wconversion -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo"])
+   AC_SUBST(OPTIMIZER_FLAGS,["-funroll-loops -fstrict-aliasing -Wno-redundant-decls -fexpensive-optimizations -fstrength-reduce -fgcse -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -frerun-loop-opt -fforce-addr"])
+   AC_SUBST(PROFILER_FLAGS,["-ggdb3 -pg -fno-omit-frame-pointer -fno-inline"])
+   AC_SUBST(DEBUGGER_FLAGS,["-ggdb3 -fno-inline"])
+ fi
+fi
+#
+# We first check in the C language as autoconf seems to expect that
+# the compiler accepts conflicting prototypes. Wierd.
+AC_LANG(C)
+
+# Check compiler features. We need long long and unsigned long long
+AC_CHECK_TYPES([long long])
+AC_CHECK_TYPES([unsigned long long])
+AC_CHECK_TYPES([__int64])
+if test ${ac_cv_type___int64} = no; then
+ if test ${ac_cv_type_long_long} = no; then
+  AC_MSG_ERROR([your compiler must support a signed 64 bit data type. Atari++ cannot be build without it.])
+ fi
+ if test ${ac_cv_type_unsigned_long_long} = no; then
+  AC_MSG_ERROR([your compiler must support an unsigned 64 bit data type. Atari++ cannot be build without it.])
+ fi
+fi
+#
+# Get type sizes
+AC_CHECK_SIZEOF([char])
+AC_CHECK_SIZEOF([short])
+AC_CHECK_SIZEOF([int])
+AC_CHECK_SIZEOF([long])
+AC_CHECK_SIZEOF([long long])
+AC_CHECK_SIZEOF([__int64])
+#
+# Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_HEADER_STAT
+AC_CHECK_HEADERS([fcntl.h stdlib.h string.h strings.h unistd.h signal.h stdarg.h errno.h stdio.h])
+AC_CHECK_HEADERS([bstring.h bstrings.h])
+AC_CHECK_HEADERS([sys/ioctl.h linux/ioctl.h time.h utime.h sys/time.h unix.h stat.h sys/stat.h])
+AC_CHECK_HEADERS([termios.h linux/serial.h])
+if test ${ac_arg_MATH} = yes; then
+ AC_CHECK_HEADERS([math.h])
+fi
+if test ${ac_arg_CURSES} = yes; then
+ AC_CHECK_HEADERS([ncurses.h curses.h])
+ #SUSE seems to need that. Urgh.
+ AC_CHECK_HEADERS([ncurses_dll.h])
+fi
+if test ${ac_arg_JOYSTICK} = yes; then
+ AC_CHECK_HEADERS([linux/joystick.h])
+fi
+if test ${ac_arg_OSS} = yes; then
+ AC_CHECK_HEADERS([sys/soundcard.h])
+fi
+if test ${ac_arg_SDL} = yes; then
+ AC_CHECK_HEADERS([SDL/SDL.h])
+fi
+if test ${ac_arg_ALSA} = yes; then
+ AC_CHECK_HEADERS([alsa/asoundlib.h])
+fi
+if test ${ac_arg_SIO} = yes; then
+ AC_CHECK_HEADERS([atarisio.h])
+fi
+if test ${ac_arg_ZLIB} = yes; then
+ AC_CHECK_HEADERS([zlib.h])
+fi
+if test ${ac_arg_PNG} = yes; then
+ AC_CHECK_HEADERS([png.h])
+fi
+if test ${ac_arg_MONITOR} = yes; then
+ AC_DEFINE(BUILD_MONITOR,1,[Define to 1 to get the built-in monitor])
+fi
+
+# Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
+AC_FUNC_FORK
+AC_PROG_GCC_TRADITIONAL
+AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
+AC_TYPE_SIGNAL
+AC_FUNC_STAT
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS([gettimeofday isascii memchr memmove memset select strcasecmp strchr strerror strrchr strtol strtod])
+AC_CHECK_FUNCS([time localtime snprintf vsnprintf usleep select getenv isatty chmod])
+AC_CHECK_FUNCS([tcsetattr tcgetattr tcflush tcdrain cfmakeraw cfsetospeed cfsetispeed])
+AC_CHECK_FUNCS([ioctl open creat close read write unlink fileno])
+AC_CHECK_TYPE([struct timeval],[AC_DEFINE(HAS_STRUCT_TIMEVAL,[1],[Define to 1 if struct timeval is available])])
+#
+#
+# Check for where X11 could be
+if test ${ac_arg_X11} = yes; then
+ AC_PATH_XTRA
+else
+ AC_DEFINE(X_DISPLAY_MISSING)
+fi
+# Checks for libraries
+# These tests must go here as otherwise they break the standard header tests for
+# reasons beyond me.
+if test ${ac_arg_MATH} = yes; then
+ AC_SEARCH_LIBS([exp],[m])
+fi
+if test ${ac_arg_CURSES} = yes; then
+ AC_SEARCH_LIBS([initscr],[ncurses curses termcap])
+ AC_SEARCH_LIBS([halfdelay],[ncurses curses termcap])
+fi
+if test ${ac_arg_ALSA} = yes; then
+ AC_SEARCH_LIBS([snd_pcm_writei],[asound])
+fi
+if test ${ac_arg_SDL} = yes; then
+# SDL requires the libpthread, at least on redhat.
+# Also test whether sdl-config is available. If so, get flags from there
+ AC_MSG_CHECKING([whether sdl-config is available])
+ sdlcmd=`which sdl-config`
+ if test -n "${sdlcmd}"; then
+   if test -x "${sdlcmd}"; then
+    ac_has_sdl_config='yes'
+    SDL_CFLAGS="`sdl-config --cflags`"
+    SDL_LDFLAGS="`sdl-config --libs`"
+    AC_SUBST(SDL_CFLAGS,["`sdl-config --cflags`"])
+    AC_SUBST(SDL_LDFLAGS,["`sdl-config --libs`"])
+   else
+    ac_has_sdl_config=no
+   fi
+ else
+  ac_has_sdl_config=no
+ fi
+ AC_MSG_RESULT($ac_has_sdl_config)
+ if test ${ac_has_sdl_config} = no; then
+  AC_SEARCH_LIBS([pthread_create],[pthread])
+  AC_SEARCH_LIBS([sem_init],[pthread])
+  AC_SEARCH_LIBS([SDL_Init],[SDL])
+ fi
+fi
+#
+if test ${ac_arg_X11} = yes; then
+ CFLAGS="$CFLAGS $X_CFLAGS"
+ LDFLAGS="$X_LIBS $X_PRE_LIBS $X_EXTRA_LIBS"
+ AC_SEARCH_LIBS([XOpenDisplay],[X11])
+ AC_CHECK_HEADERS([X11/extensions/Xext.h X11/extensions/dpms.h],AC_DEFINE(HAS_DPMS_H,[1],[Define to 1 if the X11 dpms.h extension header is available]),[],[
+#include<X11/X.h>
+#include<X11/Xlib.h>
+])
+ AC_SEARCH_LIBS([DPMSQueryExtension],[Xext])
+ AC_CHECK_FUNCS([DPMSInfo DPMSDisable DPMSEnable])
+fi
+if test ${ac_arg_ZLIB} = yes; then
+ AC_SEARCH_LIBS([gzopen],[z])
+fi
+if test ${ac_arg_PNG} = yes; then
+ AC_SEARCH_LIBS([png_create_write_struct],[png])
+fi
+#
+# Check whether we have the ncurses, SDL, ZLib and alsa functionality now.
+if test ${ac_arg_CURSES} = yes; then
+ AC_CHECK_FUNCS([initscr halfdelay newterm])
+fi
+if test ${ac_arg_ALSA} = yes; then 
+ AC_CHECK_FUNCS([snd_pcm_writei snd_pcm_open])
+fi
+if test ${ac_arg_SDL} = yes; then   
+ ac_save_CFLAGS=$CFLAGS
+ ac_save_LDFLAGS=$LDFLAGS
+ CFLAGS="$CFLAGS $SDL_CFLAGS"
+ LDFLAGS="$LDFLAGS $SDL_LDFLAGS"
+ AC_CHECK_FUNCS([SDL_Init SDL_InitSubSystem SDL_OpenAudio SDL_SetVideoMode SDL_JoystickOpen])
+ CFLAGS=$ac_save_CFLAGS
+ LDFLAGS=$ac_save_LDFLAGS
+fi
+if test ${ac_arg_ZLIB} = yes; then
+ AC_CHECK_FUNCS([gzopen])
+fi
+if test ${ac_arg_MATH} = yes; then
+ AC_CHECK_FUNCS([exp pow log log10])
+fi
+if test ${ac_arg_PNG} = yes; then
+ AC_CHECK_FUNCS([png_create_write_struct png_write_chunk png_create_info_struct])
+fi
+#
+#
+# check for argument type for a signal handler: These tests have to run with a C++ compiler
+AC_LANG(C++)
+# The first test checks whether a signal handler takes an "int" as argument.
+AC_MSG_CHECKING([whether argument type for signal handlers is "int"])
+AC_TRY_RUN([
+extern "C" {
+#include<signal.h>
+}
+RETSIGTYPE sh(int a) { } void si(void) { signal(SIGINT, sh);}
+int main(int argc,char **argv)
+{
+return 0;
+}
+],
+[ac_arg_type_int='yes';AC_DEFINE(SIG_ARG_TYPE_INT,[1],[Define to 1 if required argument to signal handlers is int])],
+[ac_arg_type_int='no'])
+AC_MSG_RESULT($ac_arg_type_int)
+#
+# Ditto for ... instead
+AC_MSG_CHECKING([whether argument type for signal handlers is "..."])
+AC_TRY_RUN([
+extern "C" {
+#include<signal.h>
+}
+RETSIGTYPE sh(...) { } void si(void) { signal(SIGINT, sh);}
+int main(int argc,char **argv)
+{
+return 0;
+}
+],
+[ac_arg_type_dots='yes';AC_DEFINE(SIG_ARG_TYPE_DOTS,[1],[Define to 1 if required argument to signal handlers is "..."])],
+[ac_arg_type_dots='no'])
+AC_MSG_RESULT($ac_arg_type_dots)
+#
+#
+# Test whether ALSA is available in the proper version.
+if test ${ac_arg_ALSA} = yes; then
+ AC_MSG_CHECKING([whether Alsa NEW_HW_PARAMS_API is available])
+ AC_TRY_COMPILE([
+#define ALSA_PCM_NEW_HW_PARAMS_API
+#include <alsa/asoundlib.h>
+ ],[int n = snd_pcm_hw_params_set_channels_first(0,0,0)],[ac_has_proper_alsa='yes';AC_DEFINE(HAS_PROPER_ALSA,[1],[Define to 1 if the ALSA NEW_HW_PARAMS_API is available])],[ac_has_proper_alsa='no'])
+ AC_MSG_RESULT($ac_has_proper_alsa)
+fi
+#
+#
+# Test whether we have the GNU __attribute__ extension
+AC_MSG_CHECKING([whether the GNU __attribute__ extension is available])
+AC_TRY_COMPILE([],[extern void test(const char *fmt,...) __attribute__ (( format(printf,1,2) ));],
+[ac_has_attributes='yes';AC_DEFINE(HAS_ATTRIBUTES,[1],[Define to 1 if the GNU __attribute__ extension is available])],
+[ac_has_attributes='no'])
+AC_MSG_RESULT($ac_has_attributes)
+#
+#
+# Check for the __null GNU provides. We try to use it if possible.
+AC_MSG_CHECKING([for the __null keyword])
+AC_TRY_COMPILE([],[int *n = __null;],[ac_has_null='yes';AC_DEFINE(HAS__NULL_TYPE,[1],[Define to 1 if the __null keyword is available])],[ac_has_null='no'])
+AC_MSG_RESULT($ac_has_null)
+#
+#
+#
+# Check whether integers work as template arguments. This is required
+# for the CPU class, but not all compilers accept it.
+AC_MSG_CHECKING([whether integer constants are valid template arguments])
+AC_TRY_RUN([
+template<int a>
+struct A {
+ int b;
+ A() : b(a) {}
+};
+int main(int,char **)
+{
+A<1> a;
+return 0;
+}
+],[ac_int_template_args='yes';AC_DEFINE(HAS_INT_TEMPLATE_ARGS,[1],[Define to 1 if integer constants are valid template arguments])],
+[ac_int_template_args='no'])
+AC_MSG_RESULT($ac_int_template_args)
+if test ${ac_int_template_args} = no; then
+ AC_MSG_ERROR([your compiler must support constant integers as template arguments. Atari++ cannot be build without it.])
+fi
+#
+#
+#
+# Check whether we can catch segfaults. Requires as condition for the next test.
+AC_MSG_CHECKING([for SIGSEGV and SIGILL signals])
+AC_TRY_RUN([
+extern "C" {
+#include <signal.h>
+}
+#if defined(SIG_ARG_TYPE_INT)
+RETSIGTYPE sig_handler(int)
+#elif defined(SIG_ARG_TYPE_DOTS)
+RETSIGTYPE sig_handler(...)
+#endif
+{
+  exit(0);
+}
+int main(int argc,char **argv)
+{
+ char *f = 0;
+ signal(SIGILL,&sig_handler);
+ signal(SIGSEGV,&sig_handler);
+ *f = 0;
+ return 10;
+}
+],
+[ac_sigseg_works='yes';AC_DEFINE(SIGSEG_WORKS,[1],[Define to 1 if SIGSEGV signal works])],
+[ac_sigseg_works='no'])
+AC_MSG_RESULT($ac_sigseg_works)
+#
+#
+
+
+#
+# Check whether exceptions work correctly. This is unfortunately not true for all
+# C++ compilers.
+#
+AC_MSG_CHECKING([for working exception handling])
+AC_TRY_RUN([
+#if SIGSEG_WORKS && HAVE_SIGNAL_H && (SIG_ARG_TYPE_INT || SIG_ARG_TYPE_DOTS)
+#define USE_SIGNAL
+extern "C" {
+#include <signal.h>
+}
+#endif
+#ifdef USE_SIGNAL
+#if defined(SIG_ARG_TYPE_INT)
+RETSIGTYPE sig_handler(int)
+#elif defined(SIG_ARG_TYPE_DOTS)
+RETSIGTYPE sig_handler(...)
+#endif
+{
+  exit(10); // exit gracefully in case of error
+}
+#endif
+static int catched = 10;
+struct Deleter {
+ Deleter(void)
+ { }
+ ~Deleter(void)
+ { catched = 0; }
+};
+void subthrow(void) { {Deleter d;throw(1);} catched = 10;}
+int main(int argc,char **argv)
+{ 
+#ifdef USE_SIGNAL
+ signal(SIGILL,&sig_handler);
+ signal(SIGSEGV,&sig_handler);
+#endif
+ try { subthrow();} catch(...) { }
+ return catched;
+}
+],
+[ac_exceptions_work='yes';AC_DEFINE(EXCEPTIONS_WORK,[1],[Define to 1 if exception handling works])],
+[ac_exceptions_work='no'])
+AC_MSG_RESULT($ac_exceptions_work)
+if test ${ac_exceptions_work} = no; then
+ AC_MSG_ERROR([your compiler does not support C++ exceptions correctly, cannot build Atari++ without them])
+fi
+#
+#
+
+#
+#
+# Check whether private subclasses have access to private members.
+# According to the C++ standard, they should, but for some compilers,
+# they don't. This is a bug in g++ 2.95.4 and before, got fixed in 3.2
+AC_MSG_CHECKING([whether private subclasses have access to private members])
+AC_TRY_COMPILE([],[
+class A {
+ int a;
+ class B {
+  B(class A *a)
+  {a->a = 0;}
+ };
+};
+],[ac_private_access='yes';AC_DEFINE(HAS_PRIVATE_ACCESS,[1],[Define to 1 if subclasses have access to private members])],
+[ac_private_access='no'])
+AC_MSG_RESULT($ac_private_access)
+#
+#
+
+#
+#
+# Check whether templated subclasses used in subclasses require explicitly the name space
+# of the parent class to work. This should not happen, but gcc 2.95 has a bug here.
+AC_MSG_CHECKING([whether templates are in local namespace])
+AC_TRY_RUN([
+class A {
+ template<int a>
+ class B {
+ int b;
+ B() : b(a) {}
+ };
+ class C {
+ B<0> b;
+ };
+};
+int main(int,char **){return 0;}
+],[ac_local_templates='yes';AC_DEFINE(HAS_LOCAL_TEMPLATES,[1],[Define to 1 if templated subclasses are correctly in the namespace of the parent class])],
+[ac_local_templates='no'])
+AC_MSG_RESULT($ac_local_templates)
+#
+#
+
+#
+#
+# Check whether static const integral initializers work
+# Some compilers don't support them properly, but gcc does.
+AC_MSG_CHECKING([whether initializers of static const integral members work])
+AC_TRY_RUN([
+class A {
+ static const int a=0;
+};
+int main(int,char**){return 0;}
+],[ac_member_init='yes';AC_DEFINE(HAS_MEMBER_INIT,[1],[Define to 1 if initializers of static const integral members work])],
+[ac_member_init='no'])
+AC_MSG_RESULT($ac_member_init)
+#
+# Check for non-posix extensions to termios.h
+AC_MSG_CHECKING([for termios IUCLC availibility])
+AC_TRY_COMPILE([#include <termios.h>],[int a = IUCLC;],[ac_iuclc_present='yes';AC_DEFINE(HAS_IUCLC_DEFINE,[1],[Define to 1 if IUCLC is a valid termios flag])],[ac_iuclc_present='no'])
+AC_MSG_RESULT($ac_iuclc_present)
+#
+AC_MSG_CHECKING([for termios OLCUC availibility])
+AC_TRY_COMPILE([#include <termios.h>],[int a = OLCUC;],[ac_olcuc_present='yes';AC_DEFINE(HAS_OLCUC_DEFINE,[1],[Define to 1 if OLCUC is a valid termios flag])],[ac_olcuc_present='no'])
+AC_MSG_RESULT($ac_iuclc_present)
+#
+AC_MSG_CHECKING([for termios OFILL availibility])
+AC_TRY_COMPILE([#include <termios.h>],[int a = OFILL;],[ac_ofill_present='yes';AC_DEFINE(HAS_OFILL_DEFINE,[1],[Define to 1 if OFILL is a valid termios flag])],[ac_ofill_present='no'])
+AC_MSG_RESULT($ac_ofill_present)
+#
+AC_MSG_CHECKING([for termios OFDEL availibility])
+AC_TRY_COMPILE([#include <termios.h>],[int a = OFDEL;],[ac_ofdel_present='yes';AC_DEFINE(HAS_OFDEL_DEFINE,[1],[Define to 1 if OFDEL is a valid termios flag])],[ac_ofdel_present='no'])
+AC_MSG_RESULT($ac_ofdel_present)
+#
+AC_MSG_CHECKING([for termios XCASE availibility])
+AC_TRY_COMPILE([#include <termios.h>],[int a = XCASE;],[ac_xcase_present='yes';AC_DEFINE(HAS_XCASE_DEFINE,[1],[Define to 1 if XCASE is a valid termios flag])],[ac_xcase_present='no'])
+AC_MSG_RESULT($ac_xcase_present)
+#
+
+#
+# Check for errno ELOOP availability
+AC_MSG_CHECKING([for ELOOP errno availibity])
+AC_TRY_COMPILE([#include <errno.h>],[int a = ELOOP],[ac_eloop_present='yes';AC_DEFINE(HAS_ELOOP_DEFINE,[1],[Define to 1 if ELOOP is a valid errno value])],[ac_eloop_present='no'])
+AC_MSG_RESULT($ac_eloop_present)
+#
+#
+
+#
+# Check for errno ETXTBSY availability: Exotic errno value that might not be available
+# on all machines.
+AC_MSG_CHECKING([for ETXTBSY errno availibity])
+AC_TRY_COMPILE([#include <errno.h>],[int a = ETXTBSY],[ac_etxtbsy_present='yes';AC_DEFINE(HAS_ETXTBSY_DEFINE,[1],[Define to 1 if ETXTBSY is a valid errno value])],[ac_etxtbsy_present='no'])
+AC_MSG_RESULT($ac_etxtbsy_present)
+#
+#
+
+#
+# Check for errno EAGAIN availability: Another exotic errno value that might be missing.
+AC_MSG_CHECKING([for EAGAIN errno availibity])
+AC_TRY_COMPILE([#include <errno.h>],[int a = EAGAIN],[ac_eagain_present='yes';AC_DEFINE(HAS_EAGAIN_DEFINE,[1],[Define to 1 if EAGAIN is a valid errno value])],[ac_eagain_present='no'])
+AC_MSG_RESULT($ac_eagain_present)
+#
+#
+#
+# Check whether casting works in template arguments. This doesn't seem to apply for 
+# all compiles, so be a bit careful.
+AC_MSG_CHECKING([whether casting works in template arguments])
+AC_TRY_RUN([
+typedef unsigned char UC;
+template<UC a>
+struct A {
+ int b;
+ A() : b(a) {}
+};
+int main(int,char **)
+{
+A<UC(~1)> a;
+return 0;
+}
+],[ac_template_casts='yes';AC_DEFINE(HAS_TEMPLATE_CASTS,[1],[Define to 1 if casting in template arguments work])],
+[ac_template_casts='no'])
+AC_MSG_RESULT($ac_template_casts)
+#
+#
+
+#
+# Check for working const_cast: I'm not aware of a compiler
+# that breaks this, but better keep care.
+AC_MSG_CHECKING([for working const_cast<> capability])
+AC_TRY_COMPILE([],[const char *a = 0;delete const_cast<char *>(a);],[ac_const_cast='yes';AC_DEFINE(HAS_CONST_CAST,[1],[Define to 1 if const_cast<> works])],[ac_const_cast='no'])
+AC_MSG_RESULT($ac_const_cast)
+#
+#
+
+#
+# Check for working curses COLS definition
+if test ${ac_arg_CURSES} = yes; then
+ AC_MSG_CHECKING([whether curses provides the COLS variable])
+ AC_TRY_RUN([
+ extern "C" {
+#if HAVE_INITSCR && HAVE_HALFDELAY
+#if HAVE_NCURSES_H
+#ifdef HAVE_NCURSES_DLL_H
+#include <ncurses_dll.h>
+#endif
+#include <ncurses.h>
+#elif HAVE_CURSES_H
+#include <curses.h>
+#endif
+#endif
+ }
+ int main(int,char **)
+ {
+ int a = COLS;
+ return 0;
+ }
+ ],[ac_has_cols='yes';AC_DEFINE(HAS_COLS,[1],[Define to 1 if curses provides the COLS global variable])],
+ [ac_has_cols='no'])
+ AC_MSG_RESULT($ac_has_cols)
+fi
+#
+# Check for workting curses LINES definition
+if test ${ac_arg_CURSES} = yes; then
+ AC_MSG_CHECKING([whether curses provides the LINES variable])
+ AC_TRY_RUN([
+ extern "C" {
+#if HAVE_INITSCR && HAVE_HALFDELAY
+#if HAVE_NCURSES_H
+#ifdef HAVE_NCURSES_DLL_H
+#include <ncurses_dll.h>
+#endif
+#include <ncurses.h>
+#elif HAVE_CURSES_H
+#include <curses.h>
+#endif
+#endif
+ }
+ int main(int,char **)
+ {
+ int a = LINES;
+ return 0;
+ }
+ ],[ac_has_lines='yes';AC_DEFINE(HAS_LINES,[1],[Define to 1 if curses provides the LINES global variable])],
+ [ac_has_lines='no'])
+ AC_MSG_RESULT($ac_has_lines)
+fi
+#
+#
+#
+AC_CONFIG_FILES([makefile makefile.icc])
+AC_OUTPUT

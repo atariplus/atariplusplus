@@ -1,0 +1,96 @@
+###################################################################################
+##
+## Global autoconf/automake Makefile. This makefile with capital 'M'
+## builds the makefiles with small 'm' which are then searched first
+## for the real program.
+##
+## $Id: Makefile,v 1.52 2006/05/21 15:22:29 thor Exp $
+##
+###################################################################################
+
+DIST	=	atari++
+
+.PHONY:		all clean distclean realclean distrib test manual deb atari final
+
+all:		atari
+
+final:		atari
+
+makefile:	makefile.in configure
+	./configure
+
+makefile.icc:	makefile.icc.in configure
+	./configure
+
+configure:	configure.in types.h.in
+	autoconf
+
+types.h.in:	configure.in
+	autoheader
+
+types.h:	types.h.in configure.in configure
+	./configure
+
+realclean:	clean
+
+distclean:
+	@rm -rf types.h makefile makefile.icc *.o *.d *.dyn *.il atari++ \
+	core autom4te.cache config.* configure.scan atari++.tgz dox/hmtl manual
+
+clean:
+	@rm -rf configure types.h types.h.in makefile makefile.icc *.o *.d *.dyn *.il atari++ \
+	core autom4te.cache config.* configure.scan atari++.tgz dox/hmtl manual
+
+atari:		types.h makefile
+	$(MAKE) -f makefile atari
+
+atari++:	types.h makefile
+	$(MAKE) -f makefile atari
+
+debug:		types.h makefile
+	$(MAKE) -f makefile debug
+
+efence:		types.h makefile
+	$(MAKE) -f makefile efence
+
+atari-icc:	types.h makefile.icc
+	$(MAKE) -f makefile.icc atari
+
+profile:	types.h makefile
+	$(MAKE) -f makefile atari
+
+config:		types.h configure
+	./configure
+
+distrib:	atari++.tgz
+
+manual:		atari++.man
+	mkdir -p manual
+	rm -f manual/*
+	cd manual && man -Thtml ../atari++.man >atari++.html
+
+atari++.tgz:	
+	$(MAKE) -f Makefile clean
+	$(MAKE) -f Makefile configure
+	$(MAKE) -f Makefile manual
+	cd .. && tar -czf $(DIST)/atari++.tgz $(DIST)/*.cpp $(DIST)/*.hpp $(DIST)/Makefile $(DIST)/makefile.in \
+	$(DIST)/makefile.icc.in \
+	$(DIST)/wintypes.h $(DIST)/winmain.cpp $(DIST)/atari++.vcproj $(DIST)/atari++_vc8.vcproj \
+	$(DIST)/README.Compile.win \
+	$(DIST)/atari++.rc $(DIST)/icon1.ico \
+	$(DIST)/types.h.in $(DIST)/configure $(DIST)/configure.in $(DIST)/atari++.man $(DIST)/Makefile.atari \
+	$(DIST)/README.licence $(DIST)/README.Compile $(DIST)/README.History $(DIST)/README.LEGAL \
+	$(DIST)/ARCHITECTURE $(DIST)/CREDITS $(DIST)/COPYRIGHT $(DIST)/joystick.ps $(DIST)/manual/*
+
+test:		atari++.tgz
+	echo "Testing the distribution"
+	mkdir -p /tmp/atari++
+	cp atari++.tgz /tmp/atari++
+	cd /tmp/atari++ && tar -xzf atari++.tgz && cd atari++ && configure && $(MAKE)
+
+
+deb:	
+	$(MAKE) -f Makefile clean
+	$(MAKE) -f Makefile configure
+	debuild
+

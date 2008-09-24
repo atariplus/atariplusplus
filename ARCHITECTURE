@@ -1,0 +1,336 @@
+This file aims at all programmers that intend to extend or modify the
+Atari++ emulator.  Its purpose is to describe the internal
+architecture of the emulator briefly, and to give a short introduction
+into the architecture of the emulator. It is recommended to browse
+thru this file before trying to play with the sources.
+
+
+GENERAL
+
+Atari++ uses a strong OO design around bare-bone C++. I'm
+intentionally trying to avoid common C++ extension libraries such as
+the STL or the "boost" library as either they introduce unnecessary
+overhead or impose pre-conditions for the compiler or linker that
+might be not too easy to fulfill. The current emulator should be
+rather portable, all provided the compiler is a well-behaiving C++
+compiler. I tried to avoid some constructions that are known to be
+problematic, e.g. function templates or rtti, and some common compiler
+bugs are worked around in a user-configurable way, i.e. by
+autoconf. Atari++ should be fairly portable all provided the target
+system provides at least either the SDL library or an X11 portable
+interface. Configuration of compile-time options is completely and
+entirely done by means of autoconf. For systems where autoconf is
+not available, most notably Microsoft Windows(tm), a manually generated
+configuration file is available. For Win32, rename "wintypes.h" to
+"types.h" and you're ready to rock. All others might want to use
+autoconf to generate "types.h"
+
+
+MAKE OPTIONS
+
+The emulator takes only two compile time options: CHECK_LEVEL and
+DEBUG_LEVEL. The first defines the amount of run-time sanity tests
+provided by the code. The higher the CHECK_LEVEL, the more tests are
+performed. CHECK_LEVEL = 0 means that no unnecessary tests are made,
+and this is also the default for "production" code. The DEBUG_LEVEL
+defines how much debug information is printed out. DEBUG_LEVEL = 0
+means no debug output. The DEBUG_LEVEL is currently not used by the
+code.  "make" without further options builds production code with
+DEBUG_LEVEL and CHECK_LEVEL both set to zero, "make debug" builds code
+with CHECK_LEVEL=3 and DEBUG_LEVEL=2.
+
+
+CLASS OVERVIEW
+
+Basic scalar types can be found in types.hpp. These include signed
+eight,sixteen and 32 bit types, and even 64 bit types. Unfortunately,
+they seem to cludge with some Win32(tm) definitions I haven't been
+aware of at the time of writing, though it has been proven to be
+possible to isolate a possible Win32(tm) frontend from the remaining
+source to avoid the conflict.  Whenever specific sizes are required,
+refer to these types. In case you wonder, these types are remniscends
+of my Amiga programming times.
+
+list.hpp: Doubly linked list support. Most classes make use of these
+classes directly or indirectly. Whenever you require lists, it is a
+good idea to use these. Basic list management as insertion, deletion
+and list traversal are available thru handy interface functions (that,
+again, are named in AmigaOs tradition).
+
+configurable.hpp and argparser.hpp: The Atari++ menu and argument
+parsing works by this base class. Any class that wants to receive
+information either from the command line or from the graphical user
+frontend must inherit the Configurable class. As a bonus, the
+configurable command line options are available as on-line help in the
+command line, and are even automatically inserted into the graphical
+front-end without any additional action. DO NOT parse arguments
+yourself, but use the interface of the Configurable class, and that of
+the ArgParser class which provides the options to you.
+
+chip.hpp: An extension of the Configurable class. This class should be
+used to represent a hardware or hardware-near component of the
+emulated machine. Specifically, all custom (and non-custom) chips of
+the emulated Atari are represented by this class. Its additional
+capabilities are that chips can be coldstarted and warmstarted, and
+must be able to print their internal state over the built-in monitor.
+
+memcontroller.hpp: An extension of the chip class that contains an
+additional early-startup call-in that is used after the class-setup,
+but before the first initial cold-start.  This class must be
+implemented by objects requiring to hook in very early, for example
+for providing the run-time environment of the emulated chips. The MMU
+class and the Operating System ROM implement this, and all cartridge
+types implement it, too.
+
+saveable.hpp and snapshot.hpp: The Saveable is the base class for all
+objects that have to make an internal snapshot of their state machine
+whereas the SnapShot defines the interface by which snapshots are read
+or written. This mechanism works very much along the same way as the
+configurable/argparser interface mentioned above. HOWEVER(!) wereas
+configurables receive data thru the user menu, configuration files and
+the graphical frontend, the saveables receive their data by snapshot
+files. A class should make parts of its internal state either
+available as Configurable, or as Saveable, but NEVER as
+both. Specifically, user options and configurations should not be
+included in the snapshot file. If a specific snapshot item does not
+comply with the user configuration, reject it, but do not set it.
+
+page.hpp: Represents a continuous set of 256 bytes of addressable data
+within the address space of the CPU. This data might not be currently
+visible by the CPU or by the ANTIC coprocessor, though it is under
+control of the MMU class to provide it. All entities that want to
+appear sometimes somewhere within the address space of the 6502 or
+antic must implement this class.
+
+patch.hpp: The base class for ROM-patches. All modifications made to
+the Atari ROM-image must be derived from this class. Specifically, the
+CPU will run the emulator trap callback of this class if it encounters
+a trap code. Currently, Atari++ uses the 0x22 opcode for that, and
+will execute an implicit RTS from the trap code. Note that this trap
+code changed in the past since the previously used opcode was used in
+one of the available 6502 extensions.
+
+patchprovider.hpp: This class bundles several patches into one common
+interface. It therefore basically represents a list of patches,
+toghether with an interface to install or remove them in common.
+
+device.hpp: An extension of the Patch class that is suitable for
+replacing an Atari device as recorded in the CIO-managed HATABS
+table. It already collects CIO commands and jumps into the proper
+callback for the CIO Open/Close/Get/Put/Status/Special command
+management with file names and additional control data already
+extracted.
+
+serialdevice.hpp: The base class for an (external) device connected to
+the serial port of the Atari. Hence, all devices that can be attached
+to this bus have to inherit this base class. Specifically, the
+diskdrive and printer emulation implement this interface, and so does
+the 850 interface box emulation. A serial device has to identify the
+command frame type (read/write/status) and has to tell the serial
+emulation the size of the required I/O buffer. It furthermore has to
+transport data from and to the device (naturally). The pokey
+hardware-near SIO emulation as well as the Os SIO patch work by this
+interface.
+
+diskimage.hpp: The base class for all kinds of disk image
+representations. This is a 100% slave of the diskdrive class and the
+high-level interface towards disk image representation. Various disk
+image representations are derived from it, as ATR, XFD and DCM images.
+
+imagestream.hpp: The base class for streams supplying image data and
+the low-level part of the disk image interface class. The reason why a
+two-level design has been choosen was to allow the compression of all
+kinds of disk images thru compressor libraries such as the zlib. The
+lower-level (hence, this) uncompresses the image, whereas the higher
+level analyses the image representation and presents the disk format
+and individual sectors to the diskdrive.
+
+exceptions.hpp: All types of exceptions the emulator can throw. This
+also includes low-memory exceptions that are generated by an
+overloaded operator new/delete pair. The reason why this operator
+overloading was necessary is because some popular runtime libraries do
+not implement throw-on-out of memory conditions correctly. (Hint, hint:
+Microsoft's). Atari++ doesn't require an low-memory handler and hence 
+does not provide one by these custom operators.
+
+cartridge.hpp: This class is a 100% slave of the cartrom class and
+provides the interface towards any kind of cart rom that can be
+inserted into one of the cart slots of the Atari computers. It also
+provides the memory call-ins for reads and writes into the CartCtrl
+area at 0xd500 the cart may want to utilize. The cart mapping is then
+performed by MapCart method which is called by the MMU class. The cart
+must then present its pages to the CPU and antic address space.
+
+sdlport.hpp and sdlclient.hpp: These two classes provide the base
+classes for SDL interfaces. The SDLClient is the base class any SDL
+using object must implement, and must allocate SDL resources by means
+of the SDLPort by means of the SDL subsystem identifier. The SDLPort
+is provided by the machine class which holds the emulator together.
+
+vbiaction.hpp: Provides a call-in that is invoked on each emulated
+vertical blank. Many activities of the emulator are provided in this
+time slot: All game port devices, the audio and the video front-end
+implement the VBIAction. The parameters to the call-in is a pointer to
+the timer class that identifies the time slot we are called at, and
+two booleans that indicate whether the emulator is currently pausing
+and whether a "quick" VBI must be performed. For paused activity, no
+user input should be accepted except to resume the emulator, and for
+quick VBIs unnecessary activity should be avoided.
+
+hbiaction.hpp: The lookalike of the VBIAction class, except that
+classes implementing this interface are run once each horizontal
+blank. Classes requiring a finer emulation granularity than the above
+implement this, namely the pokey emulation, running its timers and the
+serial transfer at horizontal blanking precision, and the GTIA
+emulation, and all sound-classes.
+
+sound.hpp: The base class for all sound implementations. All
+sound-front-ends must implement this. Sound is updated each horizontal
+blank by means of the hbiaction interface, and also on a
+register-write basis. Since the sound class is the most critical, this
+class must perform the final "wait" for the next vertical blank by
+means of the timer class. Timing information is provided by the Timer
+class.
+
+display.hpp: The base class for all graphical front-ends. The emulator
+pushes data into the display on a line-per-line basis and will perform
+a refresh on a vertical blank. If a "quick" vertical blank is
+requested, the refresh might be dropped to speed up the emulator. This
+is because the display refresh is one of the main performance breaks.
+
+gamecontroller.hpp and gameport.hpp: The name of these class are
+actually a misnomer. The GameController class represents an input
+channel of the emulator that collects game controller events. Hence,
+joystick, paddle and lightpen inputs enter the emulator core by means
+of this class. A GameController receives its data from a GamePort that
+is linked to it at run time. Whereas the GameController forwards game
+controller events to the core, the GamePort class defines the
+interface towards the class that collects the input from the
+user. Hence, a joystick input class is a GamePort, whereas the PIA
+inputs receiving these inputs are a GameController.
+
+gadget.hpp and event.hpp : Represents a click-able entity in the user
+interface. A gadget receives raw mouse and keyboard events defined by
+the Event class and provides processed events at its output
+identifying the gadget activity if the gadget was "hit". A
+higher-level event processor then decides what to do about it. This
+kind of event generation and forwarding is controlled by the
+EventFeeder which is also defined in event.hpp. It collects raw input
+from the keyboard and the display, and returns high-level events after
+having filtered them thru all gadgets.
+
+
+OS ABSTRACTION
+
+Atari++ tries to abstract as much from the Os as possible. It
+currently requires a somewhat ANSI-C and POSIX compliant environment
+with some BSD and UNIX typical extensions. The abstractions are
+collected in various classes that should be used instead of the Os
+available includes. These classes are configured by means of the
+autoconf script. Once again, DO NOT USE THE OS INCLUDES YOURSELF.
+
+stdio.hpp: Abstracts from the stdio.h ANSI-C header and implements
+missing functionality as snprintf and others if not available.
+
+stdlib.hpp: Abstracts from the stdlib.h ANSIC-C header. Provides
+mainly conversion functions.
+
+string.hpp: Abstracts from string.h, strings.h and bstrings.h headers
+that provide string and memory manipulation functions. This include
+provides missing functions as memcpy or strrchr should they not be
+available on the target platform.
+
+unistd.hpp: Abstracts from some POSIX functionality, mainly the usleep
+and low-level IO functionality is implemented or emulated here if not
+available by the host operating system.
+
+directory.hpp: Abstracts from the POSIX directory handling
+functionality. This header provides the opendir/closedir/stat
+functions that might be not available at the host Os. Since emulation
+code for these functions is rather system dependent, it might require
+Os specific adaptions here.
+
+time.hpp: Abstracts from various "time" headers providing the timeval
+structure and the gettimeofday() function. Since this functionality is
+rather wildly spread on various operating systems, the necessary
+includes are made here and are configured thru autoconf.
+
+timer.hpp: This is not really an Os abstraction header, though it is
+one of the Os dependent components of the system. The Timer class
+provides necessary abstractions to wait for a specific system time or
+an IO event. The current BSD dependent implementation of the Timer
+class requires the select() function, which is, however, widely
+available. The general layout of the Timer functionality approximates
+roughly the Amiga DoIO()/CheckIO() Os functionality for asynchronously
+IO operations. This class is required for the emulator to keep its
+timing.
+
+serialstream.hpp: Again not really an Os abstraction header, though
+it collects a number of services typically available for serial I/O
+as setting the baud rate and the handshake convention. This class
+then uses the services of the underlying operating system to implement
+the requested activity.
+
+
+
+
+PRINCIPLE OF OPERATION
+
+The main emulator loop is driven by the Antic cooprocessor, which is
+the DMA controller of the Atari hardware; it fetches display data from
+memory, interprets it according to the display list and feeds the data
+into the television signal generator, the GTIA. In emulation, this
+process is emulated by ANTIC generating lines (not pixels) of display
+data. This line does not yet contain colors, but rather abstracted
+color registers; the reason why this indirection is made is because a
+couple of programs modify color registers on the fly while GTIA is
+generating the signal for the electron beam of the monitor, thus
+change the colors in the middle of the screen. For the same reason,
+Antic only drives the CPU whenver no visible data is available. For
+the remaining operation, CPU clocking appears within GTIA
+synchronously to the display generation. The smallest resolution unit
+for the display is the "half color clock", one hi-res pixel; pixel
+data from ANTIC arrive in this resolution and are mixed within GTIA
+with player/missle graphic and converted to RGB colors or lookup table
+indices for the display frontend. The standard lookup table is -
+obviously - indexed by the 256 possible Atari color indices, though
+advanced GTIA operations that post-process data for deflickering or
+PAL blurring output RGB directly.
+
+The CPU can be advanced step by step, allowing a cycle-precise
+emulation. Unlike the real 6502 hardware, the software implementation
+is micro-code driven, to ease the implementation. A major part of the
+code is therefore just the built-up of the CPU opcodes from
+"primitives" that load or store data, add registers, perform
+arithmetic operations etc.
+
+As in the real machine, ANTIC may require machine cycles for its DMA
+operations and thus may halt the CPU. Within the emulator, this
+operation is performed by a table that records "stolen" CPU cycles and
+that is indexed by horizontal electron beam position. Whenever ANTIC
+requires a cycle within a line, this array gets modified and the CPU
+single step advance will not be called for the corresponding screen
+position. Similarly, the WSYNC register of ANTIC steals all cycles up
+to the end of the line.
+
+Other activities that require attendence of the emulator are either
+driven by the horizontal or the vertical electron beam retrace as this
+is precise enough for all other features. This includes serial
+transfer, pokey timers, keyboard interrupts and collection of user
+interface events. Both activities are represented by the HBIAction and
+VBIAction classes.
+
+Sound generation is completely decoupled from display generation since
+in general the timing of the emulated machine, defining the display
+state, and the timing of the host machine, defining the audio output,
+need not to be in a suitable relation. Instead, the sound chip "Pokey"
+can be asked any time for more samples given its current register
+state; this happens whenever the corresponding audio front-end runs
+out of data and needs to fill its buffers. This buffer check can
+either happen explicitly as for the Linux "Oss" front-end, or
+implicitly by a call-back as provided by the SDL or ALSA sound
+interface. If an explicit check is required, this is part of the
+horizontal blanking activities. It is the matter of the sound
+front-end to synchronize the audio playback to the display activity by
+continuously measuring the buffer fill state and by that adjust the
+number of samples to be generated for each call.
