@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: exceptions.cpp,v 1.24 2008/05/22 13:03:54 thor Exp $
+ ** $Id: exceptions.cpp,v 1.25 2009-05-03 16:01:11 thor Exp $
  **
  ** In this module: Definition of emulator specific exceptions
  **********************************************************************************/
@@ -92,6 +92,15 @@ AtariException::AtariException(char *,ExType why,const char *who,const char *sou
 }
 ///
 
+/// AtariException::AtariException
+// Constructor without any data: No exception.
+AtariException::AtariException(void)
+  : file(NULL), object(NULL), reason(NULL),
+    line(0), type(Ex_NoMem), ioerr(NULL), buffer(NULL)
+{
+}
+///
+
 /// AtariException::AtariException (from IO error)
 // Generate an exception by an io error
 AtariException::AtariException(int,const char *io,const char *who,const char *when)
@@ -174,6 +183,29 @@ AtariException::AtariException(const AtariException &origin)
     strcpy(buffer,origin.buffer);
     reason = buffer;
   }
+}
+///
+
+/// AtariException::operator= (assignment constructor)
+AtariException &AtariException::operator=(const AtariException &origin)
+{
+  delete[] buffer;
+  buffer = NULL;
+
+  buffer = origin.buffer?(new char[strlen(origin.buffer) + 1]):NULL;
+  
+  file   = origin.file;
+  object = origin.object;
+  line   = origin.line;
+  type   = origin.type;
+  ioerr  = origin.ioerr;
+  reason = origin.reason; // might be NULL or not
+  if (buffer) {
+    strcpy(buffer,origin.buffer);
+    reason = buffer;
+  }
+
+  return *this;
 }
 ///
 

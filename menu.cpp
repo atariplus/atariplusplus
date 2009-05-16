@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.cpp,v 1.63 2008/05/25 18:17:30 thor Exp $
+ ** $Id: menu.cpp,v 1.64 2008-12-10 08:10:02 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/
@@ -366,7 +366,11 @@ void Menu::EnterMenu(void)
       // events it may or may not generate. Hence, we need to use a "polling
       // type" front end here.
       do {
-	int change = EventFeeder->PickedOption(event);
+	int change;
+	if (EventFeeder == NULL) {
+	  RestartGUI();
+	}
+	change = EventFeeder->PickedOption(event);
 	switch (change) {
 	case MA_Prefs:
 	  AcceptOptionChange();

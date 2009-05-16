@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.69 2008/09/24 15:05:23 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.70 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -29,10 +29,10 @@
 
 /// Possible Disk layouts
 static const struct DriveLayout {
-  int heads;
-  int tracks;
-  int secspertrack;
-  int secsize;
+  ULONG heads;
+  ULONG tracks;
+  ULONG secspertrack;
+  ULONG secsize;
   //
   bool operator==(const struct DriveLayout &o) const
   {

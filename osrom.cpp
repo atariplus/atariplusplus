@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.cpp,v 1.46 2008/09/06 21:14:40 thor Exp $
+ ** $Id: osrom.cpp,v 1.46 2008-09-06 21:14:40 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/

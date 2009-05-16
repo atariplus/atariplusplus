@@ -1,7 +1,7 @@
 .\"**********************************************************************
 .\"** Documentation of the the atari++ Emulator
 .\"** Thomas Richter, THOR Software
-.\"** $Id: atari++.man,v 1.56 2008/09/12 13:04:16 thor Exp $
+.\"** $Id: atari++.man,v 1.56 2008-09-12 13:04:16 thor Exp $
 .\"**
 .\"**********************************************************************
 .TH atari++ 6 "atari++ Emulator"

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlanalog.cpp,v 1.8 2008/09/23 19:35:18 thor Exp $
+ ** $Id: sdlanalog.cpp,v 1.9 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: SDL analog joystick interface
  **********************************************************************************/
@@ -203,7 +203,7 @@ void SDLAnalog::DisplayStatus(class Monitor *mon)
 		   "\tVertical Axis        # : " LD "\n",
 		   unit,
 		   IsAvailable()?("yes"):("no"),
-		   ButtonId[0],ButtonId[1],ButtonId[2],ButtonId[4],
+		   ButtonId[0],ButtonId[1],ButtonId[2],ButtonId[3],
 		   HAxis,VAxis);
 }
 ///

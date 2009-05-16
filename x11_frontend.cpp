@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.73 2008/03/22 23:05:20 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.74 2008-11-24 21:15:23 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -862,7 +862,7 @@ bool X11_FrontEnd::MouseMoveStick::TransmitStates(Display *d,Window w,
   FeedAnalog(dx,dy);
   FeedButton(button1,0);
   FeedButton(button2,1);
-  //
+    //
   // Whether we need to grab the mouse depends on whether we pause or not
   return !paused;
 }

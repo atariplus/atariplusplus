@@ -2,13 +2,13 @@
 #**
 #** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.109 2008/09/12 14:21:53 thor Exp $
+#** $Id: configure.in,v 1.111 2009-05-16 13:17:24 thor Exp $
 #**
 #** In this module: autoconf script for atari++
 #**********************************************************************************/
 #
 # Process this file with autoconf to produce a configure script.
-AC_INIT(atari++,1.55,thor@math.tu-berlin.de)
+AC_INIT(atari++,1.56,thor@math.tu-berlin.de)
 AC_CONFIG_SRCDIR([types.hpp])
 AC_CONFIG_HEADER([types.h])
 #AC_PREFIX_DEFAULT([/usr])
@@ -51,7 +51,7 @@ AC_ARG_ENABLE(MONITOR,
 [ac_arg_MONITOR=$enableval],[ac_arg_MONITOR='yes'])
 
 # Checks for programs.
-AC_PROG_CXX([g++-4.1 g++-4.0 g++-3.4 g++-3.3 g++-3.2 g++ icc c++ gpp cxx cc++])
+AC_PROG_CXX([g++ icc c++ gpp cxx cc++])
 AC_PROG_CC
 AC_PROG_CC_STDC
 AC_C_BIGENDIAN
@@ -67,7 +67,7 @@ else if test ${ac_compiler_gnu} = yes; then
    # -no-rtti breaks exception handling for 2.95
    # -Winline works for 3.3, but causes unnecessary warnings.
    # -ffast-math breaks with 3.3.1
-   AC_SUBST(WARNING_FLAGS,["-Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wconversion -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo"])
+   AC_SUBST(WARNING_FLAGS,["-Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo"])
    AC_SUBST(OPTIMIZER_FLAGS,["-funroll-loops -fstrict-aliasing -Wno-redundant-decls -fexpensive-optimizations -fstrength-reduce -fgcse -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -frerun-loop-opt -fforce-addr"])
    AC_SUBST(PROFILER_FLAGS,["-ggdb3 -pg -fno-omit-frame-pointer -fno-inline"])
    AC_SUBST(DEBUGGER_FLAGS,["-ggdb3 -fno-inline"])

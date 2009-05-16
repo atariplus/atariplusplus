@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.hpp,v 1.38 2008/03/22 23:05:20 thor Exp $
+ ** $Id: x11_frontend.hpp,v 1.38 2008-03-22 23:05:20 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: screendump.cpp,v 1.9 2005/09/20 21:13:02 thor Exp $
+ ** $Id: screendump.cpp,v 1.10 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: Creation of screendumps into a file
  **********************************************************************************/
@@ -125,7 +125,7 @@ ScreenDump::BMPHeader::BMPHeader(ULONG width,ULONG height,UBYTE bpp)
     size        = (cludgefill + width) * height + sizeof(*this) + 256 * 4;
     break;
   case 24:
-    cludgefill  = ((width * 3) + 3) & (~3) - width;
+    cludgefill  = (((width * 3) + 3) & (~3)) - width;
     size        = (cludgefill + width * 3) * height + sizeof(*this) + 256 * 4;
     break;
   default:

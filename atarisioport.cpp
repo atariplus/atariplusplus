@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisioport.cpp,v 1.15 2008/05/22 13:03:54 thor Exp $
+ ** $Id: atarisioport.cpp,v 1.16 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: This is the controlling unit for Matthias Reichl's
  ** atarisio interface. This class keeps the file handle for AtariSIO.
@@ -228,7 +228,7 @@ void AtariSIOPort::TransmitCommandFrame(const UBYTE *cmdframe)
       SerialTime.StartTimer(0,CmdToDataDelay);
       // Ok, be a bit nasty. The kernel doesn't allow us to wait for
       // less than 10ms savely, thus busy wait. Urgl!  
-      while(SerialTime.EventIsOver() == false);
+      while(SerialTime.EventIsOver() == false){};
       //
       // The command frame is five bytes LONG, plus a fifth for the 
       // checksum we need to compute here.

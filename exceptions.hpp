@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: exceptions.hpp,v 1.22 2003/12/20 11:12:38 thor Exp $
+ ** $Id: exceptions.hpp,v 1.23 2009-05-03 16:01:11 thor Exp $
  **
  ** In this module: Definition of emulator specific exceptions
  **********************************************************************************/
@@ -133,8 +133,14 @@ public:
   // Generate a complex IoError exception
   AtariException(const char *io,const char *who,const char *fmt,...) LONG_PRINTF_STYLE(4,5);
   //
+  // Constructor without any data: No exception.
+  AtariException(void);
+  //
   // Destructor
   ~AtariException(void);
+  //
+  // Assignment
+  AtariException &operator=(const AtariException &origin);
   //
   // Print an exception reason into a string for informing the user
   void PrintException(class ExceptionPrinter &to) const;

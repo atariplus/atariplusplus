@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hdevice.cpp,v 1.43 2008/05/22 13:03:54 thor Exp $
+ ** $Id: hdevice.cpp,v 1.44 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/
@@ -407,7 +407,7 @@ bool HDevice::HandlerChannel::MatchRecursive(const char *filename,char *pattern)
     // here.
     if (*filename == '.')
       filename++;
-    while(*filename++ == ' ');
+    while(*filename++ == ' '){};
     if (*--filename == '\0')
       return true;
     return false;

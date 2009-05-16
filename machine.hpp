@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.hpp,v 1.69 2008/05/08 13:22:29 thor Exp $
+ ** $Id: machine.hpp,v 1.70 2009-05-03 16:01:11 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -181,6 +181,9 @@ class Machine {
   bool                   nogfx;
   bool                   noerrors;
   bool                   nowarnings;
+  //
+  // Parse the configuration options for the overall menu here.
+  void ParseConfig(class ArgParser *args);
   //
 public:
   Machine(void);

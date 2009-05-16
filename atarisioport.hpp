@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisioport.hpp,v 1.11 2008/05/22 13:03:54 thor Exp $
+ ** $Id: atarisioport.hpp,v 1.12 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: This is the controlling unit for Matthias Reichl's
  ** atarisio interface. This class keeps the file handle for AtariSIO.
@@ -125,7 +125,7 @@ public:
 	// its completion.
 	// Ok, be a bit nasty. The kernel doesn't allow us to wait for
 	// less than 10ms savely, thus busy wait. Urgl!
-	while(SerialTime.EventIsOver() == false);
+	while(SerialTime.EventIsOver() == false){};
 	WaitCmdFrame = false;	
 	// Deactivate the command line now.
 	SetCommandLine(false);
@@ -147,7 +147,7 @@ public:
 	// its completion.
 	// Ok, be a bit nasty. The kernel doesn't allow us to wait for
 	// less than 10ms savely, thus busy wait. Urgl!
-	while(SerialTime.EventIsOver() == false);
+	while(SerialTime.EventIsOver() == false){};
 	WaitCmdFrame = false;
 	// Deactivate the command line now.
 	SetCommandLine(false);

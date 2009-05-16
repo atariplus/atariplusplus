@@ -2,7 +2,7 @@
 ##
 ## GNU g++ makefile.in for the Atari++ emulator
 ##
-## $Id: makefile.in,v 1.17 2005/09/05 20:18:36 thor Exp $
+## $Id: makefile.in,v 1.18 2008-11-22 14:17:59 thor Exp $
 ##
 ##
 ###################################################################################
@@ -37,19 +37,19 @@ MAN_PATH	= @datadir@/man
 include Makefile.atari
 
 install:
-		mkdir -p $(BIN_PATH)
-		cp atari++ $(BIN_PATH)
-		chmod a+rx $(BIN_PATH)/atari++
-		mkdir -p $(MAN_PATH)/man6
-		gzip -9 <atari++.man >$(MAN_PATH)/man6/atari++.6.gz
-		chmod a+r $(MAN_PATH)/man6/atari++.6.gz	
-		mkdir -p $(datadir)/doc/atari++
-		cp COPYRIGHT $(datadir)/doc/atari++/copyright
-		chmod a+r $(datadir)/doc/atari++/copyright
+		mkdir -p $(DESTDIR)$(BIN_PATH)
+		cp atari++ $(DESTDIR)$(BIN_PATH)
+		chmod a+rx $(DESTDIR)$(BIN_PATH)/atari++
+		mkdir -p $(DESTDIR)$(MAN_PATH)/man6
+		gzip -9 <atari++.man >$(DESTDIR)$(MAN_PATH)/man6/atari++.6.gz
+		chmod a+r $(DESTDIR)$(MAN_PATH)/man6/atari++.6.gz	
+		mkdir -p $(DESTDIR)$(datadir)/doc/atari++
+		cp COPYRIGHT $(DESTDIR)$(datadir)/doc/atari++/copyright
+		chmod a+r $(DESTDIR)$(datadir)/doc/atari++/copyright
 
 uninstall:
-		rm $(BIN_PATH)/atari++
-		rm $(MAN_PATH)/man6/atari++.6.gz
+		rm $(DESTDIR)$(BIN_PATH)/atari++
+		rm $(DESTDIR)$(MAN_PATH)/man6/atari++.6.gz
 
 distrib:	$(SOURCES) $(INCLUDES)
 		rm -f atari++.tgz

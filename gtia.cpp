@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.cpp,v 1.97 2008/05/21 19:56:37 thor Exp $
+ ** $Id: gtia.cpp,v 1.100 2009-05-16 20:00:28 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -976,7 +976,7 @@ void GTIA::DisplayGenerator00FiddledArtefacted::PostProcessClock(UBYTE *out,UBYT
 	// edge, and to the second for a light->dark edge.
 	// Now combine the hue from the hue of the background with the weighted
 	// average of the values.
-	*out  = HueMix[((back & 0xf0) >> 3) | ((diff >> 4) ^ i) & 1] + (((other & 0x0f) * 3 + (back  & 0x0f)) >> 2);
+	*out  = HueMix[((back & 0xf0) >> 3) | (((diff >> 4) ^ i) & 1)] + (((other & 0x0f) * 3 + (back  & 0x0f)) >> 2);
       } else {
 	// No artifacting since no difference in value.
 	*out  = back;

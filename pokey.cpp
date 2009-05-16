@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.101 2008/09/22 10:59:44 thor Exp $
+ ** $Id: pokey.cpp,v 1.103 2008-11-24 21:24:41 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -951,8 +951,6 @@ bool Pokey::ComplexWrite(ADR mem,UBYTE val)
 // Read one of the paddles
 UBYTE Pokey::PotNRead(int n)
 {
-  //
-  // We read the pot counter here.
   return PotNCnt[n];
 }
 ///

@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.74 2008/09/24 14:33:48 thor Exp $
+# $Id: README.History,v 1.75 2009-05-16 13:17:24 thor Exp $
 #
 
 Atari++ 1.00:
@@ -703,3 +703,11 @@ Atari++ 1.55
 	  interaction of S: with E:. Writing to S: now shields the
 	  cursor correctly.
 
+Atari++ 1.56
+	- Fixed parsing the preferences. No longer gets stuck if one of the
+	  modules failes initialization.
+	- Fixed error handling in the full module - could crash.
+	- Fixed initialization of the FMS. The previous version wasn't able to
+	  to run the DUP if the DOSINI vector was populated.
+	- Fixed memory reservation of the emulated 850 interface.
+	- Fixed complation issue on latest g++ compilers.

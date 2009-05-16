@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.cpp,v 1.99 2008/05/20 20:38:39 thor Exp $
+ ** $Id: machine.cpp,v 1.100 2009-05-03 16:01:11 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -493,12 +493,10 @@ void Machine::EnterMenu(void)
 }
 ///
 
-/// Machine::ParseArgs
-// Parse arguments from the command line to 
-// get the machine type we are emulating.
-// If we call this with NULL, use the global arguments
-ArgParser::ArgumentChange Machine::ParseArgs(class ArgParser *args)
-{   
+/// Machine::ParseConfig
+// Parse the configuration options for the overall menu here.
+void Machine::ParseConfig(class ArgParser *args)
+{ 
   bool xep;
   static const struct ArgParser::SelectionVector machinevector[] = 
     { {"800"    ,Mach_Atari800 },
@@ -539,14 +537,7 @@ ArgParser::ArgumentChange Machine::ParseArgs(class ArgParser *args)
 #endif
       {NULL     , 0},
     };
-  class Configurable *config;
   LONG mach,front,snd;
-  //
-  // If we don't have any arguments, use the global ones here.
-  // This allows easily to re-install these arguments as defaults
-  // later on. Important for the menu.
-  if (args == NULL)
-    args = globalargs;
   //
   //
   mach  = machtype;
@@ -800,10 +791,43 @@ ArgParser::ArgumentChange Machine::ParseArgs(class ArgParser *args)
 
   //
   args->CloseSubItem();
+}
+///
+
+/// Machine::ParseArgs
+// Parse arguments from the command line to 
+// get the machine type we are emulating.
+// If we call this with NULL, use the global arguments
+ArgParser::ArgumentChange Machine::ParseArgs(class ArgParser *args)
+{   
+  class AtariException ex;
+  bool errored = false;
+  class Configurable *config;
+  //
+  // If we don't have any arguments, use the global ones here.
+  // This allows easily to re-install these arguments as defaults
+  // later on. Important for the menu.
+  if (args == NULL)
+    args = globalargs;  
+  //
+  ParseConfig(args);
+  //
   // Now configure all remaining configurables
   for(config = configChain.First();config;config = config->NextOf()) {
-    config->ParseArgs(args);
+    try {
+      config->ParseArgs(args);
+    } catch(AtariException &e) {
+      // On error, reparse to the very end before throwing an exception.
+      if (!errored) {
+	ex      = e;
+	errored = true;
+      }
+    }
   }
+  //
+  // Throw an error at the very end.
+  if (errored)
+    throw ex;
   //
   // Now return the reparse state
   return args->ReparseState();

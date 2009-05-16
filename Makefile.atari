@@ -3,7 +3,7 @@
 ## Makefile.atari                                                                
 ##                                                                               
 ## This makefile defines compiler-independent dependencies                       
-## $Id: Makefile.atari,v 1.91 2008/08/25 16:42:57 thor Exp $
+## $Id: Makefile.atari,v 1.91 2008-08-25 16:42:57 thor Exp $
 ##
 ###################################################################################
 
