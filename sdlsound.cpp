@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlsound.cpp,v 1.31 2008-05-22 13:03:54 thor Exp $
+ ** $Id: sdlsound.cpp,v 1.31 2008/05/22 13:03:54 thor Exp $
  **
  ** In this mdoule: This class implements audio output thru the SDL library
  ** as available.

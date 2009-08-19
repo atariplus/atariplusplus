@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.hpp,v 1.70 2009-05-03 16:01:11 thor Exp $
+ ** $Id: machine.hpp,v 1.72 2009-08-10 16:48:15 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -75,6 +75,7 @@ class WarningRequester;
 class ErrorRequester;
 class AtariSIOPort;
 class TitleMenu;
+class KeyboardStick;
 ///
 
 /// Class Machine
@@ -109,7 +110,8 @@ class Machine {
   enum FrontEnd_Type {
     Front_X11,   // classical X11 frontend
     Front_SDL,   // simple direct media frontend
-    Front_Curses // character based output
+    Front_Curses,// character based output
+    Front_None   // no front-end
   }                     fronttype;
   // Type of the sound method
   enum Sound_Type {
@@ -159,6 +161,7 @@ class Machine {
   class DigitalJoystick *digitaljoysticks[8];
   class SDLAnalog       *sdlanalog[8];
   class SDLDigital      *sdldigital[8];
+  class KeyboardStick   *keypadstick;
   //
   // Global argument values (from the command line and the configuration files)
   class ArgParser       *globalargs;
@@ -421,6 +424,11 @@ public:
   class GameController *Lightpen(void) const
   {
     return lightpen;
+  }
+  //
+  class KeyboardStick *KeypadStick(void) const
+  {
+    return keypadstick;
   }
   //
   class Monitor *Monitor(void) const

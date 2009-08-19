@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.cpp,v 1.97 2008-05-22 13:03:54 thor Exp $
+ ** $Id: antic.cpp,v 1.97 2008/05/22 13:03:54 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: termios.cpp,v 1.4 2004/08/29 16:52:13 thor Exp $
+ ** $Id: termios.cpp,v 1.5 2009-06-09 15:55:57 thor Exp $
  **
  ** In this module: Low-level termios compatibility wrapper
  ** for low-level serial device handling.
@@ -26,6 +26,11 @@ extern "C" {
 #  if defined(TIOCGICOUNT)
 #   define USE_ICOUNTER_STATUS
 #  endif
+# endif
+# if HAVE_TERMIOS_H
+extern "C" {
+#  include <termios.h>
+}
 # endif
 #endif
 ///

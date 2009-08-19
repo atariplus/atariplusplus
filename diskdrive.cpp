@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.70 2009-05-16 20:00:28 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.72 2009-08-10 13:08:25 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -21,7 +21,9 @@
 #include "xfdimage.hpp"
 #include "atrimage.hpp"
 #include "binaryimage.hpp"
+#include "streamimage.hpp"
 #include "dcmimage.hpp"
+#include "casstream.hpp"
 #include "stdio.hpp"
 #include "new.hpp"
 #include <errno.h>
@@ -319,7 +321,7 @@ UBYTE DiskDrive::WriteStatusBlock(const UBYTE *buffer,int)
     // Check whether we found a match.
     if (*layout == req) {
       // Found a match.
-      SectorSize      = req.secsize;
+      SectorSize      = UWORD(req.secsize);
       SectorsPerTrack = req.secspertrack;
       SectorCount     = req.heads * req.tracks * req.secspertrack;
       return 'C';
@@ -545,7 +547,7 @@ UBYTE DiskDrive::CreateNewImage(UWORD sectorsize,ULONG sectorcount)
 // Returns a boolean success indicator
 void DiskDrive::LoadImage(const char *filename)
 {
-  UBYTE buffer[2];
+  UBYTE buffer[4];
   //
   // Cleanup the previous stream by ejecting it.
   EjectDisk();
@@ -577,7 +579,7 @@ void DiskDrive::LoadImage(const char *filename)
   }
   //
   // Read the first two bytes to identify the type of the image.
-  if (ImageStream->Read(0,buffer,2)) {
+  if (ImageStream->Read(0,buffer,4)) {
     // Check for the type of the file here now.
     if (buffer[0] == 0x1f && buffer[1] == 0x8b) {
       // This is a gzip'd file. Check whether we have the zlib
@@ -597,6 +599,13 @@ void DiskDrive::LoadImage(const char *filename)
       //
       // FIXME: Need to open it.
       Throw(NotImplemented,"DiskDrive::LoadImage",".zip files are not yet supported");
+    } else if (buffer[0] == 'F' && buffer[1] == 'U' && buffer[2] == 'J' && buffer[3] == 'I') {
+      // This is a CAS archive stream.
+      delete ImageStream;
+      ImageStream = NULL;
+      ImageStream = new class CASStream;
+      ImageStream->OpenImage(filename);
+      OpenDiskFromStream();
     } else {
       // Now build the stream from it.
       OpenDiskFromStream();
@@ -637,6 +646,16 @@ void DiskDrive::OpenDiskFromStream(void)
       Disk = new class BinaryImage(machine);
       Disk->OpenImage(ImageStream);
       ImageType   = CMD;
+    } else if (buffer[0] == 0x00 && buffer[1] == 0x00) {
+      // This is a basic file.
+      Disk = new class StreamImage(machine,"PROGRAM.BAS");
+      Disk->OpenImage(ImageStream);
+      ImageType   = FILE;
+    } else if (buffer[0] == 0xfe && buffer[1] == 0xfe) {
+      // This is a MAC.65 file.
+      Disk = new class StreamImage(machine,"PROGRAM.ASM");
+      Disk->OpenImage(ImageStream);
+      ImageType   = FILE;
     } else if (buffer[0] == 0xfa) {
       // This is a DCM image
       Disk = new class DCMImage(machine);
@@ -1193,6 +1212,9 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
       break;
     case CMD:
       imagetype = "Binary Boot";
+      break;
+    case FILE:
+      imagetype = "Program Source";
       break;
     case DCM:
       imagetype = "DCM";

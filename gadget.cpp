@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gadget.cpp,v 1.6 2008-05-18 21:00:23 thor Exp $
+ ** $Id: gadget.cpp,v 1.7 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Abstract base class for all gadgets used in the GUI
  **********************************************************************************/
@@ -43,6 +43,15 @@ bool Gadget::Within(const struct Event &ev)
     }
   }
   return false;
+}
+///
+
+/// Gadget::MoveGadget
+// Adjust the position of the gadget by the indicated amount
+void Gadget::MoveGadget(LONG dx,LONG dy)
+{
+  LeftEdge += dx;
+  TopEdge  += dy;
 }
 ///
 

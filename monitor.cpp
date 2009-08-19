@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.81 2008-08-25 16:42:57 thor Exp $
+ ** $Id: monitor.cpp,v 1.81 2008/08/25 16:42:57 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/

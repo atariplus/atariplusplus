@@ -284,6 +284,101 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
+		<Configuration
+			Name="Debugging|Win32"
+			OutputDirectory="$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="1"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			CharacterSet="2"
+			WholeProgramOptimization="0"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				InlineFunctionExpansion="2"
+				EnableIntrinsicFunctions="true"
+				FavorSizeOrSpeed="1"
+				OmitFramePointers="true"
+				WholeProgramOptimization="false"
+				AdditionalIncludeDirectories="H:\thor\include;H:\thor\include\dxsdk\Include;&quot;C:\Programme\Microsoft Visual Studio .NET 2003\Vc7\PlatformSDK\Include&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				MinimalRebuild="false"
+				RuntimeLibrary="0"
+				BufferSecurityCheck="false"
+				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="0"
+				DisableLanguageExtensions="false"
+				ForceConformanceInForLoopScope="true"
+				UsePrecompiledHeader="0"
+				AssemblerOutput="4"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
+				DebugInformationFormat="0"
+				CallingConvention="0"
+				DisableSpecificWarnings="4101;4355;4996"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="sdl.lib zdll.lib dsound.lib dxguid.lib"
+				OutputFile="$(OutDir)/atari++.exe"
+				LinkIncremental="1"
+				AdditionalLibraryDirectories="H:\thor\lib;H:\thor\include\dxsdk\Lib\x86;&quot;C:\Programme\Microsoft Visual Studio .NET 2003\Vc7\PlatformSDK\Lib&quot;"
+				GenerateDebugInformation="false"
+				SubSystem="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				EntryPointSymbol="WinMainCRTStartup"
+				TargetMachine="1"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -453,6 +548,10 @@
 			</File>
 			<File
 				RelativePath=".\cartxegs.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\casstream.cpp"
 				>
 			</File>
 			<File
@@ -704,6 +803,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\no_frontend.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\optioncollector.cpp"
 				>
 			</File>
@@ -877,6 +980,10 @@
 			</File>
 			<File
 				RelativePath=".\stdlib.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\streamimage.cpp"
 				>
 			</File>
 			<File
@@ -1134,6 +1241,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\casstream.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\charmap.hpp"
 				>
 			</File>
@@ -1382,6 +1493,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\no_frontend.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\optioncollector.hpp"
 				>
 			</File>
@@ -1567,6 +1682,10 @@
 			</File>
 			<File
 				RelativePath=".\stdlib.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\streamimage.hpp"
 				>
 			</File>
 			<File

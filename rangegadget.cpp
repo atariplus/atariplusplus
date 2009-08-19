@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rangegadget.cpp,v 1.6 2008-03-22 17:29:45 thor Exp $
+ ** $Id: rangegadget.cpp,v 1.6 2008/03/22 17:29:45 thor Exp $
  **
  ** In this module: Definition of a gadget describing a range with a slider and
  ** a text display

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.cpp,v 1.100 2009-05-03 16:01:11 thor Exp $
+ ** $Id: machine.cpp,v 1.102 2009-08-10 16:48:15 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -47,6 +47,7 @@
 #include "x11_frontend.hpp"
 #include "sdl_frontend.hpp"
 #include "curses_frontend.hpp"
+#include "no_frontend.hpp"
 #include "menu.hpp"
 #include "titlemenu.hpp"
 #include "analogjoystick.hpp"
@@ -64,6 +65,7 @@
 #include "choicerequester.hpp"
 #include "licence.hpp"
 #include "sighandler.hpp"
+#include "keyboardstick.hpp"
 #include <stdarg.h>
 ///
 
@@ -124,6 +126,7 @@ Machine::Machine(void)
   printer        = NULL;
   serial         = NULL;
   globalargs     = NULL;
+  keypadstick    = NULL;
 
   quit           = false;
   reset          = false;
@@ -181,6 +184,7 @@ Machine::~Machine(void)
   delete monitor;
   delete menu;
   delete quickmenu;
+  delete keypadstick;
   //
   for(i=0;i<4;i++) {
     delete joysticks[i];
@@ -269,7 +273,9 @@ void Machine::BuildMachine(class ArgParser *args)
     snprintf(devname,40,"Paddle.%d",i);
     paddles[i]   = new class GameController(this,i,devname,true);
   }
-  lightpen   = new class GameController(this,0,"Lightpen",false);
+  lightpen    = new class GameController(this,0,"Lightpen",false);
+  keypadstick = new class KeyboardStick(this);
+  //
   for(i=0;i<8;i++) {
 #ifdef HAVE_LINUX_JOYSTICK_H
     digitaljoysticks[i] = new class DigitalJoystick(this,i);
@@ -517,6 +523,7 @@ void Machine::ParseConfig(class ArgParser *args)
 #ifdef USE_CURSES
       {"Curses", Front_Curses },
 #endif
+      {"None",   Front_None },
       {NULL , 0}
     };
   static const struct ArgParser::SelectionVector soundvector[] =
@@ -692,6 +699,10 @@ void Machine::ParseConfig(class ArgParser *args)
       display    = NULL;
 #endif
       break;
+    case Front_None:
+      display = new class No_FrontEnd(this);
+      nogfx   = true;
+      break;
     }
   }
   if (enablexep && xepdisplay == NULL) {
@@ -711,6 +722,7 @@ void Machine::ParseConfig(class ArgParser *args)
 #endif
       break; 
     case Front_Curses:
+    case Front_None:
       xepdisplay = NULL;
       break;
     }

@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.75 2009-05-16 13:17:24 thor Exp $
+# $Id: README.History,v 1.77 2009-08-19 07:30:58 thor Exp $
 #
 
 Atari++ 1.00:
@@ -711,3 +711,22 @@ Atari++ 1.56
 	  to run the DUP if the DOSINI vector was populated.
 	- Fixed memory reservation of the emulated 850 interface.
 	- Fixed complation issue on latest g++ compilers.
+
+Atari++ 1.57
+	- Fixed a couple of issues in the GUI, specifically when entering
+	  data into string gadgets.
+	- Fixed again a couple of exception handling issues in the menau.
+	- Made the keypad stick configurable, the keys for joystick emulation
+	  are now part of the configuration.
+	- Added a dummy front-end, "NONE", that does not render anything to
+	  the screen.
+	- This release supports .CAS images; however, they are not part of a C:
+	  (tape) emulation, but emulated as disks. Depending on the contents of
+	  the tape archive, the disk is either considered a boot disk, a binary
+	  or a basic file.
+	- This release supports better disk support for BASIC and MAC/65 files.
+	  If you insert such a file into the emulated disk drive, the emulator
+	  will build a DOS 2.0S compatible disk structure around it and you can
+	  load the image from the emulated disk as D:PROGRAM.BAS or D:PROGRAM.ASM.
+	  Note that such disks are *not* bootable, you first need to boot, and
+	  then turn on the emulated disk drive.

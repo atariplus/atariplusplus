@@ -307,7 +307,7 @@
 #define HAVE_TCSETATTR 1
 
 /* Define to 1 if you have the <termios.h> header file. */
-#define HAVE_TERMIOS_H 1
+/* #define HAVE_TERMIOS_H 1 */
 
 /* Define to 1 if you have the `time' function. */
 #define HAVE_TIME 1
@@ -371,13 +371,13 @@
 #define PACKAGE_NAME "atari++"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "atari++ 1.56"
+#define PACKAGE_STRING "atari++ 1.57"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "atari--"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.56"
+#define PACKAGE_VERSION "1.57"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void

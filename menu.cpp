@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.cpp,v 1.64 2008-12-10 08:10:02 thor Exp $
+ ** $Id: menu.cpp,v 1.65 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/
@@ -290,7 +290,7 @@ void Menu::AcceptOptionChange(void)
     InstallTopics();
     // Re-build the topic gadget.
     TopicGadget->ReInstallOptions();
-  }    
+  }
   // Re-install the defaults of the machine and update our change flag.
   // Some options from the command line since the option layout may have
   // changed dramatically.
@@ -472,8 +472,10 @@ void Menu::EnterMenu(void)
       if (av.TypeOf() == AsyncEvent::Ev_EnterMenu) {
 	if (Machine->hasGUI() == false) {
 	  quit = true;
+	} else if (EventFeeder) {
+	  // We are already in the menu, but Rebuild it here.
+	  RefreshGUI();
 	}
-	// We are already in the menu.
       } else {
 	DisposeGUI();
 	throw;

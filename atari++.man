@@ -1,7 +1,7 @@
 .\"**********************************************************************
 .\"** Documentation of the the atari++ Emulator
 .\"** Thomas Richter, THOR Software
-.\"** $Id: atari++.man,v 1.56 2008-09-12 13:04:16 thor Exp $
+.\"** $Id: atari++.man,v 1.57 2009-08-17 06:47:53 thor Exp $
 .\"**
 .\"**********************************************************************
 .TH atari++ 6 "atari++ Emulator"
@@ -186,27 +186,35 @@ emulates the Atari 130XE with a total of 128KByte memory. Last but not
 least, the 
 .B 5200
 argument selects the emulation of the 5200 game console.
-.IP "-frontend X11|SDL|CURSES"
+.IP "-frontend X11|SDL|CURSES|NONE"
 Defines which graphical front-end should be used. Currently, the
 .B X11
 the
 .B CURSES
 and the
 .B SDL
-front-ends are supported. Whereas the X11 front-end runs in a window on the
-desktop, the SDL front-end opens a full-screen emulation that is more
-suitable for games play. Typically, the SDL front-end provides better
+front-ends are supported. 
+.B NONE
+is a dummy front-end without any graphical or textual output that can be
+used for playing music or related tasks. The
+.B installedevice
+option is suggested to get minimal support from the console using only
+stream-I/O. Note this type of redirection is not a front-end option, but
+rather an optional operating system patch, see
+.B OS Options
+below.
+
+The X11 interface is only available for Unix based operating systems, most
+notably Linux, while the SDL interface is currently available on most
+ports. The latter is also able to run in a full-screen mode that is more
+suitable for gameplay. Typically, the SDL front-end provides better
 performance unless you need to scale up the output with the -pixelwidth or
 -pixelheight options. Then, X11 performs noticeably better. The CURSES
 front-end requires only a terminal for rendering, but its graphics
 capabilities are rather limited. Specifically, it is only able to emulate
 text-based graphics modes and expects the built-in font to render the
 output. The keyboard mapping for the CURSES output is also slightly
-different, see the CURSES section for details. Note that redirecting the
-emulator screen input and output to the console is nota front-end option,
-but rather an optional operating system patch, see
-.B OS Options
-below.
+different, see the CURSES section for details. 
 
 .IP "-sound HQOSS|OSS|WAV|SDL|ALSA|DIRECTX"
 Sets the audio front-end used to generate audio output. For the
@@ -1386,7 +1394,11 @@ left, right and down movement, respectively; keys 7,9,1 and 3 move in the
 corresponding diagonal directions. The 0 and
 .B Enter
 map to button 0 of the joystick. There is \- quite obviously \- only
-unit 0 of the keypad-stick.
+unit 0 of the keypad-stick. These keys can be reconfigured dynamically, and
+its configuration is found under the section
+.B KeypadStick
+below.
+
 .IP "AnalogJoystick.0"
 Uses the (real) analog joystick connected to the port controlled by the
 .B /dev/js0
@@ -1511,6 +1523,70 @@ to. The list of available devices is identical to the list of devices for
 all other gameport like input, please see the
 .B JOYSTICK Options
 section above.
+.SS KEYPADSTICK Options
+Options in this group define the keys used by the
+.B Keyboard Joystick
+emulation. By default, the numeric keypad to the right of a standard PC
+keyboard is used for this purpose, but the keys can be reconfigured.
+.IP "-leftup keyname"
+defines the key that moves the stick in the diagonal left upwards
+position. Pressing the left and the up key simultaneously is equivalent to
+this. Key names are either the numbers 0 to 9 or the letters
+A to Z, indicating the corresponding keys on the main keyboard, or are taken
+from the list below. An empty string indicated by an empty pair of opening
+and closing quotes disables the corresponding function.
+.IP "-up keyname"
+.IP "-rightup keyname"
+.IP "-left keyname"
+.IP "-right keyname"
+.IP "-leftdown keyname"
+.IP "-down keyname"
+.IP "-rightdown keyname"
+move all the joystick in the corresponding direction. Diagonal directions
+can be either assigned to separate keys, or are reached by pressing the two
+direction keys simultaneously.
+.IP "-center keyname"
+centers the joystick.
+
+The option
+.IP "-leftbutton keyname"
+configures the key that emulates the left button if the keypad is used as a
+paddle, or the one and only button if the keypad emulates a digital
+joystick.
+.IP "-rightbutton keyname"
+selects the key to emulate the right button on paddles. The key has no
+function if the keypad emulates a standard Atari joystick.
+
+.B Key Names
+are either alpha-numeric characters from 0 to 9 or A to Z indicating the
+corresponding keys on the main keyboard, or the following special
+names. Note that names containing spaces need to be quoted on the command
+line:
+.TS
+l l.
+-
+Name	Key
+Cursor Left	Left pointing arrow of the four cursor keys
+Cursor Right	Move cursor right key
+Cursor Up	Move cursor up
+Cursor Down	Move cursor down, all the above on the cursor keypad
+Return  	Return key on the main keyboard
+Tab     	TAB key on the main keyboard
+Backspace	Backspace key on the main keyboard
+Keypad 0	Digit 0 on the numeric keypad, similar for 1 to 9
+Keypad Divide	Division key on the numeric keypad
+Keypad Multiply	Multiplication key on the numeric keypad
+Keypad Plus	Addition on the numeric keypad
+Keypad Minus	Subtraction on the numeric keypad
+Keypad Dot	Decimal separator, dot or comma, on the keypad
+Insert  	The insert key between main keyboard and numeric pad
+Delete  	The delete key in the same group
+Home    	The home key
+End     	The end key
+Scroll Up	The page up key
+Scroll Down	The page down key
+.TE
+
 .SS ANALOGJOYSTICK Options
 Unlike the
 .B JOYSTICK Options,
@@ -2270,7 +2346,10 @@ emulates, as expected, the
 key on the Atari keypad.
 .IP "Keypad keys 7,8,9,4,5,6,1,2,3"
 are part of the \(lqkeypadstick.0\(rq device and a possible emulation source
-for joystick input.
+for joystick input; they are also configurable, see the
+.B KeypadStick
+section.
+
 .IP "Keypad keys 0 and Enter"
 emulate the joystick button of the device as well.
 .IP "ALT"
@@ -2920,7 +2999,7 @@ require to hold any usage rights on the original ROMs to run it. The
 built-in ROM implements a full Atari XL operating system and tries to be
 compatible to the XL ROM in most aspects; however, since it is a
 re-implementation, absolute ROM addresses and implementation details may,
-and will, differ. The paragraphs gives a brief overview about the
+and will, differ. The paragraphs below give a brief overview on the
 ROM features, the subsections discuss the features in more detail.
 
 .IP "Built-in FMS (DOS)"
@@ -2939,14 +3018,13 @@ has been dropped. This is because Atari++ neither emulates any parallel port
 devices, nor does the author has any usable documentation about it.
 
 .IP "The MathPack"
-is classically not considered part of the operating system, and it is
-neither part of the ROM emulation. This is because the math pack does not
-have a jump-in table, unlike the Os, and thus cannot be reprogrammed without
-loosing compatibility. This is not a loss, though, since the
+is classically not considered part of the operating system, but is emulated
+fully with all documented and some undocumented entry points the author is
+aware of. The emulation is complete enough to allow BASIC and many other
+programs operate properly, except that the re-implementation is usually a
+bit and sometimes considerably faster. You might also consider the
 .B MathPack patch
-provides all the functionality to keep programs working. Note that this
-renders the built-in operating system useless in real hardware. This is
-intended behaivour.
+option that evaluates the mathematical operations on the host CPU.
 
 .IP "The C: Tape handler"
 is replaced by a dummy. This is because Atari++ does not emulate the tape

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: stringgadget.cpp,v 1.6 2008-03-22 23:05:20 thor Exp $
+ ** $Id: stringgadget.cpp,v 1.7 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Definition of a string-entry gadget
  **********************************************************************************/
@@ -85,6 +85,11 @@ bool StringGadget::HitTest(struct Event &ev)
     // A key down/up movement. We only care about keyboard down events.
     if (Active && ev.DownUp) {
       return HandleKey(ev);
+    } else if (!Active && ev.DownUp == false && (ev.Key == 0x0a  || ev.Key == 0x0d)) {
+      // Swallow the event to avoid that the keyboard navigator gets it and
+      // re-activates this gadget.
+      ev.Type = Event::Nothing;
+      return false;
     }
     return false;
   default:

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.hpp,v 1.25 2008-08-25 16:42:57 thor Exp $
+ ** $Id: osrom.hpp,v 1.26 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/
@@ -81,6 +81,9 @@ public:
   void PatchFromDump(const unsigned char *dump,int pages);
   // Erase the math pack, replace by HLT instructions.
   void KillMathPack(void);
+  //
+  // Check whether a ROM file is well-formed.
+  void CheckROMFile(const char *path,int pages);
   // 
   // Check whether the ROM image can be found at the specified path. In case
   // it can, return true and set the string variable to the given

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gadget.hpp,v 1.3 2008-03-22 23:05:20 thor Exp $
+ ** $Id: gadget.hpp,v 1.4 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Abstract base class for all gadgets used in the GUI
  **********************************************************************************/
@@ -74,11 +74,7 @@ public:
   }
   //
   // Adjust the position of the gadget by the indicated amount
-  virtual void MoveGadget(LONG dx,LONG dy)
-  {
-    LeftEdge += dx;
-    TopEdge  += dy;
-  }
+  virtual void MoveGadget(LONG dx,LONG dy);
   //
   // Return or set the User Pointer this gadget is part of
   void *&UserPointerOf(void)

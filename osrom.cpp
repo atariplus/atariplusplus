@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.cpp,v 1.46 2008-09-06 21:14:40 thor Exp $
+ ** $Id: osrom.cpp,v 1.47 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/
@@ -94,6 +94,35 @@ int OsROM::LoadFromFile(const char *path,int pages)
     return rc;
   }
   return errno;
+}
+///
+
+/// OsRom::CheckRomFile
+// Check the given OS rom, must contain the given number of pages.
+// Throws on error.
+void OsROM::CheckROMFile(const char *path,int pages)
+{ 
+  if (path && *path) {
+    FILE *fp;
+    fp = fopen(path,"rb");
+    if (fp) {
+      char page[256];
+      do {
+	if (fread(page,1,256,fp) != 256) {
+	  int err = errno;
+	  fclose(fp);
+	  if (err) {
+	    throw AtariException(strerror(err),"OsROM::CheckROMFile","Unable to read ROM file %s",path);
+	  } else {
+	    throw AtariException("unexpected end of file","OsROM::CheckROMFile","ROM file %s is too short",path);
+	  }
+	}
+      } while(--pages);
+      fclose(fp);
+    } else {
+      throw AtariException(strerror(errno),"OsROM::CheckROMFile","Unable to open ROM file %s",path);
+    }
+  }
 }
 ///
 
@@ -445,6 +474,12 @@ void OsROM::ParseArgs(class ArgParser *args)
     args->SignalBigChange(ArgParser::ColdStart);
   }
   os_type = (OsROM::OsType)ostype;
+
+  CheckROMFile(osapath,40);
+  CheckROMFile(osbpath,40);
+  CheckROMFile(os1200path,64);
+  CheckROMFile(osxlpath,64);
+  CheckROMFile(os5200path,8);
 
   switch(RomType()) {
   case Os_RomA:    

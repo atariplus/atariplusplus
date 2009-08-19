@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: optioncollector.cpp,v 1.9 2006/05/21 15:22:30 thor Exp $
+ ** $Id: optioncollector.cpp,v 1.10 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: Specialization of an argument parser that collects its
  ** arguments in sub-classes for further processing
@@ -120,7 +120,7 @@ void OptionCollector::PrintError(const char *fmt,...)
 #if DEBUG_LEVEL > 0
     fprintf(stderr,"%s\n",error);
 #endif
-    if (Machine->Quit())
+    if (!Machine->Quit())
       Throw(BadPrefs,"OptionCollector::PrintError",error);
     //
     va_end(args);

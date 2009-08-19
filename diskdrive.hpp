@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.hpp,v 1.29 2008-09-24 15:05:23 thor Exp $
+ ** $Id: diskdrive.hpp,v 1.30 2009-08-10 13:08:25 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -55,7 +55,8 @@ class DiskDrive : public SerialDevice {
     XFD,                  // raw disk image
     ATR,                  // raw disk image with header
     CMD,                  // emulated command floppy image
-    DCM
+    DCM,                  // DCM image
+    FILE                  // Any type of source file
   }                      ImageType;
   //
   // Drive number of this drive.

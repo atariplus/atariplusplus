@@ -3,7 +3,7 @@
 ## Makefile.atari                                                                
 ##                                                                               
 ## This makefile defines compiler-independent dependencies                       
-## $Id: Makefile.atari,v 1.91 2008-08-25 16:42:57 thor Exp $
+## $Id: Makefile.atari,v 1.93 2009-08-10 13:08:25 thor Exp $
 ##
 ###################################################################################
 
@@ -16,8 +16,8 @@ final	:	atari
 ###################################################################################
 
 FILES		=	new list adrspace monitor instruction serialdevice \
-			diskdrive imagestream filestream zstream \
-			diskimage xfdimage atrimage binaryimage dcmimage \
+			diskdrive imagestream filestream zstream casstream \
+			diskimage xfdimage atrimage binaryimage dcmimage streamimage \
 			analogjoystick digitaljoystick sdlanalog sdldigital \
 			display osrom osdist ram sio atarisioport atarisio \
 			antic exceptions siopatch \
@@ -46,7 +46,7 @@ FILES		=	new list adrspace monitor instruction serialdevice \
 			patchprovider sighandler \
 			irqsource keyboardstick \
 			sdlport sdlclient sdl_frontend \
-			screendump cmdlineparser curses_frontend \
+			screendump cmdlineparser curses_frontend no_frontend \
 			optioncollector menuoption menutopic \
 			menu renderport bufferport \
 			requester warningrequester errorrequester \

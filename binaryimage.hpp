@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: binaryimage.hpp,v 1.3 2003/09/16 17:32:14 thor Exp $
+ ** $Id: binaryimage.hpp,v 1.4 2009-08-10 13:08:25 thor Exp $
  **
  ** In this module: Disk image class for binary load files
  **********************************************************************************/
@@ -26,8 +26,10 @@ class ChoiceRequester;
 // prepend to this image a binary-load mini-dos to boot off
 // the image without fuzz.
 class BinaryImage : public DiskImage {
+  //
   // Disk bootblock for booting off a binary load file.
   static const UBYTE     BootImage[];
+  //
   //
   // Contents of the emulated disk goes here.
   UBYTE                 *Contents;

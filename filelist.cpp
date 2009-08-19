@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filelist.cpp,v 1.15 2008-05-08 13:19:30 thor Exp $
+ ** $Id: filelist.cpp,v 1.15 2008/05/08 13:19:30 thor Exp $
  **
  ** In this module: Definition of a gadget representing a list of files to
  ** choose from, i.e. the basic ingredience for a file requester.

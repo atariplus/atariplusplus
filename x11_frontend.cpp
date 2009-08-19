@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.74 2008-11-24 21:15:23 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.77 2009-08-10 20:19:06 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -61,7 +61,7 @@ X11_FrontEnd::X11_FrontEnd(class Machine *mach,int unit)
     Width(unit?80*8:Antic::WindowWidth), Height(unit?25*8:Antic::WindowHeight),
     PixelWidth(2), PixelHeight(2), PixMapIndirect(false),
     WMDeleteWindowAtom(0), WMProtocolsAtom(0), Shown(0), Hidden(0),
-    KeypadStick(mach), MouseStick(mach,"MouseStick",false), RelMouseStick(mach,"RelMouseStick",true), 
+    KeypadStick(NULL), MouseStick(mach,"MouseStick",false), RelMouseStick(mach,"RelMouseStick",true), 
     PrivateCMap(false), SyncX(false), DisableDPMS(true),
     PictureBaseName(new char[strlen("ScreenDump") + 1]), Format(ScreenDump::PNM)
 {  
@@ -175,7 +175,43 @@ void X11_FrontEnd::CreateDisplay(void)
   Pixmap cursor = None;
   //
   // Get the keyboard from the machine.
-  keyboard = machine->Keyboard();
+  keyboard    = machine->Keyboard();
+  KeypadStick = machine->KeypadStick();
+  //
+  // Associate the keyboard codes.
+  KeypadStick->AssociateKey(KeyboardStick::ArrowLeft    ,XK_Left);
+  KeypadStick->AssociateKey(KeyboardStick::ArrowRight   ,XK_Right);
+  KeypadStick->AssociateKey(KeyboardStick::ArrowUp      ,XK_Up);
+  KeypadStick->AssociateKey(KeyboardStick::ArrowDown    ,XK_Down);
+  KeypadStick->AssociateKey(KeyboardStick::Return       ,XK_Linefeed,XK_Return);
+#ifdef XK_ISO_Left_Tab
+  KeypadStick->AssociateKey(KeyboardStick::Tab          ,XK_Tab,XK_ISO_Left_Tab);
+#else
+  KeypadStick->AssociateKey(KeyboardStick::Tab          ,XK_Tab);
+#endif
+  KeypadStick->AssociateKey(KeyboardStick::Backspace    ,XK_BackSpace);
+  KeypadStick->AssociateKey(KeyboardStick::KP_0         ,XK_KP_Insert   ,XK_KP_0);
+  KeypadStick->AssociateKey(KeyboardStick::KP_1         ,XK_KP_End      ,XK_KP_1);
+  KeypadStick->AssociateKey(KeyboardStick::KP_2         ,XK_KP_Down     ,XK_KP_2);
+  KeypadStick->AssociateKey(KeyboardStick::KP_3         ,XK_KP_Page_Down,XK_KP_3);
+  KeypadStick->AssociateKey(KeyboardStick::KP_4         ,XK_KP_Left     ,XK_KP_4);
+  KeypadStick->AssociateKey(KeyboardStick::KP_5         ,XK_KP_Begin    ,XK_KP_5);
+  KeypadStick->AssociateKey(KeyboardStick::KP_6         ,XK_KP_Right    ,XK_KP_6);
+  KeypadStick->AssociateKey(KeyboardStick::KP_7         ,XK_KP_Home     ,XK_KP_7);
+  KeypadStick->AssociateKey(KeyboardStick::KP_8         ,XK_KP_Up       ,XK_KP_8);
+  KeypadStick->AssociateKey(KeyboardStick::KP_9         ,XK_KP_Page_Up  ,XK_KP_9);
+  KeypadStick->AssociateKey(KeyboardStick::KP_Divide    ,XK_KP_Divide);
+  KeypadStick->AssociateKey(KeyboardStick::KP_Times     ,XK_KP_Multiply);
+  KeypadStick->AssociateKey(KeyboardStick::KP_Minus     ,XK_KP_Subtract);
+  KeypadStick->AssociateKey(KeyboardStick::KP_Plus      ,XK_KP_Add);
+  KeypadStick->AssociateKey(KeyboardStick::KP_Enter     ,XK_KP_Enter);
+  KeypadStick->AssociateKey(KeyboardStick::KP_Digit     ,XK_KP_Separator);
+  KeypadStick->AssociateKey(KeyboardStick::SP_Insert    ,XK_Insert);
+  KeypadStick->AssociateKey(KeyboardStick::SP_Delete    ,XK_Delete);
+  KeypadStick->AssociateKey(KeyboardStick::SP_Home      ,XK_Home,XK_Home,XK_Begin);
+  KeypadStick->AssociateKey(KeyboardStick::SP_End       ,XK_Home,XK_End);
+  KeypadStick->AssociateKey(KeyboardStick::SP_ScrollUp  ,XK_Page_Up,XK_Prior);
+  KeypadStick->AssociateKey(KeyboardStick::SP_ScrollDown,XK_Page_Down,XK_Next);
   //
   // Compute the size of the required display
   emuwidth  = Width  * PixelWidth;
@@ -443,6 +479,13 @@ void X11_FrontEnd::HandleKeyEvent(XKeyEvent *event)
     keysym   = XLookupKeysym(event,shift);
   }
   //
+  // Check whether the keypad stick uses this key. If so, perform a mouse
+  // movement.
+  if (KeypadStick && showcursor == false) {
+    if (KeypadStick->HandleJoystickKeys(downflag,keysym)) {
+      return;
+    }
+  }
   // For convenience reasons, keysyms in range 0x00..0x7f are simply
   // ASCII codes
   if (keysym < 0x80) {
@@ -509,11 +552,15 @@ void X11_FrontEnd::HandleKeyEvent(XKeyEvent *event)
     break;
   case XK_Home:
   case XK_Clear:
-    keyboard->HandleSimpleKey(downflag,'<',false,true); // clear screen
+    if (control && shift) {
+      keyboard->HandleSimpleKey(downflag,'<',true,true); // clear screen
+    } else {
+      keyboard->HandleSimpleKey(downflag,'<',false,true); // clear screen
+    }
     break;
   case XK_Insert:
     if (shift) {
-      keyboard->HandleSimpleKey(downflag,'>',true,false); // insert line
+      keyboard->HandleSimpleKey(downflag,'>',true,control); // insert line
     } else {
       keyboard->HandleSimpleKey(downflag,'>',false,true); // insert character
     }
@@ -548,47 +595,6 @@ void X11_FrontEnd::HandleKeyEvent(XKeyEvent *event)
   case XK_Linefeed:
   case XK_Return:
     keyboard->HandleSimpleKey(downflag,0x0a,shift,control);
-    break;
-  case XK_KP_Home:
-  case XK_KP_7:
-    KeypadStick.KeypadMove(downflag,-1,-1);
-    break;
-  case XK_KP_Up:
-  case XK_KP_8:
-    KeypadStick.KeypadMove(downflag,0,-1);
-    break;
-  case XK_KP_Page_Up:
-  case XK_KP_9:
-    KeypadStick.KeypadMove(downflag,1,-1);
-    break;
-  case XK_KP_Left:
-  case XK_KP_4:
-    KeypadStick.KeypadMove(downflag,-1,0);
-    break;
-  case XK_KP_Begin:
-  case XK_KP_5:
-    KeypadStick.KeypadMove(downflag,0,0);
-    break;
-  case XK_KP_Right:
-  case XK_KP_6:
-    KeypadStick.KeypadMove(downflag,1,0);
-    break;
-  case XK_KP_End:
-  case XK_KP_1:
-    KeypadStick.KeypadMove(downflag,-1,1);
-    break;
-  case XK_KP_Down:
-  case XK_KP_2:
-    KeypadStick.KeypadMove(downflag,0,1);
-    break;
-  case XK_KP_Page_Down:
-  case XK_KP_3:
-    KeypadStick.KeypadMove(downflag,1,1);
-    break;
-  case XK_KP_Insert:
-  case XK_KP_Enter:
-  case XK_KP_0:
-    KeypadStick.KeypadFire(downflag);
     break;
   }
 }
@@ -668,7 +674,8 @@ void X11_FrontEnd::VBI(class Timer *,bool quick,bool pause)
   }
   //
   // Transmit the state of the emulated keyboard joystick.
-  KeypadStick.TransmitStates(pause);
+  if (KeypadStick)
+    KeypadStick->TransmitStates(pause);
   //
   // Transmit the state of the emulated mouse joystick
   grab  = MouseStick.TransmitStates(display,window,emuwidth,emuheight,pause);
@@ -970,7 +977,8 @@ void X11_FrontEnd::ColdStart(void)
 void X11_FrontEnd::WarmStart(void)
 {
   // Reset the keypad stick here.
-  KeypadStick.Reset();
+  if (KeypadStick)
+    KeypadStick->Reset();
 }
 ///
 

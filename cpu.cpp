@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.95 2008-09-23 19:35:18 thor Exp $
+ ** $Id: cpu.cpp,v 1.95 2008/09/23 19:35:18 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/

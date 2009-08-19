@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdl_frontend.hpp,v 1.38 2008-03-22 23:05:20 thor Exp $
+ ** $Id: sdl_frontend.hpp,v 1.39 2009-08-10 16:48:15 thor Exp $
  **
  ** In this module: A frontend using the sdl library
  **********************************************************************************/
@@ -31,6 +31,7 @@
 class ArgParser;
 class Monitor;
 class Keyboard;
+class KeypadStick;
 ///
 
 /// Class SDL_FrontEnd
@@ -126,7 +127,7 @@ class SDL_FrontEnd : public AtariDisplay, public SDLClient {
   class Keyboard *keyboard;
   //
   // Sub-classes for joystick input
-  class KeyboardStick KeypadStick;
+  class KeyboardStick *KeypadStick;
   //
   // This game port class reads from the mouse input
   struct MouseMoveStick : public GamePort {

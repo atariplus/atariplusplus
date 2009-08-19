@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.103 2008-11-24 21:24:41 thor Exp $
+ ** $Id: pokey.cpp,v 1.103 2008/11/24 21:24:41 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
