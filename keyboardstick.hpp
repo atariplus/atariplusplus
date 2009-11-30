@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboardstick.hpp,v 1.5 2009-08-10 20:19:06 thor Exp $
+ ** $Id: keyboardstick.hpp,v 1.6 2009-11-25 20:10:38 thor Exp $
  **
  ** In this module: An emulation layer for keyboard driven joysticks
  **********************************************************************************/
@@ -101,6 +101,10 @@ private:
   //
   // Convert the current settings to strings.
   void CodesToNames(void);
+  //
+  // Convert a single entry in the table from a code to a string
+  void CodeToName(char *&name,int code);
+  //
   //
 public:
   // Constructor: This input class is called "KeypadStick"

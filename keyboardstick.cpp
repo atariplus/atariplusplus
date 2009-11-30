@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboardstick.cpp,v 1.4 2009-08-10 20:19:06 thor Exp $
+ ** $Id: keyboardstick.cpp,v 1.5 2009-11-25 20:10:38 thor Exp $
  **
  ** In this module: An emulation layer for keyboard driven joysticks
  **********************************************************************************/
@@ -29,6 +29,9 @@ const char *KeyboardStick::KeyName(int keycode)
     buf[0] = char(keycode - 'a' + 'A');
     buf[1] = 0;
     return buf;
+  } else if (keycode == ' ') {
+    buf[0] = ' ';
+    buf[1] = 0;
   } else switch(keycode) {
   case ArrowLeft:
     return "Cursor Left";
@@ -331,33 +334,36 @@ bool KeyboardStick::HandleJoystickKeys(bool updown,int frontcode)
 }
 ///
 
+/// KeyboardStick::CodeToName
+// Convert a single entry in the table from a code to a string
+void KeyboardStick::CodeToName(char *&name,int code)
+{ 
+  const char *newname;
+  
+  delete name;
+  name = NULL;
+  newname = KeyName(code);
+  if (newname == NULL)
+    newname = "";
+  name = new char[strlen(newname) + 1];
+  strcpy(name,newname);
+}
+///
+
 /// KeyboardStick::CodesToNames
 // Convert the current settings to strings.
 void KeyboardStick::CodesToNames(void)
 {
   int dx,dy,b;
-  const char *name;
   // The following is not very nice at this time, but anyhow...
   // First convert the names to strings.
   for(dy = 0;dy <= 2;dy++) {
     for(dx = 0;dx <= 2;dx++) {
-      delete DirectionNames[dx][dy];
-      DirectionNames[dx][dy] = NULL;
-      name = KeyName(DirectionCodes[dx][dy]);
-      if (name == NULL)
-	name = "";
-      DirectionNames[dx][dy] = new char[strlen(name) + 1];
-      strcpy(DirectionNames[dx][dy],name);
+      CodeToName(DirectionNames[dx][dy],DirectionCodes[dx][dy]);
     }
   }
   for(b = 0;b < 2;b++) {
-    delete ButtonNames[b];
-    ButtonNames[b] = NULL;
-    name = KeyName(ButtonCodes[b]);
-    if (name == NULL)
-      name = "";
-    ButtonNames[b] = new char[strlen(name) + 1];
-    strcpy(ButtonNames[b],name);
+    CodeToName(ButtonNames[b],ButtonCodes[b]);
   }
 }
 ///
@@ -367,7 +373,6 @@ void KeyboardStick::CodesToNames(void)
 void KeyboardStick::ParseArgs(class ArgParser *args)
 {
   int dx,dy,b;
-  bool bad = false;
   //
   args->DefineTitle("KeypadStick");
   //
@@ -400,7 +405,7 @@ void KeyboardStick::ParseArgs(class ArgParser *args)
 	  DirectionCodes[dx][dy] = code;
 	} else {
 	  // Fill again with the valid value.
-	  bad = true;
+	  CodeToName(DirectionNames[dx][dy],DirectionCodes[dx][dy]);
 	  args->PrintError("Key name %s is invalid.",DirectionNames[dx][dy]);
 	}
       }
@@ -414,13 +419,10 @@ void KeyboardStick::ParseArgs(class ArgParser *args)
       if (code) {
 	ButtonCodes[b] = code;
       } else {
-	bad = true;
+	CodeToName(ButtonNames[b],ButtonCodes[b]);
 	args->PrintError("Key name %s is invalid.",ButtonNames[b]);
       }
     }
   }
-
-  if (bad)
-    CodesToNames();
 }
 ///

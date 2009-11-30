@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.23 2008/05/22 13:03:54 thor Exp $
+ ** $Id: alsasound.cpp,v 1.24 2009-11-25 20:10:38 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -31,13 +31,13 @@
 
 /// AlsaSound::AlsaSound
 AlsaSound::AlsaSound(class Machine *mach)
-  : Sound(mach), CardName(new char[7]),
+  : Sound(mach), CardName(new char[8]),
     SoundStream(NULL), HWParms(NULL), SWParms(NULL), AsyncHandler(NULL),
     MayRunPokey(false), AbleIRQ(false),
     FragSize(8), NumFrags(12), 
     BufferedSamples(0), ForceStereo(false), UpdateBuffer(false), UpdateSamples(0)
 {
-  strcpy(CardName,"hw:0,0");
+  strcpy(CardName,"default"); //hw:0,0");
 }
 ///
 

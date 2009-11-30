@@ -2,13 +2,13 @@
 #**
 #** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.112 2009-08-10 20:19:06 thor Exp $
+#** $Id: configure.in,v 1.113 2009-11-29 16:19:28 thor Exp $
 #**
 #** In this module: autoconf script for atari++
 #**********************************************************************************/
 #
 # Process this file with autoconf to produce a configure script.
-AC_INIT(atari++,1.57,thor@math.tu-berlin.de)
+AC_INIT(atari++,1.58,thor@math.tu-berlin.de)
 AC_CONFIG_SRCDIR([types.hpp])
 AC_CONFIG_HEADER([types.h])
 #AC_PREFIX_DEFAULT([/usr])

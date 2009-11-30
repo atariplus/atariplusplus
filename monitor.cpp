@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.81 2008/08/25 16:42:57 thor Exp $
+ ** $Id: monitor.cpp,v 1.82 2009-11-25 20:10:38 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -1222,7 +1222,7 @@ void Monitor::Dump::Apply(char e)
 }
 ///
 
-/// Monitor::UnAsmake::UnAs
+/// Monitor::UnAs::UnAs
 Monitor::UnAs::UnAs(class Monitor *mon,const char *lng,const char *shr,const char *helper)
   : Command(mon,lng,shr,helper,'L'), lines(16)
 { }

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.52 2008/05/22 13:03:54 thor Exp $
+ ** $Id: cpu.hpp,v 1.53 2009-11-25 21:19:35 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -348,7 +348,21 @@ public:
       Wait.Insert(Cpu);
       return UWORD(operand + Cpu->GlobalX);
     }
-  };  
+  };   
+  //
+  // This is a variant of the above unit except that the result is
+  // always truncated to the zero page and no wait state is inserted
+  class AddXUnitZero : public AtomicExecutionUnit {
+  public:
+    AddXUnitZero(class CPU *cpu)
+      : AtomicExecutionUnit(cpu)
+    { }
+    //
+    inline UWORD Execute(UWORD operand)
+    {  
+      return UWORD(operand + Cpu->GlobalX) & 0xff;
+    }
+  };   
   //
   // The same as above, except that a wait slot is only added if a page
   // boundary is crossed. This is the second step in an absolute,X addressing
@@ -388,6 +402,20 @@ public:
       return UWORD(operand + Cpu->GlobalY);
     }
   };
+  //   
+  // This is a variant of the above unit except that the result is
+  // always truncated to the zero page and no wait state is inserted
+  class AddYUnitZero : public AtomicExecutionUnit {
+  public:
+    AddYUnitZero(class CPU *cpu)
+      : AtomicExecutionUnit(cpu)
+    { }
+    //
+    inline UWORD Execute(UWORD operand)
+    {  
+      return UWORD(operand + Cpu->GlobalY) & 0xff;
+    }
+  };
   //
   // The AddY unit takes its operand and adds the Y register to it, returning
   // its operand. This is the thrid step in an (indirect),y addressing mode
@@ -409,7 +437,7 @@ public:
       return result;
     }
   };
-  //
+  //  
   // The IndirectionUnit takes its argument, interprets it as an effective
   // address and fetches its contents. This is the third step in the
   // (indirect,X) mode and the second for (indirect),Y
@@ -423,7 +451,6 @@ public:
     {
       // Keep the effective address in the CPU for a possible last store
       Cpu->EffectiveAddress = operand;
-
       return UWORD(Ram->ReadByte(operand));
     }
   };

@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.77 2009-08-19 07:30:58 thor Exp $
+# $Id: README.History,v 1.78 2009-11-29 16:19:28 thor Exp $
 #
 
 Atari++ 1.00:
@@ -730,3 +730,16 @@ Atari++ 1.57
 	  load the image from the emulated disk as D:PROGRAM.BAS or D:PROGRAM.ASM.
 	  Note that such disks are *not* bootable, you first need to boot, and
 	  then turn on the emulated disk drive.
+
+Atari++ 1.58
+	- Fixed emulation of read-modify-write instructions. The 6502 consistently
+	  writes the old value before replacing it by a second write with the
+	  updated value.
+	- The default alsa output device has been changed from hw:0.0 to default,
+	  making it more compatible to hardware setups.
+	- The disassembly of the BVC instruction was invalid, fixed.
+	- Added the space bar as possible source for joystick events.
+	- Fixed some issues with preferences reading.
+	- Added additional tests for ROM image verification.
+	- Fixed a NULL pointer reference in the cartridge module.
+

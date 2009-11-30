@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartrom.cpp,v 1.49 2007/10/06 11:23:59 thor Exp $
+ ** $Id: cartrom.cpp,v 1.50 2009-11-29 16:19:28 thor Exp $
  **
  ** In this module: Administration/loading of cartridges
  **********************************************************************************/
@@ -384,8 +384,10 @@ void CartROM::ParseArgs(class ArgParser *args)
     //
     delete[] cartpath;
     cartpath  = NULL;
-    cartpath  = new char[strlen(cartinsert) + 1];
-    strcpy(cartpath,cartinsert);
+    if (cartinsert) {
+      cartpath  = new char[strlen(cartinsert) + 1];
+      strcpy(cartpath,cartinsert);
+    }
     swapcarts = true;
     args->SignalBigChange(ArgParser::ColdStart);    
     // Try to figure out what this could be, and build a more specific 
@@ -455,7 +457,7 @@ void CartROM::DisplayStatus(class Monitor *mon)
 		   "\tCartridge path    : %s\n"
 		   "\tInserted carts    : ",
 		   (newcart)?(newcart->CartType()):("(none)"),
-		   (cartpath)?(cartpath):("(none)")
+		   (cartpath && *cartpath)?(cartpath):("(none)")
 		   );
   if (cart) {
     do {
