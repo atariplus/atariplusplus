@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.99 2009-11-26 19:54:57 thor Exp $
+ ** $Id: cpu.cpp,v 1.100 2010-11-06 16:43:25 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -4184,13 +4184,39 @@ void CPU::StealCycles(const struct DMASlot &slot)
   int cnt;
   
   if ((cnt = slot.NumCycles)) {
-    const UBYTE *in = slot.CycleMask;;
+    const UBYTE *in = slot.CycleMask;
     UBYTE *out      = StolenCycles + slot.FirstCycle;
     UBYTE *last     = StolenCycles + slot.LastCycle;
     do {
       *out |= *in;
       out++,in++;
     } while(out < last && --cnt);
+  }
+}
+///
+
+/// CPU::StealMemCycles
+// Steal DMA cycles with two cycles elasticity, used for memory refresh.
+// If no cycle is available whatsoever, use a cycle cycle at the last slot.
+void CPU::StealMemCycles(const struct DMASlot &slot,int lastslot)
+{
+  int cnt;
+  
+  if ((cnt = slot.NumCycles)) {
+    const UBYTE *in = slot.CycleMask;
+    UBYTE *out      = StolenCycles + slot.FirstCycle;
+    UBYTE *last     = StolenCycles + slot.LastCycle;
+    UBYTE  cycle    = 0;
+    do {
+      cycle |= *in;
+      if (*out == 0) {
+	*out |= cycle;
+	cycle = 0;
+      }
+      out++,in++;
+    } while(out < last && --cnt);
+    if (cycle)
+      StolenCycles[lastslot] = 0x01;
   }
 }
 ///

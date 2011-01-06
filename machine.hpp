@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.hpp,v 1.72 2009-08-10 16:48:15 thor Exp $
+ ** $Id: machine.hpp,v 1.73 2010-12-25 14:04:26 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -19,6 +19,7 @@
 #include "exceptions.hpp"
 #include "vbiaction.hpp"
 #include "hbiaction.hpp"
+#include "cycleaction.hpp"
 #include <stdarg.h>
 ///
 
@@ -93,6 +94,8 @@ class Machine {
   List<VBIAction>       vbiChain;
   // Chain of all HBI activities
   List<HBIAction>       hbiChain;
+  // Chain of all CPU activities
+  List<CycleAction>     cycleChain;
   // Chain of all gameports. These classes are the input generators
   // for game port devices like paddles, joysticks or lightpens
   List<GamePort>        gamePortChain;
@@ -219,6 +222,12 @@ public:
   List<HBIAction> &HBIChain(void)
   {
     return hbiChain;
+  }
+  //
+  // Return the list of all CPU cycle specific operations.
+  List<CycleAction> &CycleChain(void)
+  {
+    return cycleChain;
   }
   //
   // Link into the game port chain
@@ -526,6 +535,16 @@ public:
   
     for(hbi = hbiChain.First();hbi;hbi = hbi->NextOf()) {
       hbi->HBI();
+    }
+  }
+  //
+  // Run the next CPU cycle. Hmm. How much does this cost?
+  void Step(void)
+  {
+    class CycleAction *cycle;
+
+    for(cycle = cycleChain.First();cycle;cycle = cycle->NextOf()) {
+      cycle->Step();
     }
   }
   //

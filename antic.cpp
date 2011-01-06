@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.cpp,v 1.97 2008/05/22 13:03:54 thor Exp $
+ ** $Id: antic.cpp,v 1.98 2010-11-06 16:43:25 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -897,12 +897,11 @@ void Antic::Scanline(bool nmi,struct ModeLine *mode,
 void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
 {
   struct CPU::DMASlot gfx;  // contains the slots to be allocated for screen graphics and font cell graphics fetches
-  struct CPU::DMASlot mem;  // contains the slots for memory refresh that move aLONG with the display DMA
   bool nmi   = false;
   bool shift = false;
   int scanline;
   int dmadelta;             // DMA cycle shift allocation due to HScroll
-  int lastref;              // position of memory refresh if all cycles stolen
+  int lastref = 106;        // position of memory refresh if all cycles stolen
   
   nlines--;   // for simpler calculations
   for (scanline = first;scanline <= last && YPos < DisplayHeight;scanline++) {
@@ -932,7 +931,6 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
       gfx.FirstCycle = FirstDMACycleScroll + dmadelta;
       gfx.NumCycles  = LastDMACycleScroll - FirstDMACycleScroll;
       gfx.LastCycle  = 106;
-      mem            = MemRefreshSlot;
       if (LastDMACycleScroll == 106) {
 	lastref      = 106;
       } else {
@@ -946,7 +944,6 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
       gfx.FirstCycle = FirstDMACycleNoScroll + dmadelta;
       gfx.NumCycles  = LastDMACycleNoScroll - FirstDMACycleNoScroll;
       gfx.LastCycle  = 106;
-      mem            = MemRefreshSlot; 
       if (LastDMACycleNoScroll == 106) {
 	lastref      = 106;
       } else {
@@ -985,23 +982,13 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
 	  Cpu->StealCycles(gfx);
 	} 
       } 
-      // In case we block memory refresh, move it one cycle to the back.
-      if (Cpu->isBusy(mem.FirstCycle))
-	mem.FirstCycle++;
-      if (Cpu->isBusy(mem.FirstCycle))
-	mem.FirstCycle++;
-      // If still busy, allocate first available slot
-      if (Cpu->isBusy(mem.FirstCycle)) {
-	mem.NumCycles  = 1;
-	mem.FirstCycle = lastref;
-      }
     }
     // Get the base DMA cycles for character based modes. This
     // part of the DMA fetches characters into the mode line buffer.
     // Include memory refresh. This is additional for all scan lines, not
     // only for the first scan line of a mode line. Note that we are here
     // running in a loop.
-    Cpu->StealCycles(mem);
+    Cpu->StealMemCycles(MemRefreshSlot,lastref);
     //
     // If this is the last scanline and the "generate DLI" bit of the
     // instruction is set, and DLIs are allowed, signal that we need

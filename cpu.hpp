@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.53 2009-11-25 21:19:35 thor Exp $
+ ** $Id: cpu.hpp,v 1.55 2011-01-07 12:18:46 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -1281,6 +1281,10 @@ public:
   // Steal cycles from the CPU. We need to supply the DMASlot definition for it.
   void StealCycles(const struct DMASlot &slot);
   //
+  // Steal DMA cycles with two cycles elasticity, used for memory refresh.
+  // If no cycle is available whatsoever, use a cycle cycle at the last slot.
+  void StealMemCycles(const struct DMASlot &slot,int last);
+  //
   // Check whether the given cycle, starting at the left edge, is busy.
   UBYTE isBusy(int cycle) const
   {
@@ -1338,6 +1342,10 @@ public:
       Throw(OutOfRange,"CPU::Step","execution HPOS out of range");
     }
 #endif
+    //
+    // Advance the rest of the hardware by a single cycle
+    machine->Step();
+    //
     // Check whether there is a CPU slot available (and not stolen by DMA)
     // or blocked by WSync wait
     if (*CurCycle == 0) {

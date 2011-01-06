@@ -583,6 +583,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cycleaction.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\dcmimage.cpp"
 				>
 			</File>
@@ -1270,6 +1274,10 @@
 			</File>
 			<File
 				RelativePath=".\curses.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\cycleaction.hpp"
 				>
 			</File>
 			<File

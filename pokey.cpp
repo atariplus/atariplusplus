@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.103 2008/11/24 21:24:41 thor Exp $
+ ** $Id: pokey.cpp,v 1.107 2011-01-07 12:18:46 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -58,7 +58,7 @@ const UBYTE Pokey::PolyCounter5[Poly5Size] =
 /// Pokey::Pokey
 // Pokey constructor
 Pokey::Pokey(class Machine *mach,int unit)
-  : Chip(mach,(unit)?"ExtraPokey":"Pokey"), Saveable(mach,(unit)?"ExtraPokey":"Pokey"), HBIAction(mach), IRQSource(mach),
+  : Chip(mach,(unit)?"ExtraPokey":"Pokey"), Saveable(mach,(unit)?"ExtraPokey":"Pokey"), HBIAction(mach), CycleAction(mach), IRQSource(mach),
     Outcnt(0), PolyCounter17(new UBYTE[Poly17Size]), SampleCnt(0), OutputMapping(new BYTE[256]),
     Unit(unit)
 {
@@ -136,18 +136,17 @@ Pokey::Pokey(class Machine *mach,int unit)
   memset(PotNMax,228,sizeof(PotNMax));
   // Pot values are all valid.
   AllPot           = 0x00;
-  // Slow pot read.
-  PotNInc          = 1;
   // PAL operation
   NTSC             = false;
   SIOSound         = true;
+  CycleTimers      = false;
   Outcnt           = 0;
   //
   // Initialize serial timing, will be overridden
   // by SkCtrl writes
-  SerIn_Delay      = 9;
-  SerOut_Delay     = 9;
-  SerXmtDone_Delay = 9;
+  SerIn_Delay      = 9 * Base15kHz;
+  SerOut_Delay     = 9 * Base15kHz;
+  SerXmtDone_Delay = 9 * Base15kHz;
   //
   // Initialize pointers to be on the safe side.
   sound            = NULL;
@@ -203,7 +202,6 @@ void Pokey::WarmStart(void)
   memset(PotNCnt,228,sizeof(PotNCnt));
   memset(PotNMax,228,sizeof(PotNMax));
   AllPot             = 0x00;
-  PotNInc            = 1;
   ConcurrentInput    = 0xff;
   ConcurrentBusy     = false;
 }
@@ -229,6 +227,12 @@ void Pokey::ColdStart(void)
 // Destructor of the pokey class
 Pokey::~Pokey(void)
 {
+  // If the cycle-precise timers were active, remove it here.
+  if (CycleTimers) {
+    Node<CycleAction>::Remove();
+    CycleTimers = false;
+  }
+  //
   // Release the poly counter buffers: Only the 17 bit polycounter is hand-
   // allocated.
   delete[] PolyCounter17;
@@ -402,7 +406,7 @@ void Pokey::UpdateSound(UBYTE mask)
     // no device requires this.
     if (mask & 0x0c) {
       // Input is driven by channel 3 (or 2 and 3)
-      SerIn_Delay      = (20 * Ch[3].DivNMax + Base15kHz - 1) / Base15kHz;
+      SerIn_Delay      = 20 * Ch[3].DivNMax;
     }
   }
   // Check the output clock mode. This is controlled
@@ -416,14 +420,14 @@ void Pokey::UpdateSound(UBYTE mask)
   case 0x40:
     // Output clocked by channel 3 (or 2 and 3)
     if (mask & 0x0c) {
-      SerOut_Delay     = (20 * Ch[3].DivNMax + Base15kHz - 1) / Base15kHz;
+      SerOut_Delay     = 20 * Ch[3].DivNMax;
       SerXmtDone_Delay = SerOut_Delay;
     }
     break;
   case 0x60:
     // Output clocked by channel 1 (or 0 and 1)
     if (mask & 0x03) { 
-      SerOut_Delay     = (20 * Ch[1].DivNMax + Base15kHz - 1) / Base15kHz;
+      SerOut_Delay     = 20 * Ch[1].DivNMax;
       SerXmtDone_Delay = SerOut_Delay;
     }
     break;
@@ -529,6 +533,14 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
   ULONG SampleMax    = (Frequency17Mhz << 8) / dspsamplerate;
   LONG  offset       = delta;
   
+
+  if ((SkCtrl & 0x03) == 0) {
+    // Sound completely disabled.
+    while (size) {
+      to->PutSample(0);
+      size--;
+    }
+  } else 
   // Loop until the buffer is filled completely
   while (size) {
     struct Channel *c;
@@ -721,6 +733,133 @@ void Pokey::GenerateIRQ(UBYTE bits)
 }
 ///
 
+/// Pokey::UpdatePots
+// Advance the measurement of the potentiometer (A/D converter) input
+// by N steps. Depending on the measurement mode, this is either a
+// line-based or a cycle-based measurement.
+void Pokey::UpdatePots(int steps)
+{
+  int ch;
+
+  // Now update the pot reader.
+  for(ch = 0;ch < 8;ch++) {
+    int updated;
+    // Bump the counter by the counter increment. If we
+    // reach the maximum (or beyond), then stop.
+    updated = PotNCnt[ch] + steps;
+    if (updated >= PotNMax[ch]) {
+      // Read is ready, signal in allPot by clearing the
+      // apropriate bit, and insert the proper value.
+      AllPot      &= ~(1<<ch);
+      PotNCnt[ch]  = PotNMax[ch];
+    } else {
+      PotNCnt[ch]  = updated;
+    }
+  }
+}
+///
+
+/// Pokey::GoNSteps
+// Forward the pokey status for N steps.
+void Pokey::GoNSteps(int steps)
+{
+  struct Channel *c;
+  int ch;
+  //
+  // Serial bus handling. That is, updating the serial input,
+  // output and done flags.
+  if (SkCtrl & 0x03) {
+    // Check whether we are at concurrent reading. If so,
+    // Check whether there's new input data for us.
+    // Do not try to receive a new byte when the sender
+    // still pretends to be busy.
+    if (ConcurrentBusy     == false && 
+	SerIn_Counter      == 0 &&
+	(SkCtrl & 0xf0)    == 0x70) {
+      UBYTE in;
+      //
+      if (sio && sio->ConcurrentRead(in)) {
+	ConcurrentInput = in;
+	SerIn_Counter   = 1;    // generate an interrupt below, immediately.
+	SerInBytes      = 1;    // have one byte in the queue now
+	ConcurrentBusy  = true; // do not try to deliver this until the atari collects it
+      }
+    }
+    // Check for serial input done.
+    if (SerIn_Counter > 0) {
+      if ((SerIn_Counter -= steps) <= 0) {  
+	SerIn_Counter = 0;
+	// Check whether SIO delivered any new bytes. If so,
+	// generate an IRQ to deliver them.
+	if (SerInBytes) {
+	  // Serial input just finished. Generate an IRQ.   
+	  GenerateIRQ(0x20);
+	} else if (sio) {
+	  // Ask SIO again.
+	  sio->RequestInput();
+	}
+      }
+    }
+    // Check for serial output register empty.
+    if (SerOut_Counter > 0) {
+      if ((SerOut_Counter -= steps) <= 0) {
+	SerOut_Counter = 0;
+	// Serial output register empty and free to
+	// be reloaded. Generate an interrupt by bit 4.
+	GenerateIRQ(0x10);
+	//
+	// SerOut is now empty. Generate XMTDone when completely
+	// done.
+	SerXmtDone_Counter = SerXmtDone_Delay;
+      }
+    }
+    // Check whether the serial output register just
+    // became empty. If so, generate an IRQ. Note
+    // that we actually do not drive bit 3 of IRQStat
+    // from here as this bit is unlatched (hardware manual)
+    if (SerXmtDone_Counter > 0) {
+      if ((SerXmtDone_Counter -= steps) <= 0) {
+	SerXmtDone_Counter = 0;
+	GenerateIRQ(0x08);
+      }
+    }
+  }
+  //
+  // Now check for Pokey timers. Actually, we won't
+  // need to emulate them very precisely. Or not?
+  for(ch = 0, c = Ch;ch < 4;ch++,c++) {
+    static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
+    // Yes, channel 3 cannot generate interrupts at all...
+    if ((c->DivNIRQ += steps) > c->DivNMax) {
+      // Generate an IRQ now (or not for channel 3)
+      if (IRQEnable & irqbits[ch]) {
+	GenerateIRQ(irqbits[ch]);
+      }	
+      //c->DivNIRQ = 0; Allow accumulation of errors on average.
+      c->DivNIRQ  -= c->DivNMax;
+    }
+  }
+  //
+  // Potentiometer increment in the fast most. 
+  // Check how fast we should update the counters. We
+  // set the counter increment value depending on whether
+  // fast or slow pot reading is set. Maybe this is not quite
+  // correct since we cannot remove the loading capacitors
+  // in the real emulator. Need to check this.
+  if ((SkCtrl & 0x03) && (SkCtrl & 0x04)) {
+    UpdatePots(steps);
+  }
+}
+///
+
+/// Pokey::Step
+// Forward by one CPU step
+void Pokey::Step(void)
+{
+  GoNSteps(1);
+}
+///
+
 /// Pokey::HBI
 // Signal Pokey that a new scanline just
 // begun. This is not related to any real effect. 
@@ -730,8 +869,6 @@ void Pokey::GenerateIRQ(UBYTE bits)
 // emulate the timer and serial port specific settings.
 void Pokey::HBI(void)
 {
-  struct Channel *c;
-  int ch;
   // First, update the audio machine if required to do so.
   // This must be run very frequently to ensure that
   // we get proper audio output and the output buffers don't
@@ -744,108 +881,37 @@ void Pokey::HBI(void)
   // This might be required for resynchronization of the
   // sound driver. This is now run by the HBI timer.
   // sound->TriggerSoundScanline();
-  
-  // Check whether we are at concurrent reading. If so,
-  // Check whether there's new input data for us.
-  // Do not try to receive a new byte when the sender
-  // still pretends to be busy.
-  if (ConcurrentBusy     == false && 
-      SerIn_Counter      == 0 &&
-      (SkCtrl & 0xf0)    == 0x70) {
-    UBYTE in;
-    //
-    if (sio && sio->ConcurrentRead(in)) {
-      ConcurrentInput = in;
-      SerIn_Counter   = 1;    // generate an interrupt below.
-      SerInBytes      = 1;    // have one byte in the queue now
-      ConcurrentBusy  = true; // do not try to deliver this until the atari collects it
-    }
+  //
+  // Potentiometer increment in the slow most. 
+  // Check how fast we should update the counters. We
+  // set the counter increment value depending on whether
+  // fast or slow pot reading is set. Maybe this is not quite
+  // correct since we cannot remove the loading capacitors
+  // in the real emulator. Need to check this.
+  if ((SkCtrl & 0x03) && (SkCtrl & 0x04) == 0) {
+    UpdatePots(1);
   }
-  // Check for serial input done.
-  if (SerIn_Counter > 0) {
-    if (--SerIn_Counter == 0) {  
-      // Check whether SIO delivered any new bytes. If so,
-      // generate an IRQ to deliver them.
-      if (SerInBytes) {
-	// Serial input just finished. Generate an IRQ.   
-	GenerateIRQ(0x20);
-      } else if (sio) {
-	// Ask SIO again.
-	sio->RequestInput();
-      }
-    }
-  }
-  // Check for serial output register empty.
-  if (SerOut_Counter > 0) {
-    if (--SerOut_Counter == 0) {
-      // Serial output register empty and free to
-      // be reloaded. Generate an interrupt by bit 4.
-      GenerateIRQ(0x10);
-      //
-      // SerOut is now empty. Generate XMTDone when completely
-      // done.
-      SerXmtDone_Counter = SerXmtDone_Delay;
-    }
-  }
-
-  // Check whether the serial output register just
-  // became empty. If so, generate an IRQ. Note
-  // that we actually do not drive bit 3 of IRQStat
-  // from here as this bit is unlatched (hardware manual)
-  if (SerXmtDone_Counter > 0) {
-    if (--SerXmtDone_Counter == 0) {
-      GenerateIRQ(0x08);
-    }
-  }
-
-  // Now check for Pokey timers. Actually, we won't
-  // need to emulate them very precisely. Or not?
-  for(ch = 0, c = Ch;ch < 4;ch++,c++) {
-    static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
-    // Yes, channel 3 cannot generate interrupts at all...
-    if ((c->DivNIRQ += Base15kHz) > c->DivNMax) {
-      // Generate an IRQ now (or not for channel 3)
-      if (IRQEnable & irqbits[ch]) {
-	GenerateIRQ(irqbits[ch]);
-      }	
-      //c->DivNIRQ = 0; Allow accumulation of errors on average.
-      c->DivNIRQ  -= c->DivNMax;
-    }
-  }
-
+  //
+  // Update the HBI event by one.
+  if (!CycleTimers)
+    GoNSteps(Base15kHz);
   //
   // Now check keyboard input if we are connected to
   // the keyboard
-  if (keyboard && (SkCtrl & 2)) {
+  if (keyboard && (SkCtrl & 3) >= 1) {
     if (IRQEnable & 0x80) {
       if (keyboard->BreakInterrupt()) {
 	GenerateIRQ(0x80);
       }
     }
+  }
+  if (keyboard && (SkCtrl & 3) >= 2) {
     if (IRQEnable & 0x40) {
       if (keyboard->KeyboardInterrupt()) {
 	GenerateIRQ(0x40);
       }
     }
   }
-  //
-  //
-  // Now update the pot reader.
-  for(ch = 0;ch < 8;ch++) {
-    int updated;
-    // Bump the counter by the counter increment. If we
-    // reach the maximum (or beyond), then stop.
-    updated = PotNCnt[ch] + PotNInc;
-    if (updated >= PotNMax[ch]) {
-      // Read is ready, signal in allPot by clearing the
-      // apropriate bit, and insert the proper value.
-      AllPot      &= ~(1<<ch);
-      PotNCnt[ch]  = PotNMax[ch];
-    } else {
-      PotNCnt[ch]  = updated;
-    }
-  }
-  //
   // Shuffle the random generator a bit.
   rand();
 }
@@ -892,7 +958,7 @@ UBYTE Pokey::ComplexRead(ADR mem)
   // Shut up the compiler
   return 0xff;
 }
-///    
+///
 
 /// Pokey::ComplexWrite
 // Emulate a pokey byte write to a given
@@ -978,13 +1044,17 @@ UBYTE Pokey::KBCodeRead(void)
 // Read the random number generator
 UBYTE Pokey::RandomRead(void)
 {
-  // Never use the lower-order bits.
-  // This here should be a bit better since
-  // it has at least a period of 2^16
-  if (RAND_MAX >= 65536) {
-    return (rand() >> 8);
+  if (SkCtrl & 0x03) {
+    // Never use the lower-order bits.
+    // This here should be a bit better since
+    // it has at least a period of 2^16
+    if (RAND_MAX >= 65536) {
+      return (rand() >> 8);
+    } else {
+      return (rand() >> 4);
+    }
   } else {
-    return (rand() >> 4);
+    return 0xff;
   }
 }
 ///
@@ -1090,8 +1160,11 @@ UBYTE Pokey::SkStatRead(void)
 {
   UBYTE out = SkStat | 0x01; // bit 0 is always set
   
-  if (SkCtrl & 2) 
+  if (keyboard && (SkCtrl & 2)) {
     out |= keyboard->KeyboardStatus();
+  } else {
+    out |= 0x0c;
+  }
   
   if (SerIn_Counter == 0) // Serial input register is currently busy?
     out |= 0x02; // no, it's not.
@@ -1309,13 +1382,6 @@ void Pokey::PotGoWrite(void)
     }
   }
   AllPot = 0xff;
-  //
-  // Check how fast we should update the counters. We
-  // set the counter increment value depending on whether
-  // fast or slow pot reading is set. Maybe this is not quite
-  // correct since we cannot remove the loading capacitors
-  // in the real emulator. Need to check this.
-  PotNInc = (SkCtrl & 0x04)?(114):(1);
 }
 ///
 
@@ -1343,7 +1409,7 @@ void Pokey::SignalSerialBytes(UBYTE *data,int num,UWORD delay)
   }
   SerInBuffer    = data;
   SerInBytes     = num;
-  SerIn_Counter  = delay + SerIn_Delay;
+  SerIn_Counter  = delay * Base15kHz + SerIn_Delay;
   //
   //
   // Update channels 3&4 that need to sync to this input
@@ -1429,6 +1495,7 @@ void Pokey::ParseArgs(class ArgParser *args)
       {NULL           ,0}
     };
   LONG ntsc;
+  bool cycle = CycleTimers;
   //
   //
   ntsc = LONG(NTSC);
@@ -1437,6 +1504,7 @@ void Pokey::ParseArgs(class ArgParser *args)
   args->DefineLong("Gamma","set Pokey output linearity in percent",50,150,Gamma);
   args->DefineSelection("VideoMode","set POKEY base frequency",palvector,ntsc);
   args->DefineBool("SIOSound","emulate serial transfer sounds",SIOSound);
+  args->DefineBool("CyclePrecise","cycle precise pokey timers",cycle);
   args->DefineLong("FilterConstant","set high-pass filtering constant",0,1024,DCFilterConstant);
   //
   // Initialize the pokey base clock.
@@ -1444,6 +1512,18 @@ void Pokey::ParseArgs(class ArgParser *args)
   //
   // Regenerate the output map.
   UpdateAudioMapping();
+  //
+  // Update the cycle precise pokey timers.
+  if (cycle != CycleTimers) {
+    if (cycle) {
+      // Enable cycle precise timers.
+      machine->CycleChain().AddTail(this);
+    } else {
+      // Disable cycle precise timers.
+      Node<CycleAction>::Remove();
+    }
+    CycleTimers = cycle;
+  }
   //
   // If the video mode changed, ensure that the sound-subsystem is restarted.
   if (ntsc != LONG(NTSC)) {

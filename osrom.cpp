@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.cpp,v 1.47 2009-08-10 20:19:06 thor Exp $
+ ** $Id: osrom.cpp,v 1.48 2010-11-06 16:43:25 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/
@@ -475,11 +475,6 @@ void OsROM::ParseArgs(class ArgParser *args)
   }
   os_type = (OsROM::OsType)ostype;
 
-  CheckROMFile(osapath,40);
-  CheckROMFile(osbpath,40);
-  CheckROMFile(os1200path,64);
-  CheckROMFile(osxlpath,64);
-  CheckROMFile(os5200path,8);
 
   switch(RomType()) {
   case Os_RomA:    
@@ -488,6 +483,7 @@ void OsROM::ParseArgs(class ArgParser *args)
 		       "Please pick a suitable ROM path in the OsROM topic of the user menu "
 		       "and save the changes.");
     }
+    CheckROMFile(osapath,40);
     break;
   case Os_RomB:    
     if (osbpath == NULL || *osbpath == 0) {
@@ -495,6 +491,7 @@ void OsROM::ParseArgs(class ArgParser *args)
 		       "Please pick a suitable ROM path in the OsROM topic of the user menu "
 		       "and save the changes.");
     }
+    CheckROMFile(osbpath,40);
     break;
   case Os_Rom1200:
     if (os1200path == NULL || *os1200path == 0) {
@@ -502,6 +499,7 @@ void OsROM::ParseArgs(class ArgParser *args)
 		       "Please pick a suitable ROM path in the OsROM topic of the user menu "
 		       "and save the changes.");
     }
+    CheckROMFile(os1200path,64);
     break;
   case Os_RomXL:
     if (osxlpath == NULL || *osxlpath == 0) {
@@ -509,6 +507,7 @@ void OsROM::ParseArgs(class ArgParser *args)
 		       "Please pick a suitable ROM path in the OsROM topic of the user menu "
 		       "and save the changes.");
     }
+    CheckROMFile(osxlpath,64);
     break;
   case Os_5200:
     if (os5200path == NULL || *os5200path == 0) {
@@ -516,6 +515,7 @@ void OsROM::ParseArgs(class ArgParser *args)
 		       "Please pick a suitable ROM path in the OsROM topic of the user menu "
 		       "and save the changes.");
     }
+    CheckROMFile(os5200path,8);
     break;
   case Os_Builtin:
     break;

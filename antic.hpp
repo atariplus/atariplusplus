@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.hpp,v 1.57 2008/03/21 21:21:47 thor Exp $
+ ** $Id: antic.hpp,v 1.58 2010-04-24 19:54:16 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -423,8 +423,7 @@ public:
   {
     if (DMACtrlShadow & 0x08) {
       target = UBYTE(Ram->ReadByte(PMActive->PlayerBase[player]
-				   + (YPos >> PMActive->YPosShift) 
-				   - delay));
+				   + ((YPos - delay) >> PMActive->YPosShift)));
     } else {
       // Interesting side case: If Antic DMA is off, then GTIA does not fetch data
       // from the bus (Test: Basic BUNDES.BAS)

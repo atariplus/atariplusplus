@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.24 2009-11-25 20:10:38 thor Exp $
+ ** $Id: alsasound.cpp,v 1.25 2010-02-28 10:48:49 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -348,10 +348,14 @@ bool AlsaSound::InitializeDsp(void)
     ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the wakeup point");
   }
   //
+  /*
+  ** This is deprecated, and not even needed
   // Align all transfers to one sample. I've no idea why this is useful.
   if ((err = snd_pcm_sw_params_set_xfer_align(SoundStream,SWParms,1)) < 0) {
     ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the transfer align to one");
   }
+  **
+  */
   //
   // Write the parameters to the playback device now.
   if ((err = snd_pcm_sw_params(SoundStream,SWParms)) < 0) {

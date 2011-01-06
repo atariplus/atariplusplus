@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: main.cpp,v 1.30 2008/09/11 19:53:46 thor Exp $
+ ** $Id: main.cpp,v 1.30 2008-09-11 19:53:46 thor Exp $
  **
  ** In this module: Main entrance point of the emulator, main loop.
  **********************************************************************************/

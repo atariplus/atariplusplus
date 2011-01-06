@@ -3,7 +3,7 @@
 ## Makefile.atari                                                                
 ##                                                                               
 ## This makefile defines compiler-independent dependencies                       
-## $Id: Makefile.atari,v 1.93 2009-08-10 13:08:25 thor Exp $
+## $Id: Makefile.atari,v 1.94 2010-12-25 14:04:26 thor Exp $
 ##
 ###################################################################################
 
@@ -28,7 +28,8 @@ FILES		=	new list adrspace monitor instruction serialdevice \
 			gamecontroller page yconnector \
 			atari gameport patch timer \
 			basicrom gtia pdevice rdevice types \
-			cartctrl hdevice edevice pia vbiaction hbiaction \
+			cartctrl hdevice edevice pia \
+			vbiaction hbiaction cycleaction \
 			cartrom cartridge cart8k cart16k cart32k \
 			cartoss cartossb cartsdx cartxegs cartrt8 \
 			cartbbob cartflash cartmega cartatrax cartwill \

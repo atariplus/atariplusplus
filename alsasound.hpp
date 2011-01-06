@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.hpp,v 1.12 2008/05/22 13:03:54 thor Exp $
+ ** $Id: alsasound.hpp,v 1.12 2008-05-22 13:03:54 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.hpp,v 1.48 2005/09/23 19:38:45 thor Exp $
+ ** $Id: pokey.hpp,v 1.49 2010-12-25 14:04:26 thor Exp $
  **
  ** In this module: Pokey emulation
  **
@@ -30,6 +30,7 @@
 #include "chip.hpp"
 #include "irqsource.hpp"
 #include "saveable.hpp"
+#include "cycleaction.hpp"
 ///
 
 /// Forward declarations
@@ -44,7 +45,7 @@ struct AudioBufferBase;
 /// Class Pokey
 // This class emulates (undoubtfully) the Pokey sound/UART/Keyboard
 // controller of the Atari's.
-class Pokey : public Chip, public Page, public Saveable, private HBIAction, private IRQSource {
+class Pokey : public Chip, public Page, public Saveable, private HBIAction, private CycleAction, private IRQSource {
   //
   // Links to other system components
   class Sound     *sound;
@@ -81,9 +82,9 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
     UBYTE cludge1[3];    // for LW alignment: eight bytes so far.
     //
     LONG *HiPtr;         // pointer to the corresponding high-part of a 16 bit counter
-    LONG  DivNIRQ;       // Counter for hardware timer
     LONG  DivNCnt;       // Counter for sample frequency
     LONG  DivNMax;       // Computed counter maximum
+    LONG  DivNIRQ;       // Counter for IRQ purposes
     LONG  DivFullMax;    // The base maximum frequency if this the low-part of a 16bit counter
     LONG  Zero;          // Must always be 0
     //
@@ -92,9 +93,10 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
     {   
       HiFlop     = 0x00;
       DivNMax    = 0;
-      DivNIRQ    = 0;
       DivNCnt    = 0;
       DivFullMax = 0;
+      DivNMax    = 0;
+      DivNIRQ    = 0;
       Zero       = 0;
       OutBit     = 0;
       ChannelOn  = false;
@@ -164,7 +166,7 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
   // to emulate the POT reading. I don't know which programs really
   // require these, but who knows?
   UBYTE         PotNCnt[8],PotNMax[8];
-  int           PotNInc;
+  //
   // AllPot flag byte for the potentiometer counter.
   UBYTE         AllPot;
   //
@@ -198,6 +200,7 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
   LONG Volume;             // volume gain for output mapping in percent (100% => full volume)
   bool NTSC;               // PAL/NTSC switch, true for NTSC
   bool SIOSound;           // Enable emulation of serial transfer sound
+  bool CycleTimers;        // Pokey timers are cycle-precise.
   //
   // Serial input buffer: Position of the buffer, and number of bytes
   // in there.
@@ -207,6 +210,11 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
   // Generate a pokey IRQ of the given bits
   // in positive logic.
   void GenerateIRQ(UBYTE bits);
+  //
+  // Advance the measurement of the potentiometer (A/D converter) input
+  // by N steps. Depending on the measurement mode, this is either a
+  // line-based or a cycle-based measurement.
+  void UpdatePots(int steps);
   //
   // Reading and writing bytes to Pokey
   virtual UBYTE ComplexRead(ADR mem);
@@ -239,10 +247,17 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
   // after an audio specific update.
   void UpdateSound(UBYTE channelmask);  
   //
+  // Update the pokey times by N steps.
+  void GoNSteps(int steps);
+  //
   // Generate a scanline: This must be called each horizontal blank
   // to trigger pending IRQs. (Not as precise as the real thing, but 
   // good enough for most applications)
   virtual void HBI(void);
+  //
+  // Run a single CPU step, advance by a single cycle.
+  virtual void Step(void);
+  //
 public:
   // Construct pokey. If we have more than one pokey in the
   // system, the argument describes which one we have.

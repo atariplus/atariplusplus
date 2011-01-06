@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gamecontrollernode.cpp,v 1.4 2008/05/19 19:55:40 thor Exp $
+ ** $Id: gamecontrollernode.cpp,v 1.5 2010-04-25 20:30:43 thor Exp $
  **
  ** In this module: Definition of the interface towards game controller inputs
  **                 This is the Atari side of the game controller input.
@@ -36,6 +36,7 @@ GameControllerNode::GameControllerNode(class Machine *mach,int unit,const char *
   position[1] = 0;
   button[0]   = false;
   button[1]   = false;
+  Axis        = Unit & 0x01;
   
   if (Unit == 0 && !IsPaddle) {
     // FIX: Do not connect the paddle as it will also feed joystick input
@@ -124,7 +125,7 @@ UBYTE GameControllerNode::Stick(void)
 bool GameControllerNode::Strig(void)
 {
   if (IsPaddle) {
-    return button[Unit & 0x01];
+    return button[Axis];
   }
   return button[0];
 }
@@ -136,7 +137,7 @@ UBYTE GameControllerNode::Paddle(void)
 {
   int pot;
   // Depends on the unit now
-  pot = position[Unit & 0x01];
+  pot = position[Axis];
   // If the paddle direction should be inverted, check here.
   if (InvertPaddle)
     pot = -pot;
@@ -271,8 +272,14 @@ void GameControllerNode::ParseArgs(class ArgParser *args)
   char optionname[80];
   char portname[80];
   char invertname[80];
+  char axisname[80];
   LONG id;
   struct ArgParser::SelectionVector *sel;
+  static const struct ArgParser::SelectionVector axisvector[] = 
+    { {"Horizontal"    ,0 },
+      {"Vertical"      ,1 },
+      {NULL ,0}
+    };     
 
   // Build up the list of game ports we have.
   BuildPortVector();
@@ -290,6 +297,7 @@ void GameControllerNode::ParseArgs(class ArgParser *args)
   snprintf(optionname,80,"%s.Sensitivity",DeviceName);
   snprintf(portname,80,"%s.Port",DeviceName);
   snprintf(invertname,80,"%s.Invert",DeviceName);
+  snprintf(axisname,80,"%s.InputAxis",DeviceName);
   args->DefineLong(optionname,"set the game controller sensitivity",
 		   0,32767,Responseness);
   // Find the id of the currently active port within the build up array of
@@ -303,6 +311,9 @@ void GameControllerNode::ParseArgs(class ArgParser *args)
   if (sel->Name == NULL) {
     // Found no matching entry->set to "none"
     id--;
+  }  
+  if (IsPaddle) {
+    args->DefineSelection(axisname,"paddle input axis",axisvector,Axis);
   }
   args->DefineSelection(portname,"set the game controller input device",PossiblePorts,
 			id);

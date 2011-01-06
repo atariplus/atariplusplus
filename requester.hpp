@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: requester.hpp,v 1.6 2008/03/22 14:23:24 thor Exp $
+ ** $Id: requester.hpp,v 1.6 2008-03-22 14:23:24 thor Exp $
  **
  ** In this module: A generic requester class
  **********************************************************************************/
