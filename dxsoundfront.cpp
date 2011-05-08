@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dxsoundfront.cpp,v 1.6 2007-10-19 17:16:34 thor Exp $
+ ** $Id: dxsoundfront.cpp,v 1.7 2011-04-26 17:15:26 thor Exp $
  **
  ** In this module: wrapper class for the DirectX sound interface
  **********************************************************************************/
@@ -89,8 +89,8 @@ struct DXWrapper {
   ~DXWrapper(void)
   {
 #ifdef HAVE_DXSOUND
-	if (buffer) {
-	  buffer->Stop();
+    if (buffer) {
+      buffer->Stop();
       buffer->Release();
       buffer = NULL;
     }
@@ -287,19 +287,19 @@ struct DXWrapper {
   {
 #ifdef HAVE_DXSOUND
     if (buffer && device) {
-		HRESULT hr = buffer->Play(0,0,DSBPLAY_LOOPING);
+      HRESULT hr = buffer->Play(0,0,DSBPLAY_LOOPING);
       if (hr == DS_OK) {
 	active = true;
 	return true;
-	  } else if (hr == DSERR_BUFFERLOST) {
-		  if (buffer->Restore() == DS_OK) {
-			  if (buffer->Play(0,0,DSBPLAY_LOOPING) == DS_OK) {
-			  active = true;
-			  return true;
-		  }
-		}
+      } else if (hr == DSERR_BUFFERLOST) {
+	if (buffer->Restore() == DS_OK) {
+	  if (buffer->Play(0,0,DSBPLAY_LOOPING) == DS_OK) {
+	    active = true;
+	    return true;
 	  }
 	}
+      }
+    }
 #endif
     return false;
   }
@@ -409,24 +409,24 @@ struct DXWrapper {
 	if (fill >= chunks-1)
 	  return NULL;
       }
-	  HRESULT hr;
+      HRESULT hr;
       //
       // Otherwise, this buffer is inactive and we can fill it.
-	  hr = buffer->Lock(fill * chunksize,chunksize,&data1,&size1,&data2,&size2,0);
-	  if (hr == DS_OK) {
+      hr = buffer->Lock(fill * chunksize,chunksize,&data1,&size1,&data2,&size2,0);
+      if (hr == DS_OK) {
 	// Only return the first part. This should be enough since
 	// we always align the buffers correctly. I hope...
 	size = size1;
 	return data1;
-	  } else if (hr == DSERR_BUFFERLOST) {
-		  if (buffer->Restore() == DS_OK) {
-			if (buffer->Lock(fill * chunksize,chunksize,&data1,&size1,&data2,&size2,0) == DS_OK){ 
-				size = size1;
-				return data1;
-			}
-		  }
+      } else if (hr == DSERR_BUFFERLOST) {
+	if (buffer->Restore() == DS_OK) {
+	  if (buffer->Lock(fill * chunksize,chunksize,&data1,&size1,&data2,&size2,0) == DS_OK){ 
+	    size = size1;
+	    return data1;
 	  }
 	}
+      }
+    }
     return NULL;
   }
 #else

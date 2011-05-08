@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: directory.cpp,v 1.10 2006/02/10 23:26:11 thor Exp $
+ ** $Id: directory.cpp,v 1.12 2011-04-26 17:15:26 thor Exp $
  **
  ** In this module: Os compatibility layer for directory reading.
  ** This file takes definitions from "types.h" build by autoconf/configure
@@ -49,12 +49,19 @@ DIR *opendir(const char *name)
 {
   struct DIR *d   = new struct DIR(name);
   d->handle      = _findfirst(d->mask,&(d->d.fdata));
-  return d;
+  if (d->handle != -1) {
+    return d;
+  } else {
+    delete d;
+    return NULL;
+  }
 }
 
 struct dirent *readdir(DIR *dir)
 {
   if (dir->bneedfirst == false) {
+    if (dir->handle == -1)
+      return NULL;
     if (_findnext(dir->handle,&(dir->d.fdata))) {
       return NULL;
     }

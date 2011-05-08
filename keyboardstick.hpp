@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboardstick.hpp,v 1.6 2009-11-25 20:10:38 thor Exp $
+ ** $Id: keyboardstick.hpp,v 1.7 2011-05-01 09:23:58 thor Exp $
  **
  ** In this module: An emulation layer for keyboard driven joysticks
  **********************************************************************************/
@@ -129,7 +129,7 @@ public:
   //
   // Convert a keyboard key back into a keyboard code.
   // Returns zero for invalid names.
-  static int KeyCode(const char *name);
+  static int KeyCode(char *name);
   //
   // Associate an Atari++ specific keyboard code with a front-end specific code.
   void AssociateKey(enum KeyName name,int frontcode);

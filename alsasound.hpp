@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.hpp,v 1.12 2008-05-22 13:03:54 thor Exp $
+ ** $Id: alsasound.hpp,v 1.13 2011-04-15 17:05:57 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -58,6 +58,9 @@ class AlsaSound : public Sound {
   // Effective output frequency. We reduce or increase this
   // depending on whether the buffer over- or underruns.
   LONG                 EffectiveFreq;
+  //
+  // Differential adjustment (D-part of the control loop)
+  LONG                 DifferentialAdjust;
   //
   // frequency carry-over from last computation loop
   LONG                 CycleCarry;

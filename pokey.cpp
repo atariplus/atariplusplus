@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.107 2011-01-07 12:18:46 thor Exp $
+ ** $Id: pokey.cpp,v 1.108 2011-04-28 21:23:21 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -24,6 +24,7 @@
 #include "monitor.hpp"
 #include "gamecontroller.hpp"
 #include "pokey.hpp"
+#include "cpu.hpp"
 #include "snapshot.hpp"
 #include "time.hpp"
 #include "audiobuffer.hpp"
@@ -830,7 +831,7 @@ void Pokey::GoNSteps(int steps)
   for(ch = 0, c = Ch;ch < 4;ch++,c++) {
     static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
     // Yes, channel 3 cannot generate interrupts at all...
-    if ((c->DivNIRQ += steps) > c->DivNMax) {
+    if ((c->DivNIRQ += steps) >= c->DivNMax) {
       // Generate an IRQ now (or not for channel 3)
       if (IRQEnable & irqbits[ch]) {
 	GenerateIRQ(irqbits[ch]);
@@ -893,8 +894,9 @@ void Pokey::HBI(void)
   }
   //
   // Update the HBI event by one.
-  if (!CycleTimers)
+  if (!CycleTimers) {
     GoNSteps(Base15kHz);
+  }
   //
   // Now check keyboard input if we are connected to
   // the keyboard
@@ -1469,6 +1471,8 @@ void Pokey::DisplayStatus(class Monitor *mon)
    mon->PrintStatus("Pokey.%d Status:\n"
 		    "\tAudioFreq0: %02x\tAudioFreq1: %02x\tAudioFreq2: %02x\tAudioFreq3: %02x\n"
 		    "\tAudioCtrl0: %02x\tAudioCtrl1: %02x\tAudioCtrl2: %02x\tAudioCtrl3: %02x\n"
+		    "\tCounter0: %04x\tCounter1: %04x\tCounter2: %04x\tCounter3  : %04x\n"
+		    "\tMax0    : %04x\tMax1    : %04x\tMax2    : %04x\tMax3      : %04x\n"
 		    "\tAudioCtrl : %02x\tSkStat    : %02x\tSkCtrl    : %02x\tKeyCode   : %02x\n"
 		    "\tIRQStat   : %02x\tIRQEnable : %02x\n"
 		    "\tSerInDly  : " LD "\tSerOutDly : " LD "\tSerXmtDly : " LD "\n"
@@ -1477,6 +1481,8 @@ void Pokey::DisplayStatus(class Monitor *mon)
 		    Unit,
 		    Ch[0].AudioF,Ch[1].AudioF,Ch[2].AudioF,Ch[3].AudioF,
 		    Ch[0].AudioC,Ch[1].AudioC,Ch[2].AudioC,Ch[3].AudioC,
+		    Ch[0].DivNIRQ,Ch[1].DivNIRQ,Ch[2].DivNIRQ,Ch[3].DivNIRQ,
+		    Ch[0].DivNMax,Ch[1].DivNMax,Ch[2].DivNMax,Ch[3].DivNMax,
 		    AudioCtrl,SkStat   ,SkCtrl,KBCodeRead(),
 		    IRQStat  ,IRQEnable,
 		    SerIn_Delay,SerOut_Delay,SerXmtDone_Delay,

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: textgadget.hpp,v 1.4 2008-03-22 23:05:20 thor Exp $
+ ** $Id: textgadget.hpp,v 1.4 2008/03/22 23:05:20 thor Exp $
  **
  ** In this module: Definition of a text display gadget
  **********************************************************************************/

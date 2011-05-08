@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.79 2011-01-06 14:33:05 thor Exp $
+# $Id: README.History,v 1.81 2011-05-08 16:11:06 thor Exp $
 #
 
 Atari++ 1.00:
@@ -749,4 +749,25 @@ Atari++ 1.59
 	  possible in the original hardware.
 	- Added a cycle-precise Pokey emulation that updates interrupt registers and
 	  potentiometer registers on a cycle-by-cycle basis.
+
+Atari++ 1.60
+	- Redesigned parts of the pokey emulation. The new version offers the option to
+	  be cycle-precise, i.e. pokey interrupts (POTs and timers) arrive now at
+	  the cycle. This improves the audio output for the "Electronic Speach Systems
+	  of Berkeley" considerably. (Kennedy Approach and others)
+	- Redesigned parts of the audio interfaces. The smarter audio output count now
+	  clock cycles and generate output for exactly the number of clocks passed.
+	  The output frequency still requires dynamic adjustment since the CPU load of
+	  the host system is never precisely in sync with the emulated clock.
+	- The control mechanism to bring the emulated clock and the system clock in 
+	  sync has been improved, it is now a PID type of control loop that gets faster
+	  in sync than the previous versions.
+	- The improved audio output is available currently only for the ALSA and DirectX
+	  audio output chains. Oss/OssHQ and SDL remain unaltered. There is, however,
+	  little reason to fall back to the less precise chains. Prefer ALSA on Linux and
+	  DirectX on Windows.
+	- The parser for the keypad stick emulation was still buggy (oh bummer!) and was
+	  finally fixed. "Space" and " " can now both be used.
+	- The windows emulation of the readdir() primtives still had a bug and could
+	  crash the emulator on accessing a network volume. Fixed.
 

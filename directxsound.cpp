@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: directxsound.cpp,v 1.9 2005/09/20 21:13:02 thor Exp $
+ ** $Id: directxsound.cpp,v 1.13 2011-04-28 21:23:21 thor Exp $
  **
  ** In this module: Sound frontend for direct X sound output under Win32
  ** and related M$ "operating systems".
@@ -16,6 +16,7 @@
 #include "argparser.hpp"
 #include "timer.hpp"
 #include "pokey.hpp"
+#include "cpu.hpp"
 #include "exceptions.hpp"
 #include "directxsound.hpp"
 #include "audiobuffer.hpp"
@@ -147,6 +148,8 @@ void DirectXSound::WarmStart(void)
   //
   // Dispose the old buffers now.
   CleanBuffer();
+  EffectiveFreq		 = SamplingFreq;
+  DifferentialAdjust = 0;
   BufferedSamples    = 0;
 }
 ///
@@ -271,17 +274,23 @@ bool DirectXSound::InitializeDsp(void)
 void DirectXSound::HBI(void)
 {
   if (EnableSound && SoundStream) {
-    LONG remaining,samples;
+    LONG  remaining,samples;
+    ULONG cycles   = machine->CPU()->ElapsedCycles();
     // Compute the number of samples we need to generate this time.
-    remaining      = EffectiveFreq + CycleCarry; // the number of sampling cycles left this time.
-    samples        = remaining / PokeyFreq;      // number of samples to generate this time.
-    CycleCarry     = remaining - samples * PokeyFreq; // keep the number of samples we did not take due to round-off
+    // Note that the pokey base frequency is the HBI frequency. The number of clocks
+    // per HBI is 114.
+    remaining      = EffectiveFreq + DifferentialAdjust; // the number of sampling cycles left this time.
+    // number of samples to generate this time.
+    samples        = (remaining * cycles + CycleCarry) / (PokeyFreq * 114);         
+    // keep the number of samples we did not take due to round-off   
+    CycleCarry    += remaining  * cycles - samples * PokeyFreq * UQUAD(114); 
     UpdateSamples += samples;
-    if (UpdateSamples) {
+    //
+    if (UpdateSamples > 0) {
       // Compute this number of samples, and put it into the buffer.
       GenerateSamples(UpdateSamples);
-      UpdateSamples  = 0;
-      UpdateBuffer   = false;
+      UpdateSamples     = 0;
+      UpdateBuffer      = false;
     }
   }
 }
@@ -324,11 +333,14 @@ void DirectXSound::UpdateSound(class Timer *delay)
   if (EnableSound) {
     // Signal that we must now re-generate some samples as the audio
     // setting changed.
-    UpdateBuffer = true;
+    UpdateBuffer       = true;
+    DifferentialAdjust = 0;
     // Ok, re-feed the device. In case of underrun, generate some samples manually.
     do {
-      if (!FeedDevice(delay))
-	AdjustUnderrun();
+	  if (!FeedDevice(delay)) {
+		GenerateSamples((FragSamples << 1) - BufferedSamples);
+		AdjustUnderrun();
+	  }
       // If there is nothing to delay, bail out.
       if (delay == NULL) break;
       // Otherwise, delay until the delay time is over.
@@ -340,9 +352,10 @@ void DirectXSound::UpdateSound(class Timer *delay)
     if (BufferedSamples > ULONG(NumFrags-2) * FragSamples) {
       AdjustOverrun();
     }
+    //
     // If there is only one fragment in the buffer, signal underrun as well
     if (delay && BufferedSamples < (FragSamples << 1)) {
-      GenerateSamples(FragSamples);
+      GenerateSamples((FragSamples << 1) - BufferedSamples);
       AdjustUnderrun();
     }
   } else {
@@ -365,7 +378,11 @@ void DirectXSound::AdjustOverrun(void)
   newfreq = (EffectiveFreq * 16383) >> 14;
   if (newfreq >= EffectiveFreq && newfreq > 0)
     newfreq--;
-  EffectiveFreq = newfreq;
+  EffectiveFreq = newfreq; 
+  DifferentialAdjust = -(LONG(BufferedSamples - FragSamples * NumFrags) * newfreq) >> 12;
+  if (-DifferentialAdjust >= (newfreq >> 1))
+    DifferentialAdjust = -(newfreq >> 1);
+  //
   // Drop buffer bytes we should have generated so far.
   UpdateSamples = 0;
   //printf("Overrun! Freq now=%ld\n",EffectiveFreq);
@@ -379,7 +396,7 @@ void DirectXSound::AdjustUnderrun(void)
   LONG newfreq;
   // The buffer is running empty. We are generating
   // too few samples. Enlarge the effective frequency to keep track.
-  newfreq = (EffectiveFreq << 12) / 4095;
+  newfreq = (EffectiveFreq << 12) / 4094;
   if (newfreq <= EffectiveFreq)
     newfreq++;
   EffectiveFreq = newfreq;

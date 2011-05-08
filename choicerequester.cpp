@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: choicerequester.cpp,v 1.10 2008-05-25 18:17:30 thor Exp $
+ ** $Id: choicerequester.cpp,v 1.10 2008/05/25 18:17:30 thor Exp $
  **
  ** In this module: A requester that allows the user to pick multiple choices
  **********************************************************************************/

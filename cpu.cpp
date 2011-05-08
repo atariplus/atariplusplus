@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.100 2010-11-06 16:43:25 thor Exp $
+ ** $Id: cpu.cpp,v 1.102 2011-04-28 21:23:20 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -86,6 +86,7 @@ CPU::CPU(class Machine *mach)
   TraceS                 = 0xff;
   InterruptS             = 0x00;
   IRQMask                = 0;
+  CycleCounter           = 0;
   NMI                    = false;
   Halted                 = false;
   IFlag                  = false;
@@ -104,6 +105,7 @@ CPU::CPU(class Machine *mach)
   // Allocate all cycles. This simplifies overflow handling
   // in the GTIA scanline creator; namely, we won't need any.
   memset(StolenCycles,1,sizeof(StolenCycles));
+  LastCycle = StolenCycles + 114; // size of a scanline in cycles.
   HBI();
 }
 ///
@@ -1028,7 +1030,7 @@ UWORD CPU::DecodeUnit::Execute(UWORD)
     Cpu->NextStep       = aeu[1];
     Cpu->ExecutionSteps = aeu + 2;
     Cpu->InterruptS     = Cpu->GlobalS;
-    return (*aeu)->Execute(0);          // start the NMI processing here.
+    return (*aeu)->Execute(0);          // start the IRQ processing here.
   }
   //
   // Fetch the next Opcode: This counts as one execution step.
@@ -3970,6 +3972,7 @@ void CPU::WarmStart(void)
   GlobalY        = 0x00;
   GlobalP        = 0x20;  // the unused bit is always on
   GlobalS        = 0xff;  // reset stack pointer to top of stack
+  CycleCounter   = 0;
   // Fetch the reset vector and run from there.
   ExecutionSteps = Instructions[0x100]->Sequence;
   NextStep       = *ExecutionSteps++;
@@ -4268,6 +4271,7 @@ void CPU::HBI(void)
     memset(StolenCycles,1,WSyncPosition);
   }
   Halted = false;
+  NMI    = false;
 }
 ///
 

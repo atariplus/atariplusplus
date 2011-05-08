@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gamecontrollernode.cpp,v 1.5 2010-04-25 20:30:43 thor Exp $
+ ** $Id: gamecontrollernode.cpp,v 1.6 2011-04-15 21:44:23 thor Exp $
  **
  ** In this module: Definition of the interface towards game controller inputs
  **                 This is the Atari side of the game controller input.
@@ -38,7 +38,7 @@ GameControllerNode::GameControllerNode(class Machine *mach,int unit,const char *
   button[1]   = false;
   Axis        = Unit & 0x01;
   
-  if (Unit == 0 && !IsPaddle) {
+  if (Unit == 0 && !IsPaddle && strcmp("Lightpen",name)) {
     // FIX: Do not connect the paddle as it will also feed joystick input
     // Set the default device to the keypad stick
     PortName = new char[strlen("KeypadStick.0") + 1];
@@ -330,6 +330,7 @@ void GameControllerNode::ParseArgs(class ArgParser *args)
     // Copy the name over, it is non-trivial.
     PortName = new char[strlen(src) + 1];
     strcpy(PortName,src);
+    Link(NULL);
   }
   if (PortName) {
     // Check whether we have a game port for it to attach it to.

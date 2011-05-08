@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: adrspace.hpp,v 1.17 2003/02/01 20:32:02 thor Exp $
+ ** $Id: adrspace.hpp,v 1.18 2011-04-28 21:23:20 thor Exp $
  **
  ** In this module: Definition of the complete 64K address space of the emulator
  **********************************************************************************/
@@ -71,7 +71,7 @@ public:
     }
     if (pages[mem >> PAGE_SHIFT] == NULL)
       Throw(ObjectDoesntExist,"Page::WriteByte","Page is undefined");
-#endif    
+#endif
     return pages[mem >> PAGE_SHIFT]->WriteByte(mem,val);
   } 
   //

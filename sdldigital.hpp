@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdldigital.hpp,v 1.4 2008-05-22 13:03:54 thor Exp $
+ ** $Id: sdldigital.hpp,v 1.4 2008/05/22 13:03:54 thor Exp $
  **
  ** In this module: SDL digitial el-cheapo joystick interface
  **********************************************************************************/

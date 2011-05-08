@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartossb.cpp,v 1.8 2006/05/25 17:44:16 thor Exp $
+ ** $Id: cartossb.cpp,v 1.9 2011-04-15 20:35:08 thor Exp $
  **
  ** In this module: The implementation of an Oss Supercart
  ** with alternative mapping
@@ -108,7 +108,7 @@ bool CartOSSB::MapCart(class MMU *mmu)
 	mmu->MapPage(i,Rom+(((i-0xa000)>>PAGE_SHIFT)));
       }
       break;
-    case -1: 
+    case 0xff: 
       // map blank area here (0xd502)
       for(i=0xa000;i<0xb000;i+=PAGE_LENGTH) {
 	mmu->MapPage(i,&Blank);
@@ -152,7 +152,7 @@ bool CartOSSB::ComplexWrite(class MMU *mmu,ADR mem,UBYTE)
     break;
   case 2:
   case 6:
-    newbank      = -1;
+    newbank      = 0xff;
     newdisabled  = false;
     break;
   case 1:

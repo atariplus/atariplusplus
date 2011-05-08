@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mathpackpatch.cpp,v 1.19 2008-09-24 15:05:23 thor Exp $
+ ** $Id: mathpackpatch.cpp,v 1.19 2008/09/24 15:05:23 thor Exp $
  **
  ** In this module: Replacements for MathPack calls for speedup
  **********************************************************************************/

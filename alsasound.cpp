@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.25 2010-02-28 10:48:49 thor Exp $
+ ** $Id: alsasound.cpp,v 1.29 2011-04-21 21:35:15 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -15,11 +15,13 @@
 #include "argparser.hpp"
 #include "timer.hpp"
 #include "pokey.hpp"
+#include "cpu.hpp"
 #include "exceptions.hpp"
 #include "alsasound.hpp"
 #include "audiobuffer.hpp"
 #include "unistd.hpp"
 #include "new.hpp"
+#include <assert.h>
 #if HAVE_ALSA_ASOUNDLIB_H && HAVE_SND_PCM_OPEN && HAS_PROPER_ALSA
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #include <alsa/asoundlib.h>
@@ -132,16 +134,15 @@ void AlsaSound::ColdStart(void)
 // Run a simple reset here.
 void AlsaSound::WarmStart(void)
 {
-  ULONG minsamples   = (NumFrags - 2)<<FragSize;
   ConsoleSpeakerStat = false;  
   //
   // Dispose the old audio buffer nodes now.
   CleanBuffer();
   //
   // Reset generation frequency
-  EffectiveFreq   = SamplingFreq;
-  // Fill the audio buffer here.
-  GenerateSamples(minsamples);
+  EffectiveFreq      = SamplingFreq;
+  DifferentialAdjust = 0;
+  BufferedSamples    = 0;
 }
 ///
 
@@ -151,7 +152,7 @@ void AlsaSound::ConsoleSpeaker(bool onoff)
 {
   if (ConsoleSpeakerStat != onoff) {
     ConsoleSpeakerStat = onoff;
-    UpdateBuffer = true;
+    //UpdateBuffer = true;
     UpdateSound(NULL);
   }
 }
@@ -363,14 +364,14 @@ bool AlsaSound::InitializeDsp(void)
   }
   //
   // Setup the effective buffering frequency.
-  EffectiveFreq   = SamplingFreq;
-
-  CycleCarry      = 0;
-  UpdateBuffer    = false;
-  UpdateSamples   = 0;
+  EffectiveFreq      = SamplingFreq;
+  DifferentialAdjust = 0;
+  CycleCarry         = 0;
+  UpdateBuffer       = false;
+  UpdateSamples      = 0;
   // Compute the size of a frame in bits
-  FragSamples     = fragsize;
-  BufferSize      = FragSamples * NumFrags;
+  FragSamples        = fragsize;
+  BufferSize         = FragSamples * NumFrags;
   //
   // Start the async handler now.
   if ((err = snd_async_add_pcm_handler(&AsyncHandler,SoundStream,&AlsaSound::AlsaCallBackStub,this)) < 0) {
@@ -419,9 +420,11 @@ void AlsaSound::AlsaCallBack(void)
 	if (PlayingBuffer == NULL) {
 	  // Ok, check whether we may launch pokey directly here. This might
 	  // be valid if the main thread is waiting in the VBI anyhow.	   
-	  // printf("AlsaCallBack based ");
+	  assert(BufferedSamples == 0);
+	  //printf("AlsaCallBack based ");
 	  AdjustUnderrun();
 	  if (MayRunPokey) {
+	    //printf("Alsa buffer run out of data, must generate more now\n");
 	    GenerateSamples(avail);
 	    continue;
 	  } else {
@@ -446,6 +449,27 @@ void AlsaSound::AlsaCallBack(void)
 	  //printf("underrun %d\n",err);
 	  return;
 	}
+#if 0
+	{
+	  static ULONG samplecnt = 0;
+	  static time_t starttime = 0;
+	  static time_t nowtime = 0;
+	  struct timeval tv;
+
+	  if (starttime == 0) {
+	    gettimeofday(&tv,NULL);
+	    starttime = tv.tv_sec;
+	  }
+	  gettimeofday(&tv,NULL);
+	  nowtime = tv.tv_sec;
+
+	  if (nowtime> starttime) {
+	    printf("%g\n",samplecnt / (double)((nowtime - starttime)));
+	  }
+	  samplecnt += err;
+	}
+#endif
+	//printf("%d.%d.%d\n",avail,cpy,err);
 	// Otherwise, it returns the number of frames (does it?)
 	avail                  -= err;
 	BufferedSamples        -= err;
@@ -461,11 +485,13 @@ void AlsaSound::AlsaCallBack(void)
 	}
       }
     }
+    /*
     if (BufferedSamples < FragSamples) {
       // Better enlarge the frequency to avoid the trouble...
-      // printf("AlsaCallBack tail based ");
+      printf("AlsaCallBack tail based ");
       AdjustUnderrun();
     }
+    */
   }
 }
 ///
@@ -477,18 +503,20 @@ void AlsaSound::AlsaCallBack(void)
 void AlsaSound::HBI(void)
 {
   if (EnableSound) {
-    LONG remaining,samples;
+    LONG  remaining,samples;
+    ULONG cycles   = machine->CPU()->ElapsedCycles();
     // Compute the number of samples we need to generate this time.
-    remaining      = EffectiveFreq + CycleCarry; // the number of sampling cycles left this time.
-    samples        = remaining / PokeyFreq;      // number of samples to generate this time.
-    CycleCarry     = remaining - samples * PokeyFreq; // keep the number of samples we did not take due to round-off
+    // Note that the pokey base frequency is the HBI frequency. The number of clocks
+    // per HBI is 114.
+    remaining      = EffectiveFreq + DifferentialAdjust; // the number of sampling cycles left this time.
+    // number of samples to generate this time.
+    samples        = (remaining * cycles + CycleCarry) / (PokeyFreq * 114);         
+    // keep the number of samples we did not take due to round-off   
+    CycleCarry    += remaining  * cycles - samples * PokeyFreq * UQUAD(114); 
+    assert(CycleCarry >= 0);
     UpdateSamples += samples;
-    // Check whether we can avoid the update to reduce the overhead of computing very tiny amounts of data
-    // We can't if we collected too many bytes already
-    if (UpdateSamples >= FragSamples) {
-      UpdateBuffer = true;
-    }
-    if (UpdateBuffer) {
+    //
+    if (UpdateSamples > 0) {
       // Compute this number of samples, and put it into the buffer.
       SuspendAudio();
       GenerateSamples(UpdateSamples);
@@ -513,25 +541,27 @@ void AlsaSound::UpdateSound(class Timer *delay)
       // Here we are in the VBI state. Check now at the end of the VBI
       // how many bytes are left.
       SuspendAudio();
+      DifferentialAdjust = 0;
       // Check how many bytes we got buffered. If too many, cut the frequency down.
-      if (BufferedSamples > (BufferSize + (FragSamples<<1))) {
+      if (BufferedSamples > (BufferSize + FragSamples)) {
 	AdjustOverrun();
       }
       ResumeAudio();
+      //
       MayRunPokey       = true; // as no one is working with it, go ahead!
       delay->WaitForEvent();    
       MayRunPokey       = false;
+      //
       SuspendAudio();
-      // Check whether the buffered bytes are getting too short.
-      if (BufferedSamples < FragSamples<<2) {
+      if (BufferedSamples < (FragSamples << 2)) {
 	// Better enlarge the frequency to avoid the trouble...
-	// printf("UpdateSound based ");
+	//printf("UpdateSound based ");
+	GenerateSamples((FragSamples << 2) - BufferedSamples);
 	AdjustUnderrun();
-	// Refill the buffer immediately to avoid a near buffer stall
-	GenerateSamples(FragSamples);
-      
       }
       ResumeAudio();
+    } else {
+      HBI();
     }
   } else {
     // No sound enabled, just wait.
@@ -549,13 +579,19 @@ void AlsaSound::AdjustOverrun(void)
   // The buffer is running too full. This means we are
   // generating samples too fast. Reduce the sampling frequency.
   // We must do this very carefully as overruns accumulate data
-  newfreq = (EffectiveFreq * 4095) >> 12;
+  newfreq = (EffectiveFreq * 4015) >> 12;
   if (newfreq >= EffectiveFreq)
     newfreq--;
-  EffectiveFreq = newfreq;
+  EffectiveFreq      = newfreq;
+  DifferentialAdjust = -(LONG(BufferedSamples - BufferSize) * newfreq) >> 12;
+  if (-DifferentialAdjust >= (newfreq >> 1))
+    DifferentialAdjust = -(newfreq >> 1);
   // Drop buffer bytes we should have generated so far.
   UpdateSamples = 0;
-  //printf("Overrun!  BufBytes = %u Freq now=%d\n",BufferedSamples,EffectiveFreq);
+#if 0
+  printf("Overrun!  BufBytes = %u Freq now=%d, DA= %d, Target = %d\n",
+	 BufferedSamples,EffectiveFreq + DifferentialAdjust,DifferentialAdjust,BufferSize);
+#endif
 }
 ///
 
@@ -570,11 +606,16 @@ void AlsaSound::AdjustUnderrun(void)
   if (newfreq <= EffectiveFreq)
     newfreq++;
   if (newfreq <= (SamplingFreq << 1))
-    EffectiveFreq = newfreq;
+    EffectiveFreq    = newfreq;
+  //
+  DifferentialAdjust = 0;
   // We underrrun, or are near to underrun. We'd better update the
   // the buffer and flush all buffered bytes to prevent the worst.
   UpdateBuffer = true;
-  //printf("Underrun! BufBytes = %u Freq now=%d\n",BufferedSamples,EffectiveFreq);
+#if 0
+  printf("Underrun! BufBytes = %u Freq now=%d, DA = %d, Target = %d\n",
+	 BufferedSamples,EffectiveFreq + DifferentialAdjust,DifferentialAdjust,BufferSize);
+#endif
 }
 ///
 
@@ -635,13 +676,14 @@ void AlsaSound::ParseArgs(class ArgParser *args)
   args->DefineLong("FragSize","set the exponent of the fragment size",
 		   2,16,FragSize);
   args->DefineLong("NumFrags","specify the number of fragments",
-		   6,256,NumFrags);  
+		   4,16,NumFrags);  
   // Re-read the base frequency
   PokeyFreq = LeftPokey->BaseFrequency();
   if (SoundStream) {    
     snd_pcm_close(SoundStream);
     SoundStream = NULL;
     CleanBuffer();
+    BufferedSamples = 0;
   }
   if (enable) {
     EnableSound = true;

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.55 2011-01-07 12:18:46 thor Exp $
+ ** $Id: cpu.hpp,v 1.57 2011-04-28 21:23:20 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -152,8 +152,15 @@ public:
   // Pointer to the current DMA slot.
   UBYTE *CurCycle;
   //
+  // Pointer to the last available cycle.
+  UBYTE *LastCycle;
+  //
+  // Current CPU cycle counter. This counts the number of cycles to the next
+  // cycle reset and is used to control the sound output.
+  ULONG  CycleCounter;
+  //
   // CPU preferences
-  LONG WSyncPosition; // horizontal position of the WSync release slot. Defaults to 104.
+  LONG   WSyncPosition; // horizontal position of the WSync release slot. Defaults to 104.
   //
   // Set this to enable tracing on a reset
   bool TraceOnReset;
@@ -1343,9 +1350,6 @@ public:
     }
 #endif
     //
-    // Advance the rest of the hardware by a single cycle
-    machine->Step();
-    //
     // Check whether there is a CPU slot available (and not stolen by DMA)
     // or blocked by WSync wait
     if (*CurCycle == 0) {
@@ -1363,8 +1367,14 @@ public:
 #endif
       AtomicExecutionOperand = current->Execute(AtomicExecutionOperand);
     }
+    CycleCounter++;
     // Bump the horizontal position.
     CurCycle++;
+    //CurCycle - StolenCycles
+    //
+    // Advance the rest of the hardware by a single cycle
+    if (CurCycle <= LastCycle) 
+      machine->Step();
   }
   //
   // Go for an indicated number of cycles and return the
@@ -1391,6 +1401,17 @@ public:
   int CurrentXPos(void) const
   {
     return int(CurCycle - StolenCycles);
+  }
+  //
+  // Return the number of cycles since the last time the cycle counter was read,
+  // and reset it.
+  ULONG ElapsedCycles(void)
+  {
+    ULONG cnt = CycleCounter;
+    
+    CycleCounter = 0;
+
+    return cnt;
   }
   //
   // Generate a maskable interrupt, given a mask that identifies the source of the

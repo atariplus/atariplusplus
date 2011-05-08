@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboardstick.cpp,v 1.5 2009-11-25 20:10:38 thor Exp $
+ ** $Id: keyboardstick.cpp,v 1.8 2011-05-01 09:23:58 thor Exp $
  **
  ** In this module: An emulation layer for keyboard driven joysticks
  **********************************************************************************/
@@ -29,68 +29,67 @@ const char *KeyboardStick::KeyName(int keycode)
     buf[0] = char(keycode - 'a' + 'A');
     buf[1] = 0;
     return buf;
-  } else if (keycode == ' ') {
-    buf[0] = ' ';
-    buf[1] = 0;
   } else switch(keycode) {
-  case ArrowLeft:
-    return "Cursor Left";
-  case ArrowRight:
-    return "Cursor Right";
-  case ArrowUp:
-    return "Cursor Up";
-  case ArrowDown:
-    return "Cursor Down";
-  case Return:
-    return "Return";
-  case Tab:
-    return "Tab";
-  case Backspace:
-    return "Backspace";
-  case KP_0:
-    return "Keypad 0";
-  case KP_1:
-    return "Keypad 1";
-  case KP_2:
-    return "Keypad 2";
-  case KP_3:
-    return "Keypad 3";
-  case KP_4:
-    return "Keypad 4";
-  case KP_5:
-    return "Keypad 5";
-  case KP_6:
-    return "Keypad 6";
-  case KP_7:
-    return "Keypad 7";
-  case KP_8:
-    return "Keypad 8";
-  case KP_9:
-    return "Keypad 9";
-  case KP_Divide:
-    return "Keypad Divide";
-  case KP_Times:
-    return "Keypad Multiply";
-  case KP_Minus:
-    return "Keypad Minus";
-  case KP_Plus:
-    return "Keypad Plus";
-  case KP_Enter:
-    return "Keypad Enter";
-  case KP_Digit:
-    return "Keypad Dot";
-  case SP_Insert:
-    return "Insert";
-  case SP_Delete:
-    return "Delete";
-  case SP_Home:
-    return "Home";
-  case SP_End:
-    return "End";
-  case SP_ScrollUp:
-    return "Scroll Up";
-  case SP_ScrollDown:
-    return "Scroll Down";
+    case ' ':
+      return "Space";
+    case ArrowLeft:
+      return "Cursor Left";
+    case ArrowRight:
+      return "Cursor Right";
+    case ArrowUp:
+      return "Cursor Up";
+    case ArrowDown:
+      return "Cursor Down";
+    case Return:
+      return "Return";
+    case Tab:
+      return "Tab";
+    case Backspace:
+      return "Backspace";
+    case KP_0:
+      return "Keypad 0";
+    case KP_1:
+      return "Keypad 1";
+    case KP_2:
+      return "Keypad 2";
+    case KP_3:
+      return "Keypad 3";
+    case KP_4:
+      return "Keypad 4";
+    case KP_5:
+      return "Keypad 5";
+    case KP_6:
+      return "Keypad 6";
+    case KP_7:
+      return "Keypad 7";
+    case KP_8:
+      return "Keypad 8";
+    case KP_9:
+      return "Keypad 9";
+    case KP_Divide:
+      return "Keypad Divide";
+    case KP_Times:
+      return "Keypad Multiply";
+    case KP_Minus:
+      return "Keypad Minus";
+    case KP_Plus:
+      return "Keypad Plus";
+    case KP_Enter:
+      return "Keypad Enter";
+    case KP_Digit:
+      return "Keypad Dot";
+    case SP_Insert:
+      return "Insert";
+    case SP_Delete:
+      return "Delete";
+    case SP_Home:
+      return "Home";
+    case SP_End:
+      return "End";
+    case SP_ScrollUp:
+      return "Scroll Up";
+    case SP_ScrollDown:
+      return "Scroll Down";
   }
   //
   // Not defined. Return an error.
@@ -101,28 +100,38 @@ const char *KeyboardStick::KeyName(int keycode)
 /// KeyboardStick::KeyCode
 // Convert a keyboard key back into a keyboard code.
 // Returns zero for invalid names.
-int KeyboardStick::KeyCode(const char *name)
+int KeyboardStick::KeyCode(char *name)
 {
   int i;
   
   if (strlen(name) == 1) {
-    if (*name == ' ')
+    if (*name == ' ') {
+      strcpy(name,"Space");
       return ' ';
+    }
     if (*name >= '0' && *name <= '9')
       return *name;
     if (*name >= 'A' && *name <= 'Z')
       return *name;
-    if (*name >= 'a' && *name <= 'z')
-      return *name + 'A' - 'a';
+    if (*name >= 'a' && *name <= 'z') {
+      *name += 'A' - 'a';
+      return *name ;
+    }
   }
   //
   // All should compare to special strings.
   for(i = ArrowLeft;i < Count;i++) {
     const char *key = KeyName(i);
     if (key) {
-      if (!strcmp(name,key))
+      if (!strcasecmp(name,key)) {
+	strcpy(name,key);
 	return i;
+      }
     }
+  }
+  if (!strcasecmp(name,"Space") || !strcasecmp(name,"Spacebar")) {
+    strcpy(name,"Space");
+    return ' ';
   }
   //
   // Invalid name.
@@ -291,8 +300,12 @@ bool KeyboardStick::HandleJoystickKeys(bool updown,int frontcode)
   int internal = 0;
   int dx,dy,button;
   //
+  // Do not eat events if nobody is listening.
+  if (ControllerChain().First() == NULL)
+    return false;
+  //
   // First convert to the internal code.
-  if (frontcode < 0x100) {
+  if (frontcode < 0x100 && frontcode >= 0x20) {
     internal = frontcode;
     if (internal >= 'a' && internal <= 'z') 
       internal = frontcode + 'A' - 'a';
@@ -397,7 +410,7 @@ void KeyboardStick::ParseArgs(class ArgParser *args)
   // Now check whether we can find proper key for everything.
   for(dy = 0;dy <= 2;dy++) {
     for(dx = 0;dx <= 2;dx++) {
-      if (*DirectionNames[dx][dx] == 0) {
+      if (*DirectionNames[dx][dy] == 0) {
 	DirectionCodes[dx][dy] = 0;
       } else {
 	int code = KeyCode(DirectionNames[dx][dy]);

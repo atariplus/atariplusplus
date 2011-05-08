@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: directxsound.hpp,v 1.6 2005/09/10 12:55:40 thor Exp $
+ ** $Id: directxsound.hpp,v 1.7 2011-04-21 21:35:16 thor Exp $
  **
  ** In this module: Sound frontend for direct X sound output under Win32
  ** and related M$ "operating systems".
@@ -43,7 +43,10 @@ class DirectXSound : public Sound, public SDLClient {
   //
   // Effective output frequency. We reduce or increase this
   // depending on whether the buffer over- or underruns.
-  LONG             EffectiveFreq;
+  LONG             EffectiveFreq; 
+  //
+  // Differential adjustment (D-part of the control loop)
+  LONG             DifferentialAdjust;
   //
   // frequency carry-over from last computation loop
   LONG             CycleCarry;
