@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: page.hpp,v 1.14 2003/02/01 20:32:02 thor Exp $
+ ** $Id: page.hpp,v 1.15 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Definition of an abstract page, keeping 256 in common
  **********************************************************************************/
@@ -33,7 +33,7 @@ protected:
   // The following two are defined for memory mapped IO or for ROM access
   // or whatever.
   virtual UBYTE ComplexRead(ADR mem) = 0;
-  virtual bool ComplexWrite(ADR mem,UBYTE value) = 0;
+  virtual void  ComplexWrite(ADR mem,UBYTE value) = 0;
   //
 public:
   //
@@ -67,13 +67,12 @@ public:
   //
   // Write a byte to a page, return the "vsync" flag to indicate whether the
   // CPU should wait to the end of the scan line
-  bool WriteByte(ADR mem,UBYTE val)
+  void WriteByte(ADR mem,UBYTE val)
   {
     if (memory) {
       memory[mem & PAGE_MASK] = val;
-      return false;
     } else {
-      return ComplexWrite(mem,val);
+      ComplexWrite(mem,val);
     }
   }
   //

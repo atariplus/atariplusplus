@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: event.cpp,v 1.9 2008/05/19 19:55:40 thor Exp $
+ ** $Id: event.cpp,v 1.9 2008-05-19 19:55:40 thor Exp $
  **
  ** In this module: Definition of GUI events
  **********************************************************************************/

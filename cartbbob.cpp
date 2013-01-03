@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartbbob.cpp,v 1.8 2006/05/25 17:44:16 thor Exp $
+ ** $Id: cartbbob.cpp,v 1.9 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: The implementation of the bounty bob cart
  **********************************************************************************/
@@ -88,8 +88,8 @@ UBYTE CartBBOB::BankPage::ComplexRead(ADR mem)
 
 /// CartBBOB::BankPage::ComplexWrite
 // Write into the ROM, which is impossible. Just perform the
-// banking if required. Never performs a WSYNC.
-bool CartBBOB::BankPage::ComplexWrite(ADR mem,UBYTE)
+// banking if required. 
+void CartBBOB::BankPage::ComplexWrite(ADR mem,UBYTE)
 {
   UBYTE offset = UBYTE(mem & 0xff);
   //
@@ -100,7 +100,6 @@ bool CartBBOB::BankPage::ComplexWrite(ADR mem,UBYTE)
   }
   // Since this is a ROM, we cannot write and can bail
   // out directly here without further note.
-  return false;
 }
 ///
 

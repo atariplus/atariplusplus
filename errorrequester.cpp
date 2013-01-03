@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: errorrequester.cpp,v 1.11 2008/05/22 13:03:54 thor Exp $
+ ** $Id: errorrequester.cpp,v 1.11 2008-05-22 13:03:54 thor Exp $
  **
  ** In this module: A requester class that prints and logs errors.
  **********************************************************************************/

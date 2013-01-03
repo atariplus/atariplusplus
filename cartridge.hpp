@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartridge.hpp,v 1.17 2006/05/26 18:59:29 thor Exp $
+ ** $Id: cartridge.hpp,v 1.18 2011-06-24 20:11:17 thor Exp $
  **
  ** In this module: The superclass individual cart types are derived from
  **********************************************************************************/
@@ -70,7 +70,8 @@ public:
     Cart_Mega,            // Mega ROM cart (16K..1024K)
     Cart_Atrax,           // Atrax cart (128K)
     Cart_Phoenix,         // Phoenix cart (8K) and blizzard cart, (16K) switching carts with simple logic
-    Cart_ATMax            // ATMask cart (128K, 1MB)
+    Cart_ATMax,           // ATMask cart (128K, 1MB)
+    Cart_8KSuperCart8K    // OSS 8K supercart with 8K mapping and bank switching
   }; 
   //
   // The structure of an Atari800 CART type header

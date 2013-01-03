@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartctrl.cpp,v 1.21 2008/05/22 13:03:54 thor Exp $
+ ** $Id: cartctrl.cpp,v 1.22 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Cart Control logic for Oss Super Carts
  **********************************************************************************/
@@ -51,7 +51,7 @@ UBYTE CartCtrl::ComplexRead(ADR mem)
 
 /// CartCtrl::ComplexWrite
 // Write into CartCtrl. The value does not matter, only the address does.
-bool CartCtrl::ComplexWrite(ADR mem,UBYTE val)
+void CartCtrl::ComplexWrite(ADR mem,UBYTE val)
 {
   class Cartridge *c = cart;
   //
@@ -60,10 +60,9 @@ bool CartCtrl::ComplexWrite(ADR mem,UBYTE val)
     // Perform the write into the cartctrl until we find a
     // cart that feels responsible for it.
     if (c->ComplexWrite(mmu,mem,val))
-      return false; // This never triggers a WSYNC
+      return;
     c = c->NextOf();
   }
-  return false;
 }
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.cpp,v 1.100 2009-05-16 20:00:28 thor Exp $
+ ** $Id: gtia.cpp,v 1.110 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -68,8 +68,9 @@ GTIA::GTIA(class Machine *mach)
   hpos                   = 0;
   Fiddling               = false;
   PMTarget               = NULL;
-  PMReaction             = 12;
-  PMRelease              = 12 - 4;
+  PMReaction             = 7+4;
+  PMRelease              = 7+4;
+  PMResize               = 3;
   //
   // Setup the hi-level-collision registers to "all collisions detectable"
   for(i=0;i<4;i++) {
@@ -707,14 +708,12 @@ UBYTE GTIA::PixelColor(int pf_pixel,int pm_pixel,int pf_color)
   // a third player, give them the priority and the color of this
   // playfield. Otherwise, share the priority of the player
   if ((pm_pixel & 0xf0) && misslepf3) {
-    pfcol     = ColorLookup[Playfield_3];
-    pfidx     = Playfield_3;
+    // Ignore missiles for the following, the above handled them already.
+    pm_pixel = (pm_pixel & 0x0f) | 0x10;
   } else {
-    pm_pixel |= pm_pixel >> 4;
+    // Ignore missiles for the following, the above handled them already.
+    pm_pixel = (pm_pixel & 0x0f) | (pm_pixel >> 4);
   }
-  // Ignore missiles for the following, the above handled them already.
-  pm_pixel   &= 0x0f;
-  
   
   // Now check for the color of the playfield
   //  
@@ -729,21 +728,25 @@ UBYTE GTIA::PixelColor(int pf_pixel,int pm_pixel,int pf_color)
     // We have a playfield 0 or 1 underneath.
     pfcol |= ColorLookup[Player0ColorLookupPF01[pm_pixel]];
     pfcol |= ColorLookup[Player2ColorLookupPF01[pm_pixel]];
+    pfcol |= ColorLookup[Player4ColorLookupPF01[pm_pixel]];
     break;
   case Playfield_2:
-  case Playfield_3:    
+  case Playfield_3:
     // Now disable the playfield if the players have priority.
     pfcol &= Playfield23Mask[pm_pixel];
     // We have playfield 2 or 3 underneath
-    pfcol |= ColorLookup[Player0ColorLookupPF23[pm_pixel]];    
+    pfcol |= ColorLookup[Player0ColorLookupPF23[pm_pixel]];
     pfcol |= ColorLookup[Player2ColorLookupPF23[pm_pixel]];
+    pfcol |= ColorLookup[Player4ColorLookupPF23[pm_pixel]];
     break;
   default:
     // Background, players are always visible, just use pre-computed inter-player
     // colors.    
     pfcol  = 0;
     pfcol |= ColorLookup[Player0ColorLookup[pm_pixel]];
-    pfcol |= ColorLookup[Player2ColorLookup[pm_pixel]];    
+    pfcol |= ColorLookup[Player2ColorLookup[pm_pixel]];
+    pfcol |= ColorLookup[Player4ColorLookup[pm_pixel]];
+    break;
   }
   
   // Now emulate color fiddling for antic 2,3 and F, including the
@@ -1016,7 +1019,7 @@ GTIA::DisplayGenerator40Base::DisplayGenerator40Base(class GTIA *parent)
 void GTIA::DisplayGenerator40Base::PostProcessClock(UBYTE *out,UBYTE *pf,UBYTE *player)
 {
   int i = 4; // four half color clocks at once
-  UBYTE playfield;  // playfield color is constant aLONG the clock
+  UBYTE playfield;  // playfield color is constant along the clock
 
   // Get all the four pixel values by looking them up in the arrays.
   playfield = UBYTE(Lut[0][pf[0]] | Lut[1][pf[1]] | Lut[2][pf[2]] | Lut[3][pf[3]]);
@@ -1026,9 +1029,22 @@ void GTIA::DisplayGenerator40Base::PostProcessClock(UBYTE *out,UBYTE *pf,UBYTE *
     // of the color in the playfield. Colors are already pre-processed and
     // non-indexed here, we only have to or-into the background color
     if (*player) {
+      UBYTE bgcolor;
+      UBYTE playdat = *player;
       // Yes, priority engine must run: Players have always priority here.
-      gtia->UpdateCollisions(playfield,*player,CollisionMask);
-      *out = gtia->PixelColor(Background,*player,playfield | ColorLookup[Background]);
+      gtia->UpdateCollisions(playfield,playdat,CollisionMask);
+      bgcolor = ColorLookup[Background];
+      // A special quirk: Player 4 (missiles) do not overlay, but mix
+      if ((playdat & 0xf0) && gtia->misslepf3) {
+	bgcolor  = ColorLookup[Playfield_3];
+	playdat &= 0x0f;
+      }
+      if (playdat) {
+	// Not a typo, the original missile priority is still relevant.
+	*out = gtia->PixelColor(Background,*player,playfield | bgcolor);
+      } else {
+	*out = UBYTE(playfield | bgcolor);
+      }
     } else {
       // Otherwise insert manually and handle color fiddling itself. This is
       // done already in the color lookup table.
@@ -1055,18 +1071,71 @@ GTIA::DisplayGenerator80Base::DisplayGenerator80Base(class GTIA *parent)
 }
 ///
 
+/// GTIA::DisplayGenerator80Unfiddled::DisplayGenerator80Unfiddled
+GTIA::DisplayGenerator80Unfiddled::DisplayGenerator80Unfiddled(class GTIA *parent)
+  : DisplayGenerator80Base(parent)
+{ 
+  // Table entries for first, second half color clock are identically since both
+  // pixels are always identically on unfiddled modes
+  // This is a bit special since the combination PF1,BG is resolved in a different
+  // way here.
+  static const IntermediateLut lut = {
+    {
+      0x00, 0x00, 0x00, 0x00,  // These slots are used up by players
+      0x00, 0x04, 0x08, 0x0c,  // PF 0,1,2,3
+      0x00, 0x04, 0x04, 0x04,  // BK,Fiddled1,Fiddled2,Fiddled3
+      0x00, 0x00, 0x00, 0x00   // Player combined colors and background
+    },
+    {
+      0x00, 0x00, 0x00, 0x00,  // These slots are used up by players
+      0x00, 0x04, 0x08, 0x0c,  // PF 0,1,2,3
+      0x00, 0x04, 0x04, 0x04,  // BK,Fiddled1,Fiddled2,Fiddled3
+      0x00, 0x00, 0x00, 0x00   // Player combined colors and background
+    },
+    {   
+      0x00, 0x00, 0x00, 0x00,  // These slots are used up by players
+      0x00, 0x01, 0x02, 0x03,  // PF 0,1,2,3
+      0x10, 0x01, 0x01, 0x01,  // BK,Fiddled1,Fiddled2,Fiddled3
+      0x00, 0x00, 0x00, 0x10   // Player combined colors and background
+    },
+    {   
+      0x00, 0x00, 0x00, 0x00,  // These slots are used up by players
+      0x00, 0x01, 0x02, 0x03,  // PF 0,1,2,3
+      0x10, 0x01, 0x01, 0x01,  // BK,Fiddled1,Fiddled2,Fiddled3
+      0x00, 0x00, 0x00, 0x10   // Player combined colors and background
+    }
+  };
+
+  Lut = lut;
+}
+///
+
 /// GTIA::DisplayGenerator80Base::PostProcessClock
 void GTIA::DisplayGenerator80Base::PostProcessClock(UBYTE *out,UBYTE *playfield,UBYTE *player)
 {
   int i = 4; // four half color clocks at once
   UBYTE pf0,pf1,*pf = playfield + 2;
   // The following array translates nibble indices into PreComputedColor indices
-  static const UBYTE GTIAXLate[16] = {
+  // The additional 16 entries are used in case the first color is PF1. Strangely
+  // enough, the combination PF1,BG does not resolve to PF0, but to BG.
+  static const UBYTE GTIAXLate[32] = {
     Player_0   ,Player_1   ,Player_2   ,Player_3,
     Playfield_0,Playfield_1,Playfield_2,Playfield_3,
     Background ,Background ,Background ,Background,
+    Playfield_0,Playfield_1,Playfield_2,Playfield_3,  
+    // The following entries are used if the second pair of half color clocks are BG.
+    Player_0   ,Player_1   ,Player_2   ,Player_3,
+    Background ,Playfield_1,Playfield_2,Playfield_3, // First entry is different on purpose.
+    Background ,Background ,Background ,Background,
     Playfield_0,Playfield_1,Playfield_2,Playfield_3
   }; 
+  // Additional player masks generated by the playfield, indexed by the PreComputedColor
+  static const UBYTE GTIAPlayerMask[PreComputedEntries] = {
+    0x01,0x02,0x04,0x08,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00
+  };
   
   // Get all the four pixel values by looking them up in the arrays.
   // unfortunately, the pixels are not constant aLONG the clock as we
@@ -1081,9 +1150,15 @@ void GTIA::DisplayGenerator80Base::PostProcessClock(UBYTE *out,UBYTE *playfield,
     // Check whether we need the priority engine. Avoid it if it is not
     // necessary.
     if (*player) {
+      UBYTE playermask = *player;
+      //
+      // No, players do not detect collision with the additional "player" colors as player-player
+      // collisions.
+      gtia->UpdateCollisions(*playfield,playermask,CollisionMask);
       // Yes, priority engine must run
-      gtia->UpdateCollisions(*playfield,*player,CollisionMask);
-      *out = gtia->PixelColor(*playfield,*player,ColorLookup[*playfield]);
+      // Color mixing fixup: Note that here the playfield may use player colors,
+      // and hence player priorities.
+      *out = gtia->PixelColor(*playfield,playermask | GTIAPlayerMask[*playfield],ColorLookup[*playfield]);
     } else {
       // Otherwise insert manually and handle color fiddling itself. This is
       // done already in the color lookup table.
@@ -1139,9 +1214,25 @@ void GTIA::DisplayGeneratorC0Base::PostProcessClock(UBYTE *out,UBYTE *pf,UBYTE *
       hue |= ColorLookup[Background] & 0xf0; // only the hue, not the value. Leave it dark.
     }
     if (*player) {
+      UBYTE playdat = *player;
       // Yes, priority engine must run: Players have always priority here.
-      gtia->UpdateCollisions(playfield,*player,CollisionMask);
-      *out = gtia->PixelColor(Background,*player,hue);
+      gtia->UpdateCollisions(playfield,playdat,CollisionMask); 
+      // A special quirk: Player 4 (missiles) do not overlay, but mix
+      if ((*player & 0xf0) && gtia->misslepf3) {
+	hue = UBYTE(playfield << 4);
+	if (hue) {
+	  hue |= ColorLookup[Playfield_3]; // or in the background color with its value
+	} else {
+	  hue |= ColorLookup[Playfield_3] & 0xf0; // only the hue, not the value. Leave it dark.
+	}
+	playdat &= 0x0f;
+      }
+      if (playdat) {
+	// Not a typo, the original missile priority is still relevant.
+	*out = gtia->PixelColor(Background,*player,hue);
+      } else {
+	*out = hue;
+      }
     } else {
       // Otherwise insert manually and handle color fiddling itself. This is
       // done already in the color lookup table.
@@ -1234,7 +1325,7 @@ void GTIA::PickModeGenerator(void)
     // had a processed mode 0x40 or 0xc0
     // at the start of the line and turn it
     // off now, we enter the "strange mode".
-    if (InitialPrior & 0x40) {
+    if (InitialPrior & 0xc0) {
       if (Fiddling) {
 	CurrentGenerator   = ModeSF;
       } else {
@@ -1380,11 +1471,12 @@ void GTIA::UpdatePriorityEngine(UBYTE pri)
   // bits. Since we have four player color registers, the number of
   // combinations is PlayerColorLookupSize = 16 = 2^4
   for(pm_pixel = 0 ; pm_pixel < PlayerColorLookupSize; pm_pixel++) {
-    PreComputedColor pl0,pl2;
+    PreComputedColor pl0,pl2,pl4;
     UBYTE mask;            // pre-computed playfield mask
 
     pl0 = Black;           // Set player color to black: Priority conflict.
     pl2 = Black;
+    pl4 = Black;
 
     if (pm_pixel & 0x08)   // Player 3 visible?
       pl2 = Player_3;      // if so, set the color of pair 2,3 to 3.
@@ -1412,16 +1504,31 @@ void GTIA::UpdatePriorityEngine(UBYTE pri)
       } 
     }
     
+    if (pm_pixel & 0x10) { // Missiles as player 4 visible?
+      pl4 = Playfield_3;
+      if ((pm_pixel & 0x03) && pfbeatspl==false)
+	pl4 = Black;
+      if ((pm_pixel & 0x0c) && pl23beatspf)
+	pl4 = Black;
+      if (pf23beatspl)
+	pl2 = Black;
+      if (pfbeatspl)
+	pl0 = Black;
+    }
+    
     // These are the colors in front of the background.
     Player0ColorLookup[pm_pixel]     = pl0;
     Player2ColorLookup[pm_pixel]     = pl2; 
+    Player4ColorLookup[pm_pixel]     = pl4; 
     //
     // And now for the colors in front of playfields.
     Player0ColorLookupPF01[pm_pixel] = pl0;
     Player0ColorLookupPF23[pm_pixel] = pl0;
     Player2ColorLookupPF01[pm_pixel] = pl2;
     Player2ColorLookupPF23[pm_pixel] = pl2;
-    
+    Player4ColorLookupPF01[pm_pixel] = pl4; 
+    Player4ColorLookupPF23[pm_pixel] = pl4; 
+
     // If a player gets "beaten", set its color lookup to Black. We can then
     // just or its value in.
     if (pf01beatspl)
@@ -1437,6 +1544,7 @@ void GTIA::UpdatePriorityEngine(UBYTE pri)
     if (pfbeatspl)
       Player0ColorLookupPF23[pm_pixel] = Black;
     
+    
     // Now setup the mask for the playfield colors 0,1
     // depending on the player.
     mask = 0xff;
@@ -1447,6 +1555,10 @@ void GTIA::UpdatePriorityEngine(UBYTE pri)
     if (pm_pixel & 0x0c) { // For player 2,3
       if (plbeatspf)
 	mask  = 0;
+    }
+    if (pm_pixel & 0x10) { // For player 4
+      if (pf01beatspl == false && (pm_pixel & 0x03) == 0)
+	mask = 0;
     }
     Playfield01Mask[pm_pixel] = mask;
 
@@ -1459,6 +1571,9 @@ void GTIA::UpdatePriorityEngine(UBYTE pri)
     if (pm_pixel & 0x0c) { // For players 2,3
       if (pl23beatspf)
 	mask  = 0;
+    } 
+    if (pm_pixel & 0x10) { // For missiles aka player 4
+      mask = 0;
     }
     Playfield23Mask[pm_pixel] = mask;
   }
@@ -1470,23 +1585,24 @@ void GTIA::UpdatePriorityEngine(UBYTE pri)
 
 /// GTIA::PMObject::Remove
 // Remove a rendered object again from the scanline
-void GTIA::PMObject::Remove(UBYTE *target)
+void GTIA::PMObject::Remove(UBYTE *target,int deltapos)
 {
-  int hpos = DecodedPosition;
+  int hpos = DecodedPosition + deltapos;
   
   if (target && hpos >= Player_Left_Border && hpos <= Player_Right_Border) {
     UBYTE *pmpos;
     int    bit;
     UBYTE  mask;
+    int    maxsize  = 8 << DecodedSize; // Number of color clocks to remove (at most)
     //
     // fetch horizontal position
     mask  = UBYTE(~DisplayMask);
     pmpos = target    + hpos; // get target position in the PM temporary array.
     //
     // Now iterate over all bits.
-    bit = (Player_Right_Border - HPos) >> 1;
-    if (bit > 32)
-      bit = 32;
+    bit = (Player_Right_Border - hpos) >> 1;
+    if (bit > maxsize)
+      bit = maxsize;
     if (bit > 0) {
       do {
 	*pmpos &= mask;
@@ -1502,7 +1618,7 @@ void GTIA::PMObject::Remove(UBYTE *target)
 /// GTIA::PMObject::Render
 // Render a player/missile object into a target
 // array, computing collisions as we go.
-void GTIA::PMObject::Render(UBYTE *target)
+void GTIA::PMObject::Render(UBYTE *target,int removebits,int deltapos)
 {  
   static const ULONG NibbleDoubleBits[16]    = {0x00,0x03,0x0c,0x0f,0x30,0x33,0x3c,0x3f,
 					        0xc0,0xc3,0xcc,0xcf,0xf0,0xf3,0xfc,0xff};
@@ -1520,26 +1636,29 @@ void GTIA::PMObject::Render(UBYTE *target)
     hpos  = DecodedPosition;
     mask  = DisplayMask;
     // all this makes only sense if there is an object to render.
-    pmpos = target    + hpos; // get target position in the PM temporary array.
+    pmpos = target    + hpos + deltapos; // get target position in the PM temporary array.
+    graf  = (Graphics << removebits) & 0xff;
     //
     // Enlarge the player to its final size.
     switch(DecodedSize) {
-    case 1:
+    case 0:
       // Single size. Just left-shift the bits to their target position such that all of the
       // player/missile is to the immediate right of the hpos.
-      graf = Graphics << 24;
+      graf = graf << 24;
+      break;
+    case 1:
+      // Double size. Double the size of the object thru the nibble scaler lookup table.
+      graf = (NibbleDoubleBits[graf >> 4] << 24)    | NibbleDoubleBits[graf & 0x0f] << 16;
       break;
     case 2:
-      // Double size. Double the size of the object thru the nibble scaler lookup table.
-      graf = (NibbleDoubleBits[Graphics >> 4] << 24)    | NibbleDoubleBits[Graphics & 0x0f] << 16;
-      break;
-    case 4:
       // Quadruple the size thru the nibble scaler lookup table as well.
-      graf = (NibbleQuadrupleBits[Graphics >> 4] << 16) | NibbleQuadrupleBits[Graphics & 0x0f];
+      graf = (NibbleQuadrupleBits[graf >> 4] << 16) | NibbleQuadrupleBits[graf & 0x0f];
       break;
     default: // shut up the compiler
       graf = 0;
+      break;
     }
+    //
     // To avoid unnecessary computations within the loop, check whether we have to mask out any
     // bits because they lie outside of the detectable/renderable region.
     if (hpos < Player_Left_Border) {
@@ -1601,11 +1720,6 @@ void GTIA::TriggerGTIAScanline(UBYTE *playfield,int pmdisplace,int size,bool fid
   //
   // Keep the fiddling value for this row
   Fiddling = fiddling;
-  // Get the modeline generator that is responsible for the color mapping
-  // We must pick it each line since the fiddled flag changes each line
-  InitialPrior    = Prior; // Keep the flag that we are now at the start of the line
-  if (ChipGeneration == CTIA)
-    InitialPrior &= 0x3f;  // CTIA doesn't keep this.
   //
   PickModeGenerator();
   // Reset the generator at the beginning of the scanline.
@@ -1663,16 +1777,7 @@ void GTIA::TriggerGTIAScanline(UBYTE *playfield,int pmdisplace,int size,bool fid
   // Color lookup post-processing and scanline generation. 
   // This merges the playfield with the player output and runs the priority engine.
   hpos = 0;
-  om   = out,pm = PlayerMissileScanLine,i = size>>2;
-  /*
-  ** The following is a bad idea, it changes the
-  ** interpretation of the playfield patterns for
-  ** GTIA processed modes.
-  shift      = 3 - (BeforeDisplayCycles & 0x03);
-  playfield += shift;
-  pm        += shift;
-  i         -= shift;
-  */
+  om   = out,pm = PlayerMissileScanLine,i = size >> 2;
   do {
     // Run the mode generator.
     CurrentGenerator->PostProcessClock(om,playfield,pm);
@@ -1704,7 +1809,13 @@ void GTIA::HBI(void)
   //
   // Now update the Gractl Shadow register
   GractlShadow = Gractl; 
-  //
+  //  
+  if (ChipGeneration != CTIA) {
+    // Get the modeline generator that is responsible for the color mapping
+    // We must pick it each line since the fiddled flag changes each line.
+    // This must happen up to cycle 15 or GTIA switches into the strange mode.
+    InitialPrior = Prior & 0xc0; // Keep the flag that we are now at the start of the line
+  }
   // Ensure that the players do not get any data if they are
   // out of reach for antic DMA.
   if (antic->CurrentYPos() >= Antic::DisplayHeight) {
@@ -1730,13 +1841,16 @@ void GTIA::HBI(void)
 // key on coldstart
 UBYTE GTIA::ConsoleRead(void)
 {
+  UBYTE val = 0xff;
+  //
   // The 5200 doesn't have any console keys but uses this port as an
   // output port to select the active keypad
   if (machine->MachType() != Mach_5200) {
-    return machine->Keyboard()->ConsoleKeys();
-  } else {
-    return ActiveInput;
+    val = machine->Keyboard()->ConsoleKeys();
   }
+  //
+  // A one-bit pulls the data down.
+  return val & ~ActiveInput;
 }
 ///
 
@@ -1852,6 +1966,7 @@ void GTIA::ColorPlayfieldWrite(int n,UBYTE val)
     // The value of the fiddled color comes from register 1, the hue from register 2
     ColorLookup[Playfield_1_Fiddled] = UBYTE((ColorLookup[Playfield_1] & 0x0f) | 
 					     (ColorLookup[Playfield_2] & 0xf0));
+    break;
   }
 }
 ///
@@ -1863,8 +1978,8 @@ void GTIA::ColorPlayerWrite(int n,UBYTE val)
   ColorLookup[n + Player_0] = val;
   
   // Setup the or'd registers for player combinations
-  ColorLookup[Player_0Or1]    = UBYTE(ColorLookup[Player_0] | ColorLookup[Player_1]);
-  ColorLookup[Player_2Or3]    = UBYTE(ColorLookup[Player_2] | ColorLookup[Player_3]);
+  ColorLookup[Player_0Or1]      = UBYTE(ColorLookup[Player_0]    | ColorLookup[Player_1]);
+  ColorLookup[Player_2Or3]      = UBYTE(ColorLookup[Player_2]    | ColorLookup[Player_3]);
 }
 ///
 
@@ -1956,21 +2071,42 @@ void GTIA::PlayerHPosWrite(int n,UBYTE val)
 void GTIA::MissileSizeWrite(UBYTE val)
 {
   int n;
+  int renderedbits,deltapos;
+  bool resize;
   struct PMObject *missile;
-  // Bits 0..1 is the size of missile 0
-  for(n = 0,missile = Missile;n<4;n++) {
+  //
+  // Bits 0..1 is the size of missile 0 etc.
+  for(n = 0,missile = Missile;n<4;n++) { 
+    if (hpos < missile->DecodedPosition + (4 << missile->DecodedSize)) {  
+      deltapos     = PMResize + hpos - missile->DecodedPosition;
+      if (deltapos < 0) {
+	deltapos     = 0;
+	renderedbits = 0;
+      } else {
+	// Number of bits already on the screen. Note that deltapos is in half-color-clocks.
+	renderedbits = 1 + (deltapos >> (missile->DecodedSize + 1));
+	deltapos     = renderedbits << (missile->DecodedSize + 1);
+      } 
+      missile->Remove(PMTarget,deltapos);
+      resize = true;
+    } else {
+      resize = false;
+    }
     missile->Size = UBYTE(val & 0x03);
     switch(val & 0x03) {
     case 0:
     case 2:
-      missile->DecodedSize = 1;
+      missile->DecodedSize = 0;
       break;
     case 1:
-      missile->DecodedSize = 2;
+      missile->DecodedSize = 1;
       break;
     case 3:
-      missile->DecodedSize = 4;
+      missile->DecodedSize = 2;
       break;
+    }
+    if (resize) {
+      missile->Render(PMTarget,renderedbits,deltapos);
     }
     missile++;
     val >>= 2;
@@ -1982,19 +2118,41 @@ void GTIA::MissileSizeWrite(UBYTE val)
 // Write into the size register of one player
 void GTIA::PlayerSizeWrite(int n,UBYTE val)
 {
-  val                    &= 0x03;
+  int renderedbits = 0;
+  int deltapos     = 0;
+  bool resize      = false;
+  
+  if (hpos < Player[n].DecodedPosition + (16 << Player[n].DecodedSize)) {  
+    deltapos     = PMResize + hpos - Player[n].DecodedPosition;
+    if (deltapos < 0) {
+      deltapos     = 0;
+      renderedbits = 0;
+    } else {
+      // Number of bits already on the screen. Note that deltapos is in half-color-clocks.
+      renderedbits = 1 + (deltapos >> (Player[n].DecodedSize + 1));
+      deltapos     = renderedbits << (Player[n].DecodedSize + 1);
+    }
+    Player[n].Remove(PMTarget,deltapos);
+    resize         = true;
+  }
+  
+  val                    &= 0x03; 
   Player[n].Size          = val;
   switch(val) {
   case 0:
   case 2:
-    Player[n].DecodedSize = 1;
+    Player[n].DecodedSize = 0;
     break;
   case 1:
-    Player[n].DecodedSize = 2;
+    Player[n].DecodedSize = 1;
     break;
   case 3:
-    Player[n].DecodedSize = 4;
+    Player[n].DecodedSize = 2;
     break;
+  }
+  
+  if (resize) {
+    Player[n].Render(PMTarget,renderedbits,deltapos);
   }
 }
 ///
@@ -2015,9 +2173,8 @@ void GTIA::ConsoleWrite(UBYTE val)
   speaker = (val & 0x08)?(false):(true);
   machine->Sound()->ConsoleSpeaker(speaker);
   // The 5200 uses the lower bits of the value to select the active input controller.
-  if (machine->MachType() == Mach_5200) {
-    ActiveInput = UBYTE(val & 0x03);
-  }
+  // It also defines the output - a one bit pulls the output down.
+  ActiveInput = UBYTE(val & 0x07);
 }
 ///
 
@@ -2026,7 +2183,14 @@ void GTIA::ConsoleWrite(UBYTE val)
 void GTIA::PriorWrite(UBYTE val)
 {
   if (val != Prior) {
-    UpdatePriorityEngine(val);
+    UpdatePriorityEngine(val); 
+    //
+    if (machine->CPU()->CurrentXPos() < 16 && ChipGeneration != CTIA) {
+      // Get the modeline generator that is responsible for the color mapping
+      // We must pick it each line since the fiddled flag changes each line.
+      // This must happen up to cycle 15 or GTIA switches into the strange mode.
+      InitialPrior = Prior & 0xc0; // Keep the flag that we are now at the start of the line
+    }
     // Also pick a new mode line generator here. This
     // allows intra-scanline mode changes.
     PickModeGenerator();
@@ -2102,7 +2266,7 @@ UBYTE GTIA::ComplexRead(ADR mem)
 
 /// GTIA::ComplexWrite
 // Write into a GTIA register
-bool GTIA::ComplexWrite(ADR mem,UBYTE val)
+void GTIA::ComplexWrite(ADR mem,UBYTE val)
 {
   switch (mem & 0x1f) {
   case 0x00:
@@ -2110,64 +2274,62 @@ bool GTIA::ComplexWrite(ADR mem,UBYTE val)
   case 0x02:
   case 0x03:
     PlayerHPosWrite(mem & 0x03,val);   // player horizontal position
-    return false;
+    return;
   case 0x04:
   case 0x05:
   case 0x06:
   case 0x07:
     MissileHPosWrite(mem & 0x03,val);  // missile horizontal position
-    return false;
+    return;
   case 0x08:
   case 0x09:
   case 0x0a:
   case 0x0b:
     PlayerSizeWrite(mem & 0x03,val);   // player size
-    return false;
+    return;
   case 0x0c:
     MissileSizeWrite(val);
-    return false;
+    return;
   case 0x0d:
   case 0x0e:
   case 0x0f:
   case 0x10:
     GraphicsPlayerWrite((mem - 0x0d) & 0x03,val); // player graphics register
-    return false;
+    return;
   case 0x11:
     GraphicsMissilesWrite(val);  // missiles player register
-    return false;
+    return;
   case 0x12:
   case 0x13:
   case 0x14:
   case 0x15:
     ColorPlayerWrite((mem - 0x12) & 0x03,val);
-    return false;
+    return;
   case 0x16:
   case 0x17:
   case 0x18:
   case 0x19:
     ColorPlayfieldWrite((mem - 0x16) & 0x03,val);
-    return false;
+    return;
   case 0x1a:
     ColorBKWrite(val);
-    return false;
+    return;
   case 0x1b:
     PriorWrite(val);
-    return false;
+    return;
   case 0x1c:
     VDelayWrite(val);
-    return false;
+    return;
   case 0x1d:
     GractlWrite(val);
-    return false;
+    return;
   case 0x1e:
     HitClearWrite();
-    return false;
+    return;
   case 0x1f:
     ConsoleWrite(val);
-    return false;
+    return;
   }
-  // Shut up the compiler
-  return false;
 }
 ///
 
@@ -2328,6 +2490,7 @@ void GTIA::ParseArgs(class ArgParser *args)
   args->DefineBool("AntiFlicker","enable color blur between adjacent frames",AntiFlicker);
   args->DefineLong("PlayerAllocate","half color clocks required to allocate a player",0,32,PMReaction);
   args->DefineLong("PlayerRelease","half color clocks required to release a player",0,32,PMRelease);
+  args->DefineLong("PlayerResize","half color clocks required to resize a player",0,32,PMResize);
   args->DefineFile("ColorMapName","name of an external color map to be used",ColorMapToLoad,false,true,false);
   if (NTSC != ((val)?(true):(false))) {
     // Changed video mode => requires a rebuild

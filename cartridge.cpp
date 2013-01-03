@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartridge.cpp,v 1.19 2006/05/26 18:59:29 thor Exp $
+ ** $Id: cartridge.cpp,v 1.20 2011-06-24 20:11:17 thor Exp $
  **
  ** In this module: The superclass individual cart types are derived from
  **********************************************************************************/
@@ -16,6 +16,7 @@
 #include "cart32kee16.hpp"
 #include "cartoss.hpp"
 #include "cartossb.hpp"
+#include "cartoss8k.hpp"
 #include "cartsdx.hpp"
 #include "cartxegs.hpp"
 #include "cartbbob.hpp"
@@ -305,6 +306,8 @@ class Cartridge *Cartridge::BuildCart(class Machine *mach,CartTypeId carttype,LO
     if (size < 1L << 20 && size > 0)
       return new class CartATMax(UBYTE(size >> 13));
     return NULL;
+  case Cart_8KSuperCart8K:
+    return new class CartOSS8K;
   }
   //
   // Shut up the compiler.

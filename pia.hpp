@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pia.hpp,v 1.14 2003/05/31 10:04:45 thor Exp $
+ ** $Id: pia.hpp,v 1.15 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: PIA emulation module
  **********************************************************************************/
@@ -44,13 +44,22 @@ class PIA : public Chip, public Page, public Saveable, private IRQSource {
   UBYTE PortAMask;
   UBYTE PortBMask;
   //
+  // CA2 and CB2 output states.
+  bool  CA2State;
+  bool  CB2State;
+  //
+  // Flags that store whether an active edge was detected by CA2 or CB2.
+  bool  CA2LowEdge;
+  bool  CA2HighEdge;
+  bool  CB2Edge;
+  //
   // The following flag is set if MathPackDisable is controlled by
   // bit 6 of PortB.
   bool controlmathpack;
   //
   // Reading and writing bytes to PIA
   virtual UBYTE ComplexRead(ADR mem);
-  virtual bool ComplexWrite(ADR mem,UBYTE val);
+  virtual void  ComplexWrite(ADR mem,UBYTE val);
   //
   // Private register access functions
   UBYTE PortARead(void);

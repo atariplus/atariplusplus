@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.82 2009-11-25 20:10:38 thor Exp $
+ ** $Id: monitor.cpp,v 1.87 2013-01-01 02:29:21 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -39,6 +39,7 @@ const int Monitor::History::MaxHistorySize = 32;
 Monitor::Monitor(class Machine *mach)
   : machine(mach), cpu(mach->CPU()), MMU(mach->MMU()),
     cpuspace(MMU->CPURAM()), anticspace(MMU->AnticRAM()), currentadr(MMU->CPURAM()),
+    debugspace(MMU->DebugRAM()),
     tracefile(NULL), curses(NULL), cmdline(NULL), abort(false), fetchtrace(false),
     cmdchain(NULL),
     Envi(this,"ENVI","V","environment settings"),
@@ -51,16 +52,17 @@ Monitor::Monitor(class Machine *mach)
     GoPG(this,"GOPG","G","(re-)start the emulation"),
     Exit(this,"EXIT","X","exit the emulator"),
     RSet(this,"RSET","P","reset the emulator"),     
-    UnAs(this,"UNAS","U","[expr]       : disassembly memory contents"),
-    Dlst(this,"DLST","A","[expr]       : disassembly antic display list"),
-    BrkP(this,"BRKP","B","[expr]       : set and clear breakpoints"),
-    Eval(this,"EVAL","=","[expr]       : evaluate expression"),
-    Find(this,"FIND","F","[expr]       : find pattern"),
-    Move(this,"MOVE","M","from to size : move memory contents"),
-    Fill(this,"FILL","L","addr size    : fill memory with pattern"),
-    Edit(this,"EDIT","E","[expr]       : edit memory contents"),
-    Dump(this,"DUMP","D","[expr]       : display memory contents"),
-    SkTb(this,"SKTB","K","[expr]       : stack traceback"),
+    UnAs(this,"UNAS","U","[expr]         : disassembly memory contents"),
+    Dlst(this,"DLST","A","[expr]         : disassembly antic display list"),
+    BrkP(this,"BRKP","B","[expr]         : set and clear breakpoints"),
+    Eval(this,"EVAL","=","[expr]         : evaluate expression"),
+    Find(this,"FIND","F","[expr]         : find pattern"),
+    Move(this,"MOVE","M","from to size   : move memory contents"),
+    Fill(this,"FILL","L","addr size      : fill memory with pattern"),
+    Edit(this,"EDIT","E","[expr]         : edit memory contents"),
+    Dump(this,"DUMP","D","[expr]         : display memory contents"),
+    SkTb(this,"SKTB","K","[expr]         : stack traceback"),
+    Disk(this,"DISK","I","file addr size : read or write memory to a file"),
     // help must go last into the chain to be the first getting displayed.
     Help(this,"HELP","?","display this text")
 { }
@@ -2230,36 +2232,36 @@ void Monitor::SetR::Apply(char e)
     value     = 0;
     if (monitor->EvaluateExpression(valstr,value)) {
       if (value<0x0000 || value > 0xffff) {
-	Print("Register value " LX " out of range",(ULONG)value);
+	Print("Register value " LX " out of range\n",(ULONG)value);
 	return;
       }
       if (!strcasecmp(setstr,"A")) {
 	if (value > 0xff) {
-	  Print("Register value " LX " out of range",(ULONG)value);
+	  Print("Register value " LX " out of range\n",(ULONG)value);
 	  return;
 	}
 	monitor->cpu->A() = UBYTE(value);
       } else if (!strcasecmp(setstr,"X")) {
 	if (value > 0xff) {
-	  Print("Register value " LX " out of range",(ULONG)value);
+	  Print("Register value " LX " out of range\n",(ULONG)value);
 	  return;
 	}
 	monitor->cpu->X() = UBYTE(value);
       } else if (!strcasecmp(setstr,"Y")) {
 	if (value > 0xff) {
-	  Print("Register value " LX " out of range",(ULONG)value);
+	  Print("Register value " LX " out of range\n",(ULONG)value);
 	  return;
 	}
 	monitor->cpu->Y() = UBYTE(value);
       } else if (!strcasecmp(setstr,"S")) {
 	if (value > 0xff) {
-	  Print("Register value " LX " out of range",(ULONG)value);
+	  Print("Register value " LX " out of range\n",(ULONG)value);
 	  return;
 	}
 	monitor->cpu->S() = UBYTE(value);
       } else if (!strcasecmp(setstr,"P")) {
 	if (value > 0xff) {
-	  Print("Register value " LX " out of range",(ULONG)value);
+	  Print("Register value " LX " out of range\n",(ULONG)value);
 	  return;
 	}
 	monitor->cpu->P() = UBYTE(value);
@@ -2537,10 +2539,12 @@ void Monitor::BrkP::Apply(char e)
 {
   int i;
   class CPU *cpu = monitor->cpu;
+  class MMU *MMU = monitor->MMU;
   
   switch(e) {
   case '?':
     Print("BRKP.S [addr] : set breakpoint at address\n"
+	  "BRKP.W [addr] : set watchpoint at address\n"
 	  "BRKP.C [addr] : clear breakpoint at address\n"
 	  "BRKP.D [addr] : disable breakpoint at address\n"
 	  "BRKP.E [addr] : enable breakpoint at address\n"
@@ -2571,6 +2575,31 @@ void Monitor::BrkP::Apply(char e)
 	Print("All breakpoint slots occupied.\n");
       }
     }
+    break;  
+  case 'W':
+    if (GetAddress(here)) {
+      if (LastArg()) {
+	for(i=0;i<NumBrk;i++) {
+	  if (WatchPoints[i].id >= 0 && WatchPoints[i].address == here) {
+	    Print("Already watchpoint at address : $%04x\n",here);
+	    return;
+	  }
+	}
+	for(i=0;i<NumBrk;i++) {
+	  if (WatchPoints[i].id == -1) {
+	    WatchPoints[i].id = MMU->DebugRAM()->SetWatchPoint(here);
+	    if (WatchPoints[i].id >= 0) {
+	      cpu->EnableWatchPoints();
+	      WatchPoints[i].address = here;
+	      WatchPoints[i].enabled = true;
+	      Print("Installed watchpoint at address : $%04x\n",here);
+	      return;
+	    }
+	  }
+	}
+	Print("All watchpoint slots occupied.\n");
+      }
+    }
     break;
   case 'C':
     if (GetAddress(here)) {
@@ -2582,8 +2611,18 @@ void Monitor::BrkP::Apply(char e)
 	    Print("Removed breakpoint at address : $%04x\n",here);
 	    return;
 	  }
+	  if (WatchPoints[i].id >= 0 && WatchPoints[i].address == here) {
+	    if (WatchPoints[i].enabled)
+	      MMU->DebugRAM()->RemoveWatchPointByIndex(WatchPoints[i].id);
+	    WatchPoints[i].id = -1;
+	    Print("Removed watchpoint at address : $%04x\n",here);
+	    if (MMU->DebugRAM()->WatchesEnabled()) {
+	      cpu->DisableWatchPoints();
+	    }
+	    return;
+	  }
 	}
-	Print("No breakpoint at address : $%04x\n",here);
+	Print("No breakpoint or watchpoint at address : $%04x\n",here);
       }
     }
     break;
@@ -2598,7 +2637,18 @@ void Monitor::BrkP::Apply(char e)
 	    return;
 	  }
 	}
-	Print("No breakpoint at address : $%04x\n",here);
+	for(i=0;i<NumBrk;i++) {
+	  if (WatchPoints[i].id >= 0 && WatchPoints[i].address == here) {
+	    MMU->DebugRAM()->RemoveWatchPointByIndex(WatchPoints[i].id);
+	    WatchPoints[i].enabled = false;
+	    if (MMU->DebugRAM()->WatchesEnabled()) {
+	      cpu->DisableWatchPoints();
+	    }
+	    Print("Disabled watchpoint at address : $%04x\n",here);
+	    return;
+	  }
+	}
+	Print("No breakpoint or watchpoint at address : $%04x\n",here);
       }
     }
     break;
@@ -2612,8 +2662,23 @@ void Monitor::BrkP::Apply(char e)
 	    Print("Enabled breakpoint at address : $%04x\n",here);
 	    return;
 	  }
+	}	
+	for(i=0;i<NumBrk;i++) {
+	  if (WatchPoints[i].id >= 0 && WatchPoints[i].address == here) {
+	    WatchPoints[i].id = MMU->DebugRAM()->SetWatchPoint(here);
+	    if (WatchPoints[i].id >= 0) {
+	      cpu->EnableWatchPoints();
+	      WatchPoints[i].address = here;
+	      WatchPoints[i].enabled = true;
+	      Print("Enabled watchpoint at address : $%04x\n",here);
+	      return;
+	    } else {
+	      WatchPoints[i].id = -1;
+	      return;
+	    }
+	  }
 	}
-	Print("No breakpoint at address : $%04x\n",here);
+	Print("No breakpoint or watchpoint at address : $%04x\n",here);
       }
     }
     break;
@@ -2623,8 +2688,15 @@ void Monitor::BrkP::Apply(char e)
 	if (BreakPoints[i].id >= 0) {
 	  cpu->ClearBreakPoint(BreakPoints[i].id);
 	  BreakPoints[i].id = -1;
+	} 
+      }
+      for(i=0;i<NumBrk;i++) {
+	if (WatchPoints[i].id >= 0) {
+	  MMU->DebugRAM()->RemoveWatchPointByIndex(WatchPoints[i].id);
+	  WatchPoints[i].id = -1;
 	}
       }
+      cpu->DisableWatchPoints();
       Print("All breakpoints removed.\n");
     }
     break;
@@ -2635,6 +2707,13 @@ void Monitor::BrkP::Apply(char e)
 	  Print("Breakpoint at $%04x (%s)\n",
 		BreakPoints[i].address,
 		(BreakPoints[i].enabled)?("enabled"):("disabled"));
+	}
+      }
+      for(i=0;i<NumBrk;i++) {
+	if (WatchPoints[i].id >= 0) {
+	  Print("Watchpoint at $%04x (%s)\n",
+		WatchPoints[i].address,
+		(WatchPoints[i].enabled)?("enabled"):("disabled"));
 	}
       }
     }
@@ -2750,6 +2829,81 @@ void Monitor::Exit::Apply(char e)
   default:
     Print("Leaving Atari++ ....\n");
     EXIT;
+  }
+}
+///
+
+/// Monitor::Disk::Disk
+Monitor::Disk::Disk(class Monitor *mon,const char *lng,const char *shr,const char *helper)
+  : Command(mon,lng,shr,helper,'L')
+{ }
+///
+
+/// Monitor::Disk::Apply
+// Loading and saving of memory blocks
+void Monitor::Disk::Apply(char e)
+{
+  class AdrSpace *adr;
+  char *filename;
+  UWORD from;
+  int size;
+
+  switch(e) {
+  case '?':
+    Print("Disk subcommands:\n"
+	  "DISK.L file addr      : load raw memory block from disk\n"
+	  "DISK.S file addr size : save raw memory block to disk\n"
+	  );
+    break;
+  case 'L':
+    filename = NextToken();
+    if (filename) {
+      if (GetAddress(here)) {
+	FILE *f = fopen(filename,"rb"); 
+	if (f) {
+	  adr  = Adr();
+	  from = here;
+	  do {
+	    int c = fgetc(f);
+	    if (c < 0)
+	      break;
+	    adr->WriteByte(from,c);
+	    from++;
+	  } while(from);
+	  fclose(f);
+	} else {
+	  Print("I/O error : %s\n",strerror(errno));
+	}
+      }
+    } else {
+      Print("file name argument missing.\n");
+    }
+    break;
+  case 'S':
+    filename = NextToken();
+    if (filename) {
+      if (GetAddress(here)) {
+	if (GetDefault(size,1,1,65535)) {
+	  FILE *f = fopen(filename,"wb"); 
+	  if (f) {
+	    adr  = Adr();
+	    from = here;
+	    do {
+	      fputc(adr->ReadByte(from),f);
+	      from++;
+	    } while(from && --size);
+	    fclose(f);
+	  } else {
+	    Print("I/O error : %s\n",strerror(errno));
+	  }
+	}
+      }
+    } else {
+      Print("file name argument missing.\n");
+    }
+    break;
+  default:
+    ExtInvalid();   
   }
 }
 ///
@@ -2965,6 +3119,29 @@ void Monitor::CapturedBreakPoint(int,ADR pc)
       MainLoop();
   } else {
     Print("\nBreakpoint hit at $%04x.\n",pc);
+    MainLoop();
+  }
+  curses = NULL;
+}
+///
+
+/// Monitor::CapturedWatchPoint
+// Enter the monitor because we detected a watchpoint. Arguments
+// are the watchpoint number and the address
+void Monitor::CapturedWatchPoint(int,ADR mem)
+{
+#ifdef MUST_OPEN_CONSOLE
+  machine->Display()->SwitchScreen(false);
+  OpenConsole();
+#endif
+  CursesWindow win;
+  curses = &win;
+
+  if (Step.RefreshLine(cpuspace,cpu->PC())) {
+    if (!Step.MainLoop())
+      MainLoop();
+  } else {
+    Print("\nWatchpoint hit at $%04x.\n",mem);
     MainLoop();
   }
   curses = NULL;

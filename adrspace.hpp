@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: adrspace.hpp,v 1.18 2011-04-28 21:23:20 thor Exp $
+ ** $Id: adrspace.hpp,v 1.19 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Definition of the complete 64K address space of the emulator
  **********************************************************************************/
@@ -62,8 +62,8 @@ public:
     return pages[mem >> PAGE_SHIFT]->ReadByte(mem);
   }
   //
-  // Write to an address, return the VSYNC flag
-  bool WriteByte(ADR mem,UBYTE val)
+  // Write to an address.
+  void WriteByte(ADR mem,UBYTE val)
   {
 #if CHECK_LEVEL > 1
     if (mem < 0 || mem > 0xffff) {
@@ -72,7 +72,7 @@ public:
     if (pages[mem >> PAGE_SHIFT] == NULL)
       Throw(ObjectDoesntExist,"Page::WriteByte","Page is undefined");
 #endif
-    return pages[mem >> PAGE_SHIFT]->WriteByte(mem,val);
+    pages[mem >> PAGE_SHIFT]->WriteByte(mem,val);
   } 
   //
   // Patch a ROM entry. This works only for ROM patches

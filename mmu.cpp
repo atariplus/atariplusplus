@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mmu.cpp,v 1.52 2005/09/03 20:46:55 thor Exp $
+ ** $Id: mmu.cpp,v 1.54 2011-06-26 20:25:41 thor Exp $
  **
  ** In this module: Definition of all MMU functions required for the Atari emulator
  **********************************************************************************/
@@ -34,7 +34,8 @@
 MMU::MMU(class Machine *machine)
   : Chip(machine,"MMU"), Saveable(machine,"MMU"),
     blank(new class RomPage[32]), handlers(new class RomPage),
-    cpuspace(new class AdrSpace), anticspace(new class AdrSpace),
+    cpuspace(new class AdrSpace), anticspace(new class AdrSpace), 
+    debugspace(new DebugAdrSpace(machine,cpuspace)),
     xeram(NULL), axlonram(NULL)
 {
   // Set default mapping by defining various flags:
@@ -58,6 +59,7 @@ MMU::~MMU(void)
   delete axlonram;
   delete[] blank;
   delete handlers;
+  delete debugspace;
   delete cpuspace;
   delete anticspace;
 }

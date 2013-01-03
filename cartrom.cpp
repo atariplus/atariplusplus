@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartrom.cpp,v 1.50 2009-11-29 16:19:28 thor Exp $
+ ** $Id: cartrom.cpp,v 1.51 2011-06-24 20:11:17 thor Exp $
  **
  ** In this module: Administration/loading of cartridges
  **********************************************************************************/
@@ -23,6 +23,7 @@
 #include "cart32kee16.hpp"
 #include "cartoss.hpp"
 #include "cartossb.hpp"
+#include "cartoss8k.hpp"
 #include "cartsdx.hpp"
 #include "cartxegs.hpp"
 #include "cartbbob.hpp"
@@ -338,6 +339,7 @@ LONG CartROM::BuildSelectionVector(bool withheader,LONG size,LONG type)
     AddSelectionVector(cnt,withheader,size,type,Cart16K::CartSizes    ,vec,Cartridge::Cart_16K,         "16K");
     AddSelectionVector(cnt,withheader,size,type,CartOSS::CartSizes    ,vec,Cartridge::Cart_8KSuperCart, "Oss");
     AddSelectionVector(cnt,withheader,size,type,CartOSSB::CartSizes   ,vec,Cartridge::Cart_8KSuperCartB,"OssB");
+    AddSelectionVector(cnt,withheader,size,type,CartOSS8K::CartSizes  ,vec,Cartridge::Cart_8KSuperCart8K,"Oss8K");
     AddSelectionVector(cnt,withheader,size,type,CartSDX::CartSizes    ,vec,Cartridge::Cart_32KSDX,      "SDX");
     AddSelectionVector(cnt,withheader,size,type,CartSDX::CartSizes    ,vec,Cartridge::Cart_32KDiamond,  "Diamond");
     AddSelectionVector(cnt,withheader,size,type,CartSDX::CartSizes    ,vec,Cartridge::Cart_32KExp,      "EXP");

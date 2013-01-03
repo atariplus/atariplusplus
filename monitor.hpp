@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.hpp,v 1.36 2008/05/22 13:03:54 thor Exp $
+ ** $Id: monitor.hpp,v 1.39 2011-06-25 22:13:45 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -32,6 +32,7 @@ class Monitor {
   class CPU      *cpu;
   class MMU      *MMU;
   class AdrSpace *cpuspace,*anticspace,*currentadr;
+  class DebugAdrSpace *debugspace;
   //
   // The log file for the output tracing, if possible.
   FILE           *tracefile;
@@ -403,7 +404,7 @@ class Monitor {
       BreakPoint(void)
 	: address(0), id(-1), enabled(true)
       { }
-    } BreakPoints[NumBrk];
+    } BreakPoints[NumBrk],WatchPoints[NumBrk];
     //
   public:
     BrkP(class Monitor *mon,const char *lng,const char *shr,const char *helper);
@@ -481,6 +482,14 @@ class Monitor {
   } SkTb;
   friend struct SkTb;
   //
+  // The disk IO command
+  struct Disk : public Command {
+    Disk(class Monitor *mon,const char *lng,const char *shr,const char *helper);
+  public:
+    void Apply(char e);
+  } Disk;
+  friend struct Disk;
+  //
   // The online help "system"
   struct Help : public Command {
     Help(class Monitor *mon,const char *lng,const char *shr,const char *helper);
@@ -514,6 +523,9 @@ public:
   // Enter the monitor because we detected a breakpoint. Arguments
   // are the breakpoint number and the PC
   void CapturedBreakPoint(int i,ADR pc);
+  // Enter the monitor because we detected a memory watch point.
+  // Arguments are the breakpoint number and the address.
+  void CapturedWatchPoint(int i,ADR mem);
   // Enter the monitor because of software tracing. Argument is the
   // current PC
   void CapturedTrace(ADR pc);

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rompage.hpp,v 1.8 2003/04/24 21:15:58 thor Exp $
+ ** $Id: rompage.hpp,v 1.9 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Definition of a page of ROM
  **********************************************************************************/
@@ -31,10 +31,9 @@ protected:
     return romimage[mem & PAGE_MASK];
   }
   //
-  virtual bool ComplexWrite(ADR,UBYTE)
+  virtual void ComplexWrite(ADR,UBYTE)
   {
     // Writes to ROM are not allowed and are silently ignored
-    return false; // no sync
   }
   //
 public:
@@ -58,12 +57,9 @@ public:
     return romimage[mem & PAGE_MASK];
   }
   //
-  // Write a byte to a page, return the "vsync" flag to indicate whether the
-  // CPU should wait to the end of the scan line
-  bool WriteByte(ADR,UBYTE)
+  // Write a byte to a page.
+  void WriteByte(ADR,UBYTE)
   {    
-    // Writes to ROM are not allowed
-    return false;
   }
   //
   // Blank a rompage to all zeros

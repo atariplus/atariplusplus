@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.cpp,v 1.98 2010-11-06 16:43:25 thor Exp $
+ ** $Id: antic.cpp,v 1.110 2013-01-02 20:56:14 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -44,7 +44,7 @@
 // it into a pointer
 #define POKE4(base,byte) (*((ULONG *)base) = REPEAT4(byte))
 // Increment the antic display counter, and do not cross a 1K boundary.
-#define INCPC(d)  AnticPC = ((AnticPC + d) & 0x03ff) | (AnticPC & 0xfc00)
+#define INCPC  AnticPC = ((AnticPC + 1) & 0x03ff) | (AnticPC & 0xfc00)
 
 #define GPFB GTIA::Background_Mask // intentionally something different!
 #define GPF0 GTIA::Playfield_0
@@ -83,7 +83,7 @@ const int Antic::DisplayModulo       = DisplayWidth + FillInOffset + PlayerMissi
 // The first generated scan line
 const int Antic::DisplayStart        = 8;
 // The total height of the display in rows. 
-const int Antic::DisplayHeight       = 249;
+const int Antic::DisplayHeight       = 248;
 // Lines up to the start of the VBI
 const int Antic::VBIStart            = 248;
 // Total lines in an NTSC display
@@ -91,7 +91,7 @@ const int Antic::NTSCTotal           = 262;
 // Total lines in an PAL display
 const int Antic::PALTotal            = 312;
 // Total number of lines visible in a window.
-const int Antic::WindowLines         = Antic::DisplayHeight - Antic::DisplayStart - 1;
+const int Antic::WindowLines         = Antic::DisplayHeight - Antic::DisplayStart;
 // Total number of rows visible.
 const int Antic::WindowWidth         = Antic::DisplayWidth - 32;
 #endif
@@ -120,40 +120,37 @@ const UBYTE Antic::Playfield48Fetch[103] = {0,0,0,0,0,0,0,
 const struct CPU::DMASlot Antic::MemRefreshSlot    = {
   25,                  // first cycle to allocate (was: 25)
   36,                  // number of cycles to allocate
-  107,                 // last cycle to touch
+  107,                 // first cycle not to touch
   Playfield24Fetch + 7 // fetch every fourth cycle
 };
 // Pre-allocated DMA slots for display list fetch
 const struct CPU::DMASlot Antic::DListFetchSlot    = {
-  0,     // first cycle to allocate
+  1,     // first cycle to allocate
   1,     // number of cycles
-  107,   // last cycle to touch
+  107,   // first cycle not to touch
   Ones
 };
 // Pre-allocated DMA slots for DL-LoadScanPointer fetch
 const struct CPU::DMASlot Antic::DLScanFetchSlot   = {
-  5,     // first cycle to allocate
+  6,     // first cycle to allocate
   2,     // number of cycles to fetch
-  107,   // last cycle to touch
+  107,   // first cycle not to touch
   Ones   // fetch cycles six and seven
 };
 // Pre-allocated DMA slots for player graphics
 const struct CPU::DMASlot Antic::PlayerFetchSlot   = {
-  1,     // first cycle to allocate
+  2,     // first cycle to allocate
   4,     // number of cycles to fetch
-  107,   // last cycle to touch
+  107,   // first cycle not to touch
   Ones
 };
 // Pre-allocated DMA slots for missile graphics
 const struct CPU::DMASlot Antic::MissileFetchSlot  = {
-  112,   // first cycle to fetch
+  0,     // first cycle to fetch
   1,     // number of cycles to fetch
-  107,   // last cycle to touch
+  107,   // first cycle not to touch
   Ones
 };
-/*
-/store/doc/Antic_Timings.txt
-*/
 ///
 
 /// Antic::Antic
@@ -175,19 +172,57 @@ Antic::Antic(class Machine *mach)
   //
   // Reset the current modeline generator
   CurrentMode    = NULL;
-  FillIn         = NULL;
-  Width          = 0;
-  DisplayLine    = 0;
   //
-  BeforeDLICycles = 12; // Between 6..12 for atlantis and decathlon, 12 to make robot look correct
-  BeforeDisplayClocks = 16;
-  YPosIncSlot     = 108;
-  YPos            = 0;
-  NMIFlag         = false;
-  NMILevel        = false;
+  GTIAStart           = 16; // Start position of GTIA.
+  YPosIncSlot         = 111;
+  YPos                = 0;
   //
-  NTSC            = false;
+  NTSC                = false;
+  TotalLines          = PALTotal;
+  PreviousIR          = 0x0; // Blank lines
   //
+  // Define the DMA timing. 
+  // First, for DMA off, no data here.
+  DMA_None.Regular.Playfield.FirstCycle   = 0;
+  DMA_None.Regular.Playfield.NumCycles    = 0;
+  DMA_None.Regular.Glyph                  = DMA_None.Regular.Playfield;
+  DMA_None.Regular.Character              = DMA_None.Regular.Playfield;
+  DMA_None.Regular.FillInOffset           = 0;
+  //
+  // Narrow playfield.
+  DMA_Narrow.Regular.Playfield.FirstCycle = 28;
+  DMA_Narrow.Regular.Playfield.NumCycles  = 64;
+  DMA_Narrow.Regular.Glyph.FirstCycle     = 26;
+  DMA_Narrow.Regular.Glyph.NumCycles      = 64;
+  DMA_Narrow.Regular.Character.FirstCycle = 26 + 3;
+  DMA_Narrow.Regular.Character.NumCycles  = 64;
+  DMA_Narrow.Regular.FillInOffset         = 64;
+  //
+  // Regular playfield.
+  DMA_Normal.Regular.Playfield.FirstCycle = 20;
+  DMA_Normal.Regular.Playfield.NumCycles  = 80;
+  DMA_Normal.Regular.Glyph.FirstCycle     = 18;
+  DMA_Normal.Regular.Glyph.NumCycles      = 80;
+  DMA_Normal.Regular.Character.FirstCycle = 18 + 3;
+  DMA_Normal.Regular.Character.NumCycles  = 80;
+  DMA_Normal.Regular.FillInOffset         = 32;
+  //
+  // Wide playfield.
+  DMA_Wide.Regular.Playfield.FirstCycle   = 12;
+  DMA_Wide.Regular.Playfield.NumCycles    = 96;
+  DMA_Wide.Regular.Glyph.FirstCycle       = 10;
+  DMA_Wide.Regular.Glyph.NumCycles        = 96;
+  DMA_Wide.Regular.Character.FirstCycle   = 10 + 3;
+  DMA_Wide.Regular.Character.NumCycles    = 96;
+  DMA_Wide.Regular.FillInOffset           = 0;
+  //
+  // Scrolling playfields.
+  DMA_None.Scrolled                       = DMA_None.Regular;
+  DMA_Narrow.Scrolled                     = DMA_Normal.Regular;
+  DMA_Normal.Scrolled                     = DMA_Wide.Regular;
+  DMA_Wide.Scrolled                       = DMA_Wide.Regular;
+  //
+  ActiveDMATiming                         = &DMA_None;
 }
 ///
 
@@ -288,24 +323,25 @@ void Antic::WarmStart(void)
   for(i = 0;i < 5;i++) {
     BusNoise[i] = UBYTE(rand() >> 8);
   }
-  AnticPC       = 0x00;
-  AnticPCShadow = 0x00;
-  AnticPCCur    = 0x00;
-  PFBase        = 0x00;
-  YPos          = 0x00;
-  NMIEnable     = 0x00;
-  NMIStat       = 0x00;
-  CharCtrl      = 0x00;
-  HScroll       = 0x00;
-  VScroll       = 0x00;
-  DMACtrlShadow = 0x00;  
+  AnticPC        = 0x00;
+  AnticPCShadow  = 0x00;
+  AnticPCCur     = 0x00;
+  PFBase         = 0x00;
+  YPos           = 0x00;
+  NMIEnable      = 0x1f;
+  NMIStat        = 0x00;
+  CharCtrl       = 0x00;
+  HScroll        = 0x00;
+  VScroll        = 0x00;
+  DMACtrlShadow  = 0x00; 
+  PreviousIR     = 0x00; // Blank lines 
   // Reset the current modeline generator
   CurrentMode    = NULL;
-  FillIn         = NULL;
-  Width          = 0;
-  DisplayLine    = 0;
-  NMIFlag        = false;
-  NMILevel       = false;
+  if (NTSC) {
+    TotalLines = NTSCTotal;
+  } else {
+    TotalLines = PALTotal;
+  }
   //
   // Clear the scan buffer as well
   memset(ScanBuffer,0,sizeof(ScanBuffer));
@@ -753,11 +789,38 @@ void Antic::ModeLineF::Generator(ULONG *ptr,int width,int)
 void Antic::HBI(void)
 {
   // Update DMACtrl for player DMA
-  DMACtrlShadow = DMACtrl;
 }
 ///
 
-/// Antic::ScanLine
+
+/// Antic::FetchPlayfield
+// Load data from the playfield into the scanline buffer
+void Antic::FetchPlayfield(struct ModeLine *mode,struct DMAGenerator *dma)
+{	
+  class AdrSpace *ram = Ram;  // the Antic RAM.
+  UBYTE *scan;
+  int nbytes;
+  ADR pf;
+  //
+  nbytes = dma->Playfield.NumCycles >> (4 - mode->DMAShift);
+  pf     = PFBase;
+  scan   = ScanBuffer;
+  //
+  // Now copy the data from memory into the scan line
+  // buffer since the mode line generators expect it there.
+  do {
+    *scan++  = UBYTE(ram->ReadByte(pf));
+    // The PFBase is really a 12 bit counter and a four bit register,
+    // hence cannot cross a 4K boundary. Increment PFBase now
+    // accordingly.
+    pf       = (pf & 0xf000) | ((pf + 1) & 0x0fff);
+  } while(--nbytes);
+  //
+  PFBase     = pf;
+}
+///
+
+/// Antic::Scanline
 // Generate one scanline of the Antic display
 // If nmi is true, then a DLI has to generated.
 // modeline is the mode line generator for this scanline.
@@ -778,80 +841,29 @@ void Antic::HBI(void)
 // This is all tricky. Some applications worth testing with:
 // Rescue, Nautilus, JetBoot, PitfallII, Zaxxon, Frogger, Decathlon,
 // Koronis Rift, Moon Patrol, Fort Apocalypse
-void Antic::Scanline(bool nmi,struct ModeLine *mode,
-		     UBYTE *fillin,int width,bool xscroll,int displayline,int first)
+void Antic::Scanline(struct ModeLine *mode,
+		     UBYTE *fillin,int width,int xscroll,int displayline)
 {
-  int dma = DMACtrl;
+  bool wasfiddled = false;
   // Keep scrolling data because it may change under our feed since the
   // CPU may change it while we're working
   // shift is the displacement from the position where the data did go
   // to the position where it should have gone. GTIA corrects this, then.
-  int xmin,xmax,shift,cycles;
+  int xmin,xmax,shift;
   //
-  // If we have Hi-Resolution players or are at an even line,
-  // add the cycles for Player/Missile DMA
-  // FIX: Checked that the number of DMA cycles does not depend
-  // on the P/M resolution.
-  // Check for PM DMA cycles here.  
-  switch (DMACtrl & 0x0c) {      
-  case 0x08: // Player DMA
-  case 0x0c: // Missile DMA is for free if player DMA is turned on.
-    Cpu->StealCycles(PlayerFetchSlot);
-    // runs intentionally into the missile fetch
-  case 0x04: // Missile DMA
-    Cpu->StealCycles(MissileFetchSlot);
-    break;
-  default:   // No p/m DMA
-    break;
-  }
-  //
-  // Advance the CPU for a couple of cycles before the DLI is triggered (Jetboot Jack)
-  Cpu->Go(BeforeDLICycles);
-  //
-  // Check whether the display width changed.
-  if (displayline == first && (dma ^ DMACtrl) & 0x03) {
-    int delta = (DMACtrl & 0x03) - (dma & 0x03);
-    // If the display got smaller, fixup the PFBase pointer for the cycles at the end
-    // ANTIC doesn't take.
-    delta    *= (1 << mode->DMAShift) >> 1;
-    PFBase    = (PFBase & 0xf000) | ((PFBase + delta) & 0x0fff);
-  }
-  // 
-  if (xscroll) {
-    shift = FillInOffset - (HScroll << 1); // this should be >= 0
-  } else {
-    shift = FillInOffset;
-  }
-  xmin = XMinNoScroll + shift;
-  xmax = XMaxNoScroll + shift;
-  //
-  // As seen from the CPU, antic increments the line counter not before
-  // HPos = 8 on the next line. Hence, we update the shadow register here
-  // after having run the CPU.
-  // YPosShadow = YPos; Conflicts with decathlon
-  // 
-  if (nmi || YPos == VBIStart) {
-    // If we require a DLI, remove the 7 cycles the CPU requires for its reaction
-    // on it.
-    if (YPos == VBIStart) {
-      NMIStat   = 0x40;      
-    } else if (nmi) {
-      NMIStat   = 0x80;
-    }
-    if (((NMIEnable & NMIStat) & 0xc0) /* && ((NMIStat & 0x40) || Cpu->IsHalted() == false)*/) {
-      // Generate now if NMI is not yet active.
-      Cpu->GenerateNMI();
-    }
-  }
+  shift = FillInOffset - xscroll;
+  xmin  = ActiveDMATiming->Regular.FillInOffset + shift;
+  xmax  = xmin + (ActiveDMATiming->Regular.Playfield.NumCycles << 2);
   //
   // Now generate the display if there is someting to set...
   // Keep the data to be able to re-run the generator in case someone sets up a horizontal kernel
   // modifying antic data.
+  //
+  // Keep the fiddling flag from the last line to emulate the lost-sync bug if the last
+  // line in the display is a fiddled mode.
+  if (CurrentMode)
+    wasfiddled = CurrentMode->Fiddling;
   CurrentMode = mode;
-  FillIn      = fillin;
-  Width       = width;
-  HShift      = shift;
-  DisplayLine = displayline;
   //
   if (width) {
       mode->Generator((ULONG *)(fillin),width,displayline);
@@ -870,20 +882,15 @@ void Antic::Scanline(bool nmi,struct ModeLine *mode,
       memset(LineBuffer     ,GTIA::Background,DisplayModulo);
   }
   // 
-  cycles = BeforeDisplayClocks - Cpu->CurrentXPos();
-  if (cycles > 0)
-    Cpu->Go(cycles);
-  //
-  // Run now the display generator. This also launches the CPU
-  Gtia->TriggerGTIAScanline(LineBuffer+shift,0,DisplayModulo-FillInOffset,mode->Fiddling);
-  //
-  YPos++;
-  //
-  machine->HBI();
+  // Run now the display generator.
+  // Antic has a bug here that it even drives GTIA (and does not generate a sync pulse)
+  // if the last line is a hires line.
+  if (YPos < DisplayHeight || wasfiddled)
+    Gtia->TriggerGTIAScanline(LineBuffer+shift,0,DisplayModulo - FillInOffset,mode->Fiddling);
 }
 ///
 
-/// Antic::ModeLine
+/// Antic::Modeline
 // Generate one mode line of the Antic display.
 // IR is the instruction code and only needed for horizontal/vertical scrolling
 // and NMI generation. No jump codes are interpreted here.
@@ -894,28 +901,132 @@ void Antic::Scanline(bool nmi,struct ModeLine *mode,
 // last is the number of the last scan line to be generated. It may be larger
 // than nlines. In this case, the last scan line is repeated over and over 
 // again to generate more VSCROLL artefacts.
-void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
+void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
 {
   struct CPU::DMASlot gfx;  // contains the slots to be allocated for screen graphics and font cell graphics fetches
-  bool nmi   = false;
-  bool shift = false;
-  int scanline;
+  struct DMAGenerator *dma;
+  int shift    = 0;
+  int scanline = 0;
   int dmadelta;             // DMA cycle shift allocation due to HScroll
-  int lastref = 106;        // position of memory refresh if all cycles stolen
+  bool isfirst = true;
+  bool islast  = false;
   
-  nlines--;   // for simpler calculations
-  for (scanline = first;scanline <= last && YPos < DisplayHeight;scanline++) {
+  nlines--; // makes a couple of things simpler.
+  //
+  // Note that the test for "end of mode" is done here again
+  // and that this decision depends on a potentially updated version
+  // of VScroll.
+  while(scanline <= ((vertscroll == 1)?(VScroll):(nlines)) && YPos <= DisplayHeight) {
     UBYTE *fillin;
-    int width,displayline;
-    // get the line that should be currently displayed
-    displayline = scanline;
-    if (displayline<0)
-      displayline = 0;
-    if (displayline>nlines)
-      displayline = nlines;
-    // Get the width of the line. We must read it directly from the
-    // dma control register because the CPU may change this within
-    // the mode line.
+    int firstcycle;
+    //
+    // First reserve P/M DMA slots. They appear first because
+    // The CPU needs to see them before the DLI triggers in.
+    switch (DMACtrl & 0x0c) {      
+    case 0x08: // Player DMA
+    case 0x0c: // Missile DMA is for free if player DMA is turned on.
+      Cpu->StealCycles(PlayerFetchSlot);
+      // runs intentionally into the missile fetch
+    case 0x04: // Missile DMA
+      Cpu->StealCycles(MissileFetchSlot);
+      break;
+    }
+    // Keeps the information on which P/M data will be made available
+    // to GTIA.
+    DMACtrlShadow = DMACtrl;    
+    // 
+    // Advance the CPU for a couple of cycles before the DLI is triggered (Jetboot Jack)
+    // and before the DMA settings become active.
+    Cpu->Go(6); 
+    //
+    if (isfirst && vertscroll == 2) {
+      // This is the first vertical scrolling line, last was regular
+      // Hence, delay the first line.
+      scanline = VScroll;
+      if (scanline > nlines)
+	scanline -= 16;
+    } 
+    //
+    // Check whether this is the last line of the mode and we should
+    // possibly generate a DLI.
+    if (scanline == ((vertscroll == 1)?(VScroll):(nlines)))
+      islast = true;
+    // 
+    // Advance to the DLI-generation step of ANTIC.
+    Cpu->Step(); 
+    //
+    // If this is the last scanline and the "generate DLI" bit of the
+    // instruction is set, and DLIs are allowed, signal that we need
+    // an NMI. 
+    if ((islast && (ir & 0x80)) || YPos == VBIStart) {
+      bool nmi = false;
+      //
+      NMIStat = (YPos == VBIStart)?(0x40):(0x80);
+      //
+      if ((NMIEnable & NMIStat) & 0xc0) {
+	// Generate now if NMI is not yet active.
+	nmi = true;
+      }
+      //
+      // Give the CPU two cycles to react. The CPU can no longer reset
+      // the NMI now.
+      Cpu->Step();
+      //
+      // The CPU cannot reset the flag here, regenerate.
+      NMIStat = (YPos == VBIStart)?(0x40):(0x80);
+      //
+      // But the CPU can enable the NMI.
+      if ((NMIEnable & NMIStat) & 0xc0) {
+	// Generate now if NMI is not yet active, but again give the CPU some time.
+	if (!nmi) {
+	  Cpu->Step();
+	  nmi = true;
+	}
+      }
+      //
+      Cpu->Go(2);
+      //
+      if (nmi) {
+	// Generate now if NMI is not yet active.
+	Cpu->GenerateNMI();
+      }
+    }
+    //
+    // Compute the number of clocks to the start of the display - DMA.
+    firstcycle       = GTIAStart; // At worst here because then GTIA starts.
+    if (ir & 0x10) {
+      dmadelta       = HScroll >> 1;
+      dma            = &(ActiveDMATiming->Scrolled);
+    } else {
+      dmadelta       = 0;
+      dma            = &(ActiveDMATiming->Regular);
+    } 
+    if (DMACtrl & 0x20) {
+      if (gen->FontCycles) {
+	if (dma->Character.FirstCycle + dmadelta < firstcycle)
+	  firstcycle = dma->Character.FirstCycle + dmadelta;
+      }
+      if (isfirst) {
+	if (gen->FontCycles) { 
+	  if (dma->Glyph.FirstCycle + dmadelta < firstcycle)
+	    firstcycle = dma->Glyph.FirstCycle + dmadelta;
+	} else if (gen->DMACycles) {
+	  if (dma->Playfield.FirstCycle + dmadelta < firstcycle)
+	    firstcycle = dma->Playfield.FirstCycle + dmadelta;
+	}
+      }
+    }
+    //
+    // Advance the CPU by the given number of cycles: We can run at least
+    // these number of cycles uninterrupted, still giving the program
+    // a chance to modify the DMA settings.
+    {
+      UBYTE cycle = Cpu->CurrentXPos();
+      if (firstcycle - cycle > 0)
+	Cpu->Go(firstcycle - cycle);
+    }
+    //
+    // Now compute the DMA timings, finally.
     // Displace data by the fill-in offset for easier horizontal scrolling.
     // We can scroll at most 16 color clocks, hence a fill-in of 32 half
     // color clocks.
@@ -923,33 +1034,15 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
       // DMA cycle shifting is now a bit tricky: One DMA cylce is two color clocks.
       dmadelta       = HScroll >> 1; // shift by half the cycles to the right
       // Computations change if horizontal scrolling is enabled
-      width          = DMAWidthScroll << 6; // width in color clocks
-      fillin         = LineBuffer   + FillInOffset + XMinScroll;
-      // In case we had horizontal scrolling, we need to erase some border
-      // since we generated too many rows.
-      shift          = true;
-      gfx.FirstCycle = FirstDMACycleScroll + dmadelta;
-      gfx.NumCycles  = LastDMACycleScroll - FirstDMACycleScroll;
-      gfx.LastCycle  = 106;
-      if (LastDMACycleScroll == 106) {
-	lastref      = 106;
-      } else {
-	lastref      = LastDMACycleScroll - 2 + dmadelta;
-      }
+      fillin         = LineBuffer   + FillInOffset + ActiveDMATiming->Scrolled.FillInOffset;
+      shift          = HScroll << 1;
+      dma            = &(ActiveDMATiming->Scrolled);
     } else {
       dmadelta       = 0;
-      width          = DMAWidthNoScroll << 6;
-      fillin         = LineBuffer   + FillInOffset + XMinNoScroll;
-      shift          = false;  // No shifting here.      
-      gfx.FirstCycle = FirstDMACycleNoScroll + dmadelta;
-      gfx.NumCycles  = LastDMACycleNoScroll - FirstDMACycleNoScroll;
-      gfx.LastCycle  = 106;
-      if (LastDMACycleNoScroll == 106) {
-	lastref      = 106;
-      } else {
-	lastref      = LastDMACycleNoScroll - 2;
-      }
-    }   
+      fillin         = LineBuffer   + FillInOffset + ActiveDMATiming->Regular.FillInOffset;
+      shift          = 0;
+      dma            = &(ActiveDMATiming->Regular);
+    }
     //
     //
     // Steal only cycles if DMA is enabled
@@ -960,27 +1053,34 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
 	// since the font data depends on the row. This does not happen for
 	// graphics mode as its graphics contents is only fetched in the
 	// first line. This starts one cycle later to avoid collisions
-	gfx.FirstCycle++;
+	gfx.FirstCycle = dma->Character.FirstCycle + dmadelta;
+	gfx.NumCycles  = dma->Character.NumCycles;
 	gfx.CycleMask  = gen->FontCycles;
+	gfx.LastCycle  = 106;
 	Cpu->StealCycles(gfx);
       } 
       // If this is the first scan line of this mode line, add the DMA
       // cycles required to fetch the instruction
-      if (scanline == first) {
+      if (isfirst) {
 	if (gen->FontCycles) {     
-	  // Add cycles for fetching the characters.
-	  // We offset this a little bit to ensure that the accesses for these
-	  // graphics fall into empty slots. Character cell DMA starts three
-	  // cycles in front of the character shape DMA.
-	  gfx.FirstCycle -= 3;
-	  gfx.CycleMask   = gen->DMACycles;
-	  Cpu->StealCycles(gfx);
-	} else if (gen->DMACycles) { 
+	  // Add cycles for fetching the character glyphcs.
+	  gfx.FirstCycle = dma->Glyph.FirstCycle + dmadelta;
+	  gfx.NumCycles  = dma->Glyph.NumCycles;
+	  gfx.CycleMask  = gen->DMACycles;
+	} else if (gen->DMACycles) {
 	  // Include cycles for the screen graphics, but only on the first scan line
 	  // of the mode line.
-	  gfx.CycleMask   = gen->DMACycles;
+	  gfx.FirstCycle = dma->Playfield.FirstCycle + dmadelta;
+	  gfx.NumCycles  = dma->Playfield.NumCycles;
+	  gfx.CycleMask  = gen->DMACycles;
+	}
+	//
+	if (gen->DMAShift && dma->Playfield.NumCycles) {
+	  gfx.LastCycle  = 106;
 	  Cpu->StealCycles(gfx);
-	} 
+	  // Also fetch the playfield data now, only on the first line.
+	  FetchPlayfield(gen,dma);
+	}
       } 
     }
     // Get the base DMA cycles for character based modes. This
@@ -988,17 +1088,20 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
     // Include memory refresh. This is additional for all scan lines, not
     // only for the first scan line of a mode line. Note that we are here
     // running in a loop.
-    Cpu->StealMemCycles(MemRefreshSlot,lastref);
+    Cpu->StealMemCycles(MemRefreshSlot);
     //
-    // If this is the last scanline and the "generate DLI" bit of the
-    // instruction is set, and DLIs are allowed, signal that we need
-    // an NMI. This works only if a) the instruction says so, and 
-    // b) the DLI is enabled.
-    if (scanline == last && (ir & 0x80))
-      nmi = true;
+    // Advance the CPU to the first GTIA cycle.
+    if (GTIAStart - firstcycle > 0)
+      Cpu->Go(GTIAStart - firstcycle);
     //
     // Now run the scanline of this mode line
-    Scanline(nmi,gen,fillin,width,shift,scanline,first);
+    Scanline(gen,fillin,dma->Playfield.NumCycles << 2,shift,scanline);
+    //
+    // We are now on the next line.
+    YPos++;
+    scanline++;
+    isfirst = false;
+    machine->HBI();
   }
 }
 ///
@@ -1008,15 +1111,16 @@ void Antic::Modeline(int ir,int first,int last,int nlines,struct ModeLine *gen)
 // hence generates one complete frame.
 void Antic::RunDisplayList(void)
 {
-  bool jvb;
-  int vertscroll;             // vertical scrolling flags
-  class CPU      *cpu = Cpu;  // the cpu running this machine
-  class AdrSpace *ram = Ram;  // the Antic RAM.
-  int   currentir     = 0x10; // current instruction
+  bool jvb            = false;      // Not yet vertical blank
+  int vertscroll      = 0;          // vertical scrolling flags
+  class AdrSpace *ram = Ram;        // the Antic RAM.
+  int   currentir     = PreviousIR; // current instruction
 
-  vertscroll = 0;     // no vertical scrolling here
-  jvb        = false; // not yet a jump/wait VBI
   //
+  // Antic carries the vertical scrolling flag accross VBIs, so regenerate it here.
+  if ((currentir & 0x0f) >= 2 && (currentir & 0x020)) { // a display mode?
+    vertscroll = 2;
+  }
   // 
   // VCount must equal zero for some games but the first line
   // starts when vcount == 4. Hence, we process here vcount = 0..3
@@ -1026,34 +1130,31 @@ void Antic::RunDisplayList(void)
   AnticPCCur   = AnticPC;
   // Also reset the display frontend now: Signal that we restart from top.
   machine->Display()->ResetVertical();
+  //
   // We are not displaying anything: If the CPU does character generator modifications
   // now, no immediate consequences will be drawn.
-  CurrentMode = NULL;
   do {
     // Reserve DMA slots for memory refresh within here.
-    Cpu->StealCycles(MemRefreshSlot);
+    Cpu->StealMemCycles(MemRefreshSlot);
     // The nine cycles for DMA are already stolen and
     // need not to be counted below....
-    cpu->Go(114);
+    Cpu->Go(114);
     machine->HBI();
   } while(++YPos < DisplayStart);
 
-  NMIStat = 0x00; // clear NMI status
+  //NMIStat = 0x00; // clear NMI status: Not really done at all....
   do {
-    int dmawidth = DMAWidthNoScroll; // setup base DMA Width (corrected for scrolling)
-    
     // Update vertical scrolling flags from last line
     vertscroll >>= 1;
     // Check whether we are only waiting
-    if (jvb) {    
+    if (jvb) { 
       // We are not displaying anything: If the CPU does character generator modifications
       // now, no immediate consequences will be drawn.
       CurrentMode = NULL;
-      // Reserve DMA slots for memory refresh within here.
-      Cpu->StealCycles(MemRefreshSlot);   
       // Yes, just generate a blank display. Requires 2 DMA cycles for memory,
-      // no NMI, blank modeline, full display width, scanline #0
-      Scanline(false,ModeLines[0],LineBuffer,DisplayModulo,FillInOffset,0,1);
+      //  blank modeline, full display width, scanline #0.
+      // The wait VSYNC instruction does generate DLIs.
+      Modeline(currentir,0,1,ModeLines[0]);
     } else {
       struct ModeLine *gen; // mode line generator
       int i,ir,nlines;      // Antic instruction register, # scan lines in the mode
@@ -1068,12 +1169,10 @@ void Antic::RunDisplayList(void)
 	// Here: Antic is active, we must generate a display.
 	AnticPCCur = AnticPC;
 	currentir = ram->ReadByte(AnticPC);
-	INCPC(1); // Increment the PC.
+	INCPC; // Increment the PC.
 	// Reserve the slots for DMA access for the DLI counter.
 	Cpu->StealCycles(DListFetchSlot);
-      } else {
-	currentir &= 0x7f;
-      }
+      } // DLI remains on, even if we re-fetch the IR.
       ir = currentir;
       // Now check for details about the instructions. We first
       // check for blank and jump instructions.
@@ -1090,21 +1189,22 @@ void Antic::RunDisplayList(void)
 	  jvb = true;                       // wait for the end of the display now
 	ir        &= 0x81;                  // mask scrolling flags out
 	if (DMACtrl & 0x20) {
-	  AnticPC    = ram->ReadWord(AnticPC);
+	  UWORD pc   = ram->ReadByte(AnticPC);
+	  INCPC;
+	  pc        |= ram->ReadByte(AnticPC) << 8;
+	  AnticPC    = pc;
 	  Cpu->StealCycles(DLScanFetchSlot);
 	}
       } else {
-	int nbytes;                         // # of bytes to read for this mode
-	UBYTE *scan;
-	// Regular instructions. First check for all special flags we
-	// could dream of:
-	//
+	// Regular instructions. First check for all special flags.
 	// Reload Playfield base pointer address if we can.
 	if (ir & 0x40) {
 	  if (DMACtrl & 0x20) {
 	    // Antic reload screen pointer
-	    PFBase   = ram->ReadWord(AnticPC);
-	    INCPC(2);
+	    PFBase   = ram->ReadByte(AnticPC);
+	    INCPC;
+	    PFBase  |= ram->ReadByte(AnticPC) << 8;
+	    INCPC;
 	    // and add two DMA cycles
 	    Cpu->StealCycles(DLScanFetchSlot);
 	  }
@@ -1117,60 +1217,25 @@ void Antic::RunDisplayList(void)
 	  vertscroll |= 2;
 	}
 	//
-	// horizontal scrolling
-	if ((ir & 0x10) && dmawidth < 6)
-	  dmawidth++; // requires additional cycles for scrolling
-	//
 	// get the mode line generator now
 	gen        = ModeLines[ir & 0x0f];
 	nlines     = gen->ScanLines;
-	//
-	// get # of bytes per scan line and the # of lines if there are any
-	if ((DMACtrl & 0x20) && gen->DMAShift && dmawidth) {
-	  ADR    pf  = PFBase;
-	  nbytes     = dmawidth << gen->DMAShift;
-	  //
-	  // Now copy the data from memory into the scan line
-	  // buffer since the mode line generators expect it there.
-	  scan       = ScanBuffer;
-	  do {
-	    *scan++  = UBYTE(ram->ReadByte(pf));
-	    // The PFBase is really a 12 bit counter and a four bit register,
-	    // hence cannot cross a 4K boundary. Increment PFBase now
-	    // accordingly.
-	    pf       = (pf & 0xf000) | ((pf + 1) & 0x0fff);
-	  } while(--nbytes);
-	  PFBase     = pf;
-	}
-      } // End of mode type switch.
+      } 
+      // End of mode type switch.
       //
       // Now go for the line generator.
       if (nlines > 0) {
-	int first = 0;
-	int last  = nlines - 1;
-	//
-	// Check for first and last vertical scroll line.
-	switch(vertscroll) {
-	case 2:
-	  // This is the first vertical scrolling line, last was regular
-	  // Hence, delay the first line.
-	  first   = VScroll;
-	  if (first > last)
-	    first-= 16;
-	  break;
-	case 1:
-	  // This is the last vertical scroll line, this one is no longer vscroll
-	  last    = VScroll;
-	}
 	// Everything else is displayed the regular way
 	//
-	Modeline(ir,first,last,nlines,gen);
-	//
+	Modeline(ir,vertscroll,nlines,gen);
       }
     }    
     // Note that the scanline function also increments the
     // vertical position and runs the pokey activity
-  } while(YPos < DisplayHeight);
+  } while(YPos <= DisplayHeight);
+  //
+  // Store IR for next go-around.
+  PreviousIR  = currentir;
   //
   // Display list ended now, or we reached the end of the frame.
   // Generate now some blank lines for the vertical blank
@@ -1180,21 +1245,12 @@ void Antic::RunDisplayList(void)
   //
   // Now run the vertical blank. The exact position depends on
   // whether we are a PAL or a NTSC machine
-  if (NTSC) {
-    do {
-      // Reserve DMA slots for memory refresh within here.
-      Cpu->StealCycles(MemRefreshSlot);
-      cpu->Go(114);
-      machine->HBI();
-    } while(++YPos < NTSCTotal);
-  } else {
-    do {    
-      // Reserve DMA slots for memory refresh within here.
-      Cpu->StealCycles(MemRefreshSlot);
-      cpu->Go(114);
-      machine->HBI();
-    } while(++YPos < PALTotal);
-  }
+  do {
+    // Reserve DMA slots for memory refresh within here.
+    Cpu->StealMemCycles(MemRefreshSlot);
+    Cpu->Go(114);
+    machine->HBI();
+  } while(++YPos < TotalLines);
 }
 ///
 
@@ -1206,8 +1262,11 @@ UBYTE Antic::VCountRead(void)
   // We could use the WSync flag here to check whether we are already
   // past the critical HPos.
   // Actually, YPos is incremented in slot #108, so we fix it up here.
-  if (machine->CPU()->CurrentXPos() >= YPosIncSlot)
+  if (machine->CPU()->CurrentXPos() >= YPosIncSlot) {
     ypos++;
+    if (ypos == TotalLines && machine->CPU()->CurrentXPos() > YPosIncSlot)
+      ypos = 0;
+  }
   return UBYTE(ypos >> 1);
 }
 ///
@@ -1236,26 +1295,10 @@ UBYTE Antic::NMIRead(void)
 }
 ///
 
-/// Antic::RegenerateModeline
-// Re-generate a modeline if CHBase/CHAttr changed in the middle.
-void Antic::RegenerateModeline(void)
-{
-  if (CurrentMode) { 
-    int xmin = XMinNoScroll + HShift;
-    int xmax = XMaxNoScroll + HShift;
-    CurrentMode->Generator((ULONG *)FillIn,Width,DisplayLine); 
-    if (xmin < FillInOffset) xmin = FillInOffset;
-    memset(LineBuffer     ,GTIA::Background,xmin);
-    memset(LineBuffer+xmax,GTIA::Background,DisplayModulo-xmax);
-  }
-}
-///
-
 /// Antic::ChBaseWrite
 // Define the character generator base address 
 void Antic::ChBaseWrite(UBYTE val)
 {
-  class CPU *cpu  = machine->CPU();
   // First update the shadow, then modify the
   // character generators
   ChBase          = ADR(val) << 8;
@@ -1263,18 +1306,6 @@ void Antic::ChBaseWrite(UBYTE val)
   // happens at the end of the line.
   Char20.CharBase = ChBase & 0xfe00;
   Char40.CharBase = ChBase & 0xfc00; // Keep care of alignment restrictions
-  //
-  // Check whether the currently active antic mode is a character mode. If so,
-  // rebuild the output. Note that we might have been called in the middle of
-  // the GTIA output just reading the very same data, and the CPU is modifying
-  // antic within the horizontal line.
-  //
-  // Only do that in case antic hasn't run its DMA yet.
-  if (cpu->CurrentXPos() < 24) {
-    if (CurrentMode && Width && CurrentMode->FontCycles) {
-      RegenerateModeline();
-    }
-  }
 }
 ///
 
@@ -1282,24 +1313,12 @@ void Antic::ChBaseWrite(UBYTE val)
 // Write into the control register of the character generator
 void Antic::ChCtrlWrite(UBYTE val)
 { 
-  class CPU *cpu = machine->CPU();
-  //
   CharCtrl = val;
 
   // Set individual properties in the character generator
   Char20.UpsideDown = Char40.UpsideDown = (val & 0x04)?(true):(false);
   Char20.InvertMask = Char40.InvertMask = (val & 0x02)?(0x80):(0x00);
   Char20.BlankMask  = Char40.BlankMask  = (val & 0x01)?(0x80):(0x00);  
-  //
-  // Check whether the currently active antic mode is a character mode. If so,
-  // rebuild the output. Note that we might have been called in the middle of
-  // the GTIA output just reading the very same data, and the CPU is modifying
-  // antic within the horizontal line. 
-  if (cpu->CurrentXPos() < 24) {
-    if (CurrentMode && Width && CurrentMode->FontCycles) {
-      RegenerateModeline();
-    }
-  }
 }
 ///
 
@@ -1331,65 +1350,20 @@ void Antic::DMACtrlWrite(UBYTE val)
   // Compute the width of the playfield display from bits 0..1
   switch (val & 0x03) {
   case 0x00: // no playfield DMA
-    XMinNoScroll          = XMaxNoScroll = 0;
-    XMinScroll            = XMaxScroll   = 0;
-    DMAWidthNoScroll      = 0;
-    DMAWidthScroll        = 0;
-    FirstDMACycleNoScroll = 0;
-    LastDMACycleNoScroll  = 0;
-    FirstDMACycleScroll   = 0;
-    LastDMACycleScroll    = 0;
+    ActiveDMATiming       = &DMA_None;
     break;
   case 0x01: // narrow playfield
-    XMinNoScroll          = 64;
-    XMaxNoScroll          = 320;
-    XMinScroll            = 32;
-    XMaxScroll            = 352;
-    DMAWidthNoScroll      = 4;
-    DMAWidthScroll        = 5;    
-    FirstDMACycleNoScroll = 28;
-    LastDMACycleNoScroll  = 92;
-    FirstDMACycleScroll   = 20;
-    LastDMACycleScroll    = 100;
+    ActiveDMATiming       = &DMA_Narrow;
     break;
   case 0x02: // medium playfield
-    XMinNoScroll          = 32;
-    XMaxNoScroll          = 352;
-    XMinScroll            = 0;
-    XMaxScroll            = 384;
-    DMAWidthNoScroll      = 5;
-    DMAWidthScroll        = 6;
-    FirstDMACycleNoScroll = 20;
-    LastDMACycleNoScroll  = 100;
-    FirstDMACycleScroll   = 12;
-    LastDMACycleScroll    = 106;
+    ActiveDMATiming       = &DMA_Normal;
     break;
   case 0x03: // large playfield
-    XMinNoScroll     = XMinScroll = 0;
-    XMaxNoScroll     = XMaxScroll = 384;
-    DMAWidthNoScroll = 6;
-    DMAWidthScroll   = 6;
-    FirstDMACycleNoScroll = 12;
-    LastDMACycleNoScroll  = 106;
-    FirstDMACycleScroll   = 12;
-    LastDMACycleScroll    = 106;
+    ActiveDMATiming       = &DMA_Wide;
     break;
   }
-
-  // Now compute the number of cycles for player/missile DMA
-  switch (val & 0x0c) {
-  case 0x00: // No p/m DMA 
-    PMDMACycles  = 0;
-    break;
-  case 0x04: // Missile DMA
-    PMDMACycles  = 1;
-    break;
-  case 0x08: // Player DMA
-  case 0x0c: // Missile DMA is for free if player DMA is turned on.
-    PMDMACycles  = 5;
-    break;
-  }
-
+  
+  //
   // Check whether we have single or double resultion PlayerMissile DMA
   if (val & 0x10) {
     // High resolution PM DMA
@@ -1398,7 +1372,6 @@ void Antic::DMACtrlWrite(UBYTE val)
     // Low resolution PM DMA
     PMActive = &PMGeneratorLow;
   }
-
 }
 ///
 
@@ -1407,13 +1380,6 @@ void Antic::DMACtrlWrite(UBYTE val)
 void Antic::HScrollWrite(UBYTE val)
 { 
   HScroll  = UBYTE(val & 0x0f);
-  //
-  /* 
-     class CPU *cpu = machine->CPU();
-     if (CurrentMode && Width && cpu->CurrentXPos() < 24) {
-     RegenerateModeline();
-     }
-  */
 }
 ///
 
@@ -1495,44 +1461,44 @@ UBYTE Antic::ComplexRead(ADR mem)
 
 /// Antic::ComplexWrite
 // Write into an Antic register
-bool Antic::ComplexWrite(ADR mem,UBYTE val)
+void Antic::ComplexWrite(ADR mem,UBYTE val)
 {
   switch(mem & 0x0f) {
   case 0x00:
     DMACtrlWrite(val);
-    return false;
+    return;
   case 0x01:
     ChCtrlWrite(val);
-    return false;
+    return;
   case 0x02:
     DListLoWrite(val);
-    return false;
+    return;
   case 0x03:
     DListHiWrite(val);
-    return false;
+    return;
   case 0x04:
     HScrollWrite(val);
-    return false;
+    return;
   case 0x05:
     VScrollWrite(val);
-    return false;
+    return;
   case 0x07:
     PMBaseWrite(val);
-    return false;
+    return;
   case 0x09:
     ChBaseWrite(val);
-    return false;
+    return;
   case 0x0a:
     WSyncWrite();
-    return true; // This is the one and only case where we require a horizontal sync!
+    return;
   case 0x0e:
     NMIEnableWrite(val);
-    return false;
+    return;
   case 0x0f:
     NMIResetWrite();
-    return false;
+    return;
   default:
-    return false;
+    return;
   }
 }
 ///
@@ -1552,13 +1518,18 @@ void Antic::ParseArgs(class ArgParser *args)
   args->DefineTitle("ANTIC");
   args->DefineSelection("VideoMode","sets ANTIC video mode",videovector,val);
   NTSC = (val)?(true):(false);
-  args->DefineLong("BeforeDLICycles",
-		   "set position of DLI in CPU cycles",0,16,BeforeDLICycles);
-  args->DefineLong("BeforeDisplayClocks",
-		   "set number of CPU clocks in front of display generation",0,32,BeforeDisplayClocks);
-  args->DefineLong("YPosIncCycle",
+  /*args->DefineLong("BeforeDLICycles",
+    "set position of DLI in CPU cycles",2,11,BeforeDLICycles);*/
+  /*args->DefineLong("YPosIncCycle",
 		   "horizontal position where YPos gets incremented",104,114,YPosIncSlot);
+  */
 
+  if (NTSC) {
+    TotalLines = NTSCTotal;
+  } else {
+    TotalLines = PALTotal;
+  }
+  //TotalLines     = (NTSC)?(NTSCTotal):(PALTotal);
 }
 ///
 

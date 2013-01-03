@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.hpp,v 1.54 2008/05/08 13:22:29 thor Exp $
+ ** $Id: gtia.hpp,v 1.60 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -137,7 +137,7 @@ private:
     // PM_XPos, you get these figures, though. Both are inclusive.
     // This happens by simply clipping P/M graphics to the borders below.
     static const int Player_Left_Border  INIT(4);
-    static const int Player_Right_Border INIT(378);
+    static const int Player_Right_Border INIT(380);
     // Collision registers. There's no need to mirror the precise
     // hardware registers. We keep all the stuff here and extract 
     // the information as soon as needed.
@@ -171,11 +171,12 @@ private:
       CollisionPlayfield = 0;
       DecodedPosition    = -64;
     }
-    // Render the object into the target
-    void Render(UBYTE *target);
+    // Render the object into the target, possibly remove the leftmost n
+    // bits because they are already on the screen.
+    void Render(UBYTE *target,int removebits = 0,int deltapos = 0);
     //
     // Remove the indicated object from the scan line again.
-    void Remove(UBYTE *target);
+    void Remove(UBYTE *target,int deltapos = 0);
     //
   }     Player[4],Missile[4]; // four players, for missiles
   //
@@ -380,9 +381,7 @@ private:
 				      private virtual IntermediateResolverUnfiddled
   {
   public:
-    DisplayGenerator80Unfiddled(class GTIA *parent)
-      : DisplayGenerator80Base(parent)
-    { }
+    DisplayGenerator80Unfiddled(class GTIA *parent);
   };  
   class DisplayGenerator80Fiddled : public DisplayGenerator80Base,
 				    private virtual IntermediateResolverFiddled
@@ -603,20 +602,23 @@ private:
   // Quick color lookup registers for the priority engine. This is indexed
   // by a bitmask set by the individual player/missile presence. Bit 0 is
   // player 0 and so on. PM-Graphics comes in two layers: Player 0,1 and
-  // Player 2,3.
+  // Player 2,3. Bit 4 is reserved for player 5, the missiles combined.
 #ifdef HAS_MEMBER_INIT
-  static const int PlayerColorLookupSize = 16;
+  static const int PlayerColorLookupSize = 32;
 #else
-#define            PlayerColorLookupSize   16
+#define            PlayerColorLookupSize   32
 #endif
   PreComputedColor Player0ColorLookup[PlayerColorLookupSize];
   PreComputedColor Player2ColorLookup[PlayerColorLookupSize];
+  PreComputedColor Player4ColorLookup[PlayerColorLookupSize];
   //
   // Pre-computed colors of players in front of the given playfields.
   PreComputedColor Player0ColorLookupPF01[PlayerColorLookupSize];
   PreComputedColor Player2ColorLookupPF01[PlayerColorLookupSize];
+  PreComputedColor Player4ColorLookupPF01[PlayerColorLookupSize];
   PreComputedColor Player0ColorLookupPF23[PlayerColorLookupSize];
   PreComputedColor Player2ColorLookupPF23[PlayerColorLookupSize];
+  PreComputedColor Player4ColorLookupPF23[PlayerColorLookupSize];
   //
   // Playfield priority masks for playfields 0,1 and playfields 2,3
   UBYTE            Playfield01Mask[PlayerColorLookupSize];
@@ -648,6 +650,7 @@ private:
   bool NTSC;                   // If true, we are running an NTSC GTIA
   LONG PMReaction;             // Number of half-color clocks required as pre-fetch for the Player logic.
   LONG PMRelease;              // Ditto for releasing the channel.
+  LONG PMResize;               // Ditto for resizing the channel.
   bool PALColorBlur;           // blur colors of the same hue at adjacent lines
   bool AntiFlicker;            // flicker fixer enabled.
   enum {
@@ -701,7 +704,7 @@ private:
   //
   // Reading and writing bytes to GTIA
   virtual UBYTE ComplexRead(ADR mem);
-  virtual bool ComplexWrite(ADR mem,UBYTE val);  
+  virtual void  ComplexWrite(ADR mem,UBYTE val);  
   //
   // Various register access functions
   UBYTE ConsoleRead(void);              // read console switches

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartctrl.hpp,v 1.8 2003/01/04 12:27:07 thor Exp $
+ ** $Id: cartctrl.hpp,v 1.9 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Cart Control logic for Oss Super Carts
  **********************************************************************************/
@@ -35,7 +35,7 @@ class CartCtrl : public Chip, public Page, public Saveable {
   // Just the read and write implementation, nothing more.
   // Bank switching is done in the MMU.
   virtual UBYTE ComplexRead(ADR mem);
-  virtual bool ComplexWrite(ADR mem,UBYTE byte);
+  virtual void  ComplexWrite(ADR mem,UBYTE byte);
   //
 public:
   CartCtrl(class Machine *mach);

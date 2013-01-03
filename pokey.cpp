@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.108 2011-04-28 21:23:21 thor Exp $
+ ** $Id: pokey.cpp,v 1.121 2013-01-01 17:36:55 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -59,16 +59,14 @@ const UBYTE Pokey::PolyCounter5[Poly5Size] =
 /// Pokey::Pokey
 // Pokey constructor
 Pokey::Pokey(class Machine *mach,int unit)
-  : Chip(mach,(unit)?"ExtraPokey":"Pokey"), Saveable(mach,(unit)?"ExtraPokey":"Pokey"), HBIAction(mach), CycleAction(mach), IRQSource(mach),
-    Outcnt(0), PolyCounter17(new UBYTE[Poly17Size]), SampleCnt(0), OutputMapping(new BYTE[256]),
-    Unit(unit)
+  : Chip(mach,(unit)?"ExtraPokey":"Pokey"), Saveable(mach,(unit)?"ExtraPokey":"Pokey"), 
+    HBIAction(mach), CycleAction(mach), IRQSource(mach),
+    Outcnt(0), 
+    PolyCounter9(new UBYTE[Poly9Size]), PolyCounter17(new UBYTE[Poly17Size]),
+    Random9(new UBYTE[Poly9Size]), Random17(new UBYTE[Poly17Size]),
+    SampleCnt(0), OutputMapping(new BYTE[256]), Unit(unit)
 {
   int n;
-  //
-  // Initialize the random generator now
-#ifdef HAVE_TIME
-  srand((unsigned int)(time(NULL)));
-#endif
   //
   // Install default gamma, volume here.
   // Sublinear mapping, full volume
@@ -79,17 +77,10 @@ Pokey::Pokey(class Machine *mach,int unit)
   DCAverage        = 0;
   DCFilterConstant = 512;
  
-  UpdateAudioMapping();
+  InitPolyCounter(Random9 ,PolyCounter9 ,9 ,4 );
+  InitPolyCounter(Random17,PolyCounter17,17,12);
   //
-  // Fill the 17 bit poly counter with random data. That is not quite
-  // the original, but shouldn't make any noticable difference.
-  for(n=0;n<Poly17Size;n++) {
-    if (rand() > (RAND_MAX >> 1)) {
-      PolyCounter17[n] = 0x0f;
-    } else {
-      PolyCounter17[n] = 0x00;
-    }
-  }
+  UpdateAudioMapping();
   //
   //
   Frequency17Mhz     = 1789790; // 1.79Mhz clock
@@ -116,13 +107,17 @@ Pokey::Pokey(class Machine *mach,int unit)
   PolyNonePtr          = PolyCounterNone;
   Poly4Ptr             = PolyCounter4;
   Poly5Ptr             = PolyCounter5;  
-  Poly9Ptr             = PolyCounter17;
+  Poly9Ptr             = PolyCounter9;
   Poly17Ptr            = PolyCounter17;
+  Random9Ptr           = Random9;
+  Random17Ptr          = Random17;
   PolyNoneEnd          = PolyCounterNone + 1;
   Poly4End             = Poly4Ptr  + Poly4Size;
   Poly5End             = Poly5Ptr  + Poly5Size;
   Poly9End             = Poly9Ptr  + Poly9Size;
   Poly17End            = Poly17Ptr + Poly17Size;
+  Random9End           = Random9   + Poly9Size;
+  Random17End          = Random17  + Poly17Size;
   //
   // Reset the channels here. We cannot do this in the
   // reset routine since the async sound generation may
@@ -141,6 +136,7 @@ Pokey::Pokey(class Machine *mach,int unit)
   NTSC             = false;
   SIOSound         = true;
   CycleTimers      = false;
+  LongStartBit     = false;
   Outcnt           = 0;
   //
   // Initialize serial timing, will be overridden
@@ -148,11 +144,46 @@ Pokey::Pokey(class Machine *mach,int unit)
   SerIn_Delay      = 9 * Base15kHz;
   SerOut_Delay     = 9 * Base15kHz;
   SerXmtDone_Delay = 9 * Base15kHz;
+  SerBitOut_Delay  = Base15kHz;
   //
   // Initialize pointers to be on the safe side.
   sound            = NULL;
   keyboard         = NULL;
   sio              = NULL;
+}
+///
+
+/// Pokey::InitPolyCounter
+// Initialize the poly counter for audio usage and the bit-output of
+// the random generator, composed of the uppermost bits of the
+// generator. Arguments are the random output, the audio output,
+// the size of the polycounter in bits (and also the last tap) and
+// the first tap.
+void Pokey::InitPolyCounter(UBYTE *rand,UBYTE *audio,int size,int tap)
+{
+  int shift[17]; // the shift register. Maximum possible size is 17.
+  int length = (1L << size) - 1; // Size of the output in entries. This should better be correct.
+  int i,j,n;
+
+  //
+  // Pokey reset sets them all to zero.
+  for(i = 0;i < size;i++)
+    shift[i] = 1;
+  
+  for(i = 0;i < length;i++) {
+    // Compute the random output by picking the first size bits from the shift register.
+    for(j = 0,n = 0;j < 8;j++)
+      n |= shift[j] << (7-j);
+    *rand++  = n;
+    *audio++ = shift[0]?15:0; // normalized to maximum audio volume: 15 or 0.
+
+    // Compute the new input to the register from the two taps. 
+    // The first tab is always the register size.
+    n = shift[tap-1]^shift[size-1];
+    for(j = size - 1;j > 0;j--)
+      shift[j] = shift[j-1];
+    shift[0] = n;
+  }
 }
 ///
 
@@ -169,6 +200,10 @@ void Pokey::WarmStart(void)
   SerIn_Counter      = 0;    // no serial IRQ pending
   SerOut_Counter     = 0;
   SerXmtDone_Counter = 0;
+  SerBitOut_Counter  = 0;
+  SerOut_BitCounter  = 0;
+  SerOut_Buffer      = 0xff;
+  SerOut_Register    = 0xffff;
   SkStat             = 0xf0; // no pending errors
   SkCtrl             = 0x00;
   SerInBytes         = 0x00; // reset serial port
@@ -178,8 +213,10 @@ void Pokey::WarmStart(void)
   PolyNonePtr          = PolyCounterNone;
   Poly4Ptr             = PolyCounter4;
   Poly5Ptr             = PolyCounter5;
-  Poly9Ptr             = PolyCounter17;
+  Poly9Ptr             = PolyCounter9;
   Poly17Ptr            = PolyCounter17;
+  Random9Ptr           = Random9;
+  Random17Ptr          = Random17;
   PolyAdjust           = 0;    
   // Now reset the states of all channels
    for(n = 0;n < 4;n++) {
@@ -234,8 +271,9 @@ Pokey::~Pokey(void)
     CycleTimers = false;
   }
   //
-  // Release the poly counter buffers: Only the 17 bit polycounter is hand-
+  // Release the poly counter buffers: Only the 9,17 bit polycounter is hand-
   // allocated.
+  delete[] PolyCounter9;
   delete[] PolyCounter17;
   delete[] OutputMapping;
 }
@@ -421,15 +459,19 @@ void Pokey::UpdateSound(UBYTE mask)
   case 0x40:
     // Output clocked by channel 3 (or 2 and 3)
     if (mask & 0x0c) {
-      SerOut_Delay     = 20 * Ch[3].DivNMax;
-      SerXmtDone_Delay = SerOut_Delay;
+      SerOut_Delay     = Ch[3].DivNMax;
+      SerBitOut_Delay  = 2  * SerOut_Delay;
+      SerXmtDone_Delay = 20 * SerOut_Delay;
+      SerOut_Delay     = (SerOut_Delay > 10)?(SerOut_Delay - 10):(1);
     }
     break;
   case 0x60:
     // Output clocked by channel 1 (or 0 and 1)
     if (mask & 0x03) { 
-      SerOut_Delay     = 20 * Ch[1].DivNMax;
-      SerXmtDone_Delay = SerOut_Delay;
+      SerOut_Delay     = Ch[1].DivNMax;
+      SerBitOut_Delay  = 2  * SerOut_Delay;
+      SerXmtDone_Delay = 20 * SerOut_Delay;
+      SerOut_Delay     = (SerOut_Delay > 10)?(SerOut_Delay - 10):(1);
     }
     break;
   }
@@ -443,33 +485,7 @@ void Pokey::UpdateSound(UBYTE mask)
   if (SIOSound) {
     // Check for channel 0,1 dependencies
     if (mask & 0x03) {
-      if (SkCtrl & 0x08) {
-	// Two-tone modulation turned on. Here, only the higher
-	// of the channels 0,1 survives, unless channel 1 is lower
-	// channel 0 in which case bit 7 (and the serial output data)
-	// controls which channel has to be sent.
-	if (Ch[0].DivNMax > Ch[1].DivNMax) {
-	  // Channel 0 has the lower tone. Block channel 0.
-	  Ch[0].ChannelOn = false;
-	} else {
-	  // Otherwise, channel 1 has the lower tone, but
-	  // which channel survives here depends on the serial
-	  // output. We do not yet emulate the serial shift
-	  // register, but we can check for a serial break,
-	  // generated by SkCtrl, at least.
-	  if (SkCtrl & 0x80) {
-	    // Send a serial break. Let channel 1 pass
-	    Ch[0].ChannelOn = false;
-	  } else {
-	    // Keep serial output at high, send channel
-	    // zero.
-	    // FIXME: We would need to test the serial
-	    // shift register here instead if the
-	    // serial mode control is 32 or 64
-	    Ch[1].ChannelOn = false;
-	  }
-	}
-      } else if ((SkCtrl & 0x60) == 0x60) {
+      if ((SkCtrl & 0x60) == 0x60) {
 	// Channels 0,1 also used as output clock here.
 	// We need to enable them to hear a difference.
 	if (Ch[0].AudioC & 0x0f)
@@ -612,13 +628,13 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
       Poly9Ptr      += PolyAdjust;      
       Poly17Ptr     += PolyAdjust;
       if (Poly4Ptr  >= Poly4End) {
-	Poly4Ptr     = ((Poly4Ptr - PolyCounter4)   % Poly4Size ) + PolyCounter4;
+	Poly4Ptr     = ((Poly4Ptr  - PolyCounter4)   % Poly4Size ) + PolyCounter4;
       }
       if (Poly5Ptr  >= Poly5End) {
-	Poly5Ptr     = ((Poly5Ptr - PolyCounter5)   % Poly5Size ) + PolyCounter5;
+	Poly5Ptr     = ((Poly5Ptr  - PolyCounter5)   % Poly5Size ) + PolyCounter5;
       }
       if (Poly9Ptr  >= Poly9End) {
-	Poly9Ptr     = ((Poly9Ptr - PolyCounter17)  % Poly9Size ) + PolyCounter17;
+	Poly9Ptr     = ((Poly9Ptr  - PolyCounter9)  % Poly9Size ) + PolyCounter9;
       }
       if (Poly17Ptr >= Poly17End) {
 	Poly17Ptr    = ((Poly17Ptr - PolyCounter17) % Poly17Size) + PolyCounter17;
@@ -666,6 +682,19 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
 	// that applies here for the divisor.
 	if (PolyPointerSecond[audc] == NULL || **PolyPointerSecond[audc] == out) {
 	  c->OutBit = out;
+	}
+      }
+      //
+      // Experimental two-tone emulation.
+      if (SkCtrl & 0x08) {
+	switch(next_event) {
+	case 1: // Channel 1 syncs channel 0 always.
+	  Ch[0].DivNCnt = Ch[0].DivNMax;
+	  break;
+	case 0: // Channel 0 syncs channel 1 if the serial register is set.
+	  if ((SerOut_Register & 0x01) && (SkCtrl & 0x80) == 0)
+	    Ch[1].DivNCnt = Ch[1].DivNMax;
+	  break;
 	}
       }
       //
@@ -765,7 +794,7 @@ void Pokey::UpdatePots(int steps)
 void Pokey::GoNSteps(int steps)
 {
   struct Channel *c;
-  int ch;
+  int ch,lastch;
   //
   // Serial bus handling. That is, updating the serial input,
   // output and done flags.
@@ -786,6 +815,7 @@ void Pokey::GoNSteps(int steps)
 	ConcurrentBusy  = true; // do not try to deliver this until the atari collects it
       }
     }
+    //
     // Check for serial input done.
     if (SerIn_Counter > 0) {
       if ((SerIn_Counter -= steps) <= 0) {  
@@ -801,6 +831,30 @@ void Pokey::GoNSteps(int steps)
 	}
       }
     }
+    //
+    // Check whether there is some output from the serial register.
+    if (SerBitOut_Counter > 0) {
+      if ((SerBitOut_Counter -= steps) <= 0) {
+	// Reload the counter if there are any bits left.
+	// While this logic should actually drive the SerXmtDone mechanism,
+	// it does not - for hysterical raisons. The bitcounter logic is
+	// only part of the two-tone emulation.
+	if (SerOut_BitCounter && --SerOut_BitCounter) {
+	  // Align the phase of timers 0 and 1 in two-tone mode.
+	  if (SkCtrl & 0x08) {
+	    Ch[0].DivNIRQ = 0;
+	    Ch[1].DivNIRQ = 0;
+	    Ch[0].DivNCnt = 0;
+	    Ch[1].DivNCnt = 0;
+	  }
+	  //
+	  SerBitOut_Counter = SerBitOut_Delay;
+	  SerOut_Register >>= 1;      // next bit.
+	  SerOut_Register  |= 0x8000; // shift in empty bits.
+	}
+      }
+    }
+    //
     // Check for serial output register empty.
     if (SerOut_Counter > 0) {
       if ((SerOut_Counter -= steps) <= 0) {
@@ -812,8 +866,17 @@ void Pokey::GoNSteps(int steps)
 	// SerOut is now empty. Generate XMTDone when completely
 	// done.
 	SerXmtDone_Counter = SerXmtDone_Delay;
+	//
+	// Load the serial output buffer into the shift register.
+	// Remember that there is an additional start bit and an
+	// additional stop bit.
+	SerOut_Register    = SerOut_Buffer << 1; // insert the zero stop bit.
+	SerOut_Register   |= 0xfe00;             // insert stop bits
+	SerOut_BitCounter  = 10; // 10 bits to be shifted.
+	SerBitOut_Counter  = SerBitOut_Delay;
       }
     }
+    //
     // Check whether the serial output register just
     // became empty. If so, generate an IRQ. Note
     // that we actually do not drive bit 3 of IRQStat
@@ -824,31 +887,82 @@ void Pokey::GoNSteps(int steps)
 	GenerateIRQ(0x08);
       }
     }
-  }
-  //
-  // Now check for Pokey timers. Actually, we won't
-  // need to emulate them very precisely. Or not?
-  for(ch = 0, c = Ch;ch < 4;ch++,c++) {
-    static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
-    // Yes, channel 3 cannot generate interrupts at all...
-    if ((c->DivNIRQ += steps) >= c->DivNMax) {
-      // Generate an IRQ now (or not for channel 3)
-      if (IRQEnable & irqbits[ch]) {
-	GenerateIRQ(irqbits[ch]);
-      }	
-      //c->DivNIRQ = 0; Allow accumulation of errors on average.
-      c->DivNIRQ  -= c->DivNMax;
+    //
+    // Now check for Pokey timers. Actually, we won't
+    // need to emulate them very precisely. Or not?
+    if (SkCtrl & 0x10) {
+      // Async mode on, timer 4 is triggered externally.
+      lastch = 2;
+      // This locks timer 4 into reset. There is actually no
+      // timer 3 interrupt, but for consisteny, reset it as well.
+      Ch[2].DivNIRQ = 0;
+      Ch[3].DivNIRQ = 0;
+    } else {
+      lastch = 4;
     }
-  }
-  //
-  // Potentiometer increment in the fast most. 
-  // Check how fast we should update the counters. We
-  // set the counter increment value depending on whether
-  // fast or slow pot reading is set. Maybe this is not quite
-  // correct since we cannot remove the loading capacitors
-  // in the real emulator. Need to check this.
-  if ((SkCtrl & 0x03) && (SkCtrl & 0x04)) {
-    UpdatePots(steps);
+    //
+    // Synchronization of channels for the two-tone modes.
+    if (SkCtrl & 0x08) { 
+      // Synchronized mode.
+      for(ch = 0, c = Ch;ch < lastch;ch++,c++) {
+	static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
+	// Yes, channel 3 cannot generate interrupts at all...
+	if ((c->DivNIRQ += steps) >= c->DivNMax) {
+	  switch(ch) {
+	  case 1:
+	    // Channel 1 syncs channel 0 always.
+	    Ch[0].DivNIRQ = 0;
+	    break;
+	  case 0:
+	    // Channel 0 syncs channel 1 if the serial register is set.
+	    if ((SerOut_Register & 0x01) && (SkCtrl & 0x80) == 0)
+	      Ch[1].DivNIRQ = 0;
+	    break;
+	  }
+	  //
+	  // Generate an IRQ now (or not for channel 3)
+	  if (IRQEnable & irqbits[ch]) {
+	    GenerateIRQ(irqbits[ch]);
+	  }	
+	  //c->DivNIRQ = 0; Allow accumulation of errors on average.
+	  c->DivNIRQ  -= c->DivNMax;
+	}
+      }
+    } else {
+      // Free-running mode.
+      for(ch = 0, c = Ch;ch < lastch;ch++,c++) {
+	static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
+	// Yes, channel 3 cannot generate interrupts at all...
+	if ((c->DivNIRQ += steps) >= c->DivNMax) {
+	  // Generate an IRQ now (or not for channel 3)
+	  if (IRQEnable & irqbits[ch]) {
+	    GenerateIRQ(irqbits[ch]);
+	  }	
+	  //c->DivNIRQ = 0; Allow accumulation of errors on average.
+	  c->DivNIRQ  -= c->DivNMax;
+	}
+      }
+    }
+    //
+    // Potentiometer increment in the fast most. 
+    // Check how fast we should update the counters. We
+    // set the counter increment value depending on whether
+    // fast or slow pot reading is set. Maybe this is not quite
+    // correct since we cannot remove the loading capacitors
+    // in the real emulator. Need to check this.
+    if (SkCtrl & 0x04) {
+      UpdatePots(steps);
+    }
+    //
+    // Update the random generator, advance by the given number of steps.
+    Random9Ptr  += steps;
+    if (Random9Ptr  >= Random9End) {
+      Random9Ptr     = ((Random9Ptr  - Random9 ) % Poly9Size ) + Random9;
+    } 
+    Random17Ptr += steps;
+    if (Random17Ptr >= Random17End) {
+      Random17Ptr    = ((Random17Ptr - Random17) % Poly17Size) + Random17;
+    }
   }
 }
 ///
@@ -883,39 +997,40 @@ void Pokey::HBI(void)
   // sound driver. This is now run by the HBI timer.
   // sound->TriggerSoundScanline();
   //
-  // Potentiometer increment in the slow most. 
-  // Check how fast we should update the counters. We
-  // set the counter increment value depending on whether
-  // fast or slow pot reading is set. Maybe this is not quite
-  // correct since we cannot remove the loading capacitors
-  // in the real emulator. Need to check this.
-  if ((SkCtrl & 0x03) && (SkCtrl & 0x04) == 0) {
-    UpdatePots(1);
-  }
+  // Nothing happens if pokey is resetting.
+  if (SkCtrl & 0x03) {
+    // Potentiometer increment in the slow most. 
+    // Check how fast we should update the counters. We
+    // set the counter increment value depending on whether
+    // fast or slow pot reading is set. Maybe this is not quite
+    // correct since we cannot remove the loading capacitors
+    // in the real emulator. Need to check this.
+    if ((SkCtrl & 0x04) == 0) {
+      UpdatePots(1);
+    }
+    //
+    // Now check keyboard input if we are connected to
+    // the keyboard
+    if (keyboard) {
+      if (IRQEnable & 0x80) {
+	if (keyboard->BreakInterrupt()) {
+	  GenerateIRQ(0x80);
+	}
+      }
+      if (SkCtrl & 0x02) {
+	if (IRQEnable & 0x40) {
+	  if (keyboard->KeyboardInterrupt()) {
+	    GenerateIRQ(0x40);
+	  }
+	}
+      }
+    }
+  } 
   //
   // Update the HBI event by one.
   if (!CycleTimers) {
     GoNSteps(Base15kHz);
   }
-  //
-  // Now check keyboard input if we are connected to
-  // the keyboard
-  if (keyboard && (SkCtrl & 3) >= 1) {
-    if (IRQEnable & 0x80) {
-      if (keyboard->BreakInterrupt()) {
-	GenerateIRQ(0x80);
-      }
-    }
-  }
-  if (keyboard && (SkCtrl & 3) >= 2) {
-    if (IRQEnable & 0x40) {
-      if (keyboard->KeyboardInterrupt()) {
-	GenerateIRQ(0x40);
-      }
-    }
-  }
-  // Shuffle the random generator a bit.
-  rand();
 }
 ///
 
@@ -943,10 +1058,6 @@ UBYTE Pokey::ComplexRead(ADR mem)
   case 0x0a:
     // The random number generator
     return RandomRead();
-  case 0x0b:
-  case 0x0c:
-    // Unused registers.
-    return 0;
   case 0x0d:
     // Serial shift register read.
     return SerInRead();
@@ -957,7 +1068,7 @@ UBYTE Pokey::ComplexRead(ADR mem)
     // Serial port status read
     return SkStatRead();
   }
-  // Shut up the compiler
+  // Unused registers.
   return 0xff;
 }
 ///
@@ -965,7 +1076,7 @@ UBYTE Pokey::ComplexRead(ADR mem)
 /// Pokey::ComplexWrite
 // Emulate a pokey byte write to a given
 // address.
-bool Pokey::ComplexWrite(ADR mem,UBYTE val)
+void Pokey::ComplexWrite(ADR mem,UBYTE val)
 {
   switch(mem & 0x0f) {
   case 0x00:
@@ -974,44 +1085,42 @@ bool Pokey::ComplexWrite(ADR mem,UBYTE val)
   case 0x06:
     // Set an audio frequency write now
     AudioFWrite((mem & 0x0f) >> 1,val);
-    return false;
+    return;
   case 0x01:
   case 0x03:
   case 0x05:
   case 0x07:
     // Set an audio control register here.
     AudioCWrite((mem & 0x0f) >> 1,val);
-    return false;
+    return;
   case 0x08:
     AudioCtrlWrite(val);
-    return false;
+    return;
   case 0x09:
     STimerWrite();
-    return false;
+    return;
   case 0x0a:
     SkStatClear();
-    return false;
+    return;
   case 0x0b:
     PotGoWrite();
-    return false;
+    return;
   case 0x0c:
     // This does nothing
-    return false;
+    return;
   case 0x0d:
     // Serial output register put
     SerOutWrite(val);
-    return false;
+    return;
   case 0x0e:
     // IRQ Enable definition
     IRQEnWrite(val);
-    return false;
+    return;
   case 0x0f:
     // Serial Control Register Write
     SkCtrlWrite(val);
-    return false;
+    return;
   }
-  // Shut up the compiler
-  return false;
 }
 ///
 
@@ -1047,15 +1156,17 @@ UBYTE Pokey::KBCodeRead(void)
 UBYTE Pokey::RandomRead(void)
 {
   if (SkCtrl & 0x03) {
-    // Never use the lower-order bits.
-    // This here should be a bit better since
-    // it has at least a period of 2^16
-    if (RAND_MAX >= 65536) {
-      return (rand() >> 8);
+    // Go to the pokey random generator, which is either the 9 or 17 bit
+    // output, depending on AudCtrl.
+    if (AudioCtrl & 0x80) {
+      // The 9 bit poly counter.
+      return *Random9Ptr;
     } else {
-      return (rand() >> 4);
+      // The 17 bit poly counter.
+      return *Random17Ptr;
     }
   } else {
+    // This is also the first entry.
     return 0xff;
   }
 }
@@ -1171,6 +1282,36 @@ UBYTE Pokey::SkStatRead(void)
   if (SerIn_Counter == 0) // Serial input register is currently busy?
     out |= 0x02; // no, it's not.
 
+  //
+  // Emulate direct reading from the serial input and mask in
+  // the serial data when we're close to completing the input.
+  // This emulates a device that operates at the 19200 baud the
+  // SIO chain operates with, and does not recognize any internal
+  // clock.
+  if (SerIn_Counter > 0 && SerInBuffer) {
+    const int timerconstant = (0x28 + 7); // This is the pokey timer constant for the 19200 baud control
+    int bitposition   = (SerIn_Counter + (timerconstant >> 1)) / timerconstant; // "half-bits"
+    bool bit          = true; // default level on the serial line is high.
+    //
+    if ((LongStartBit && bitposition == 21) || bitposition == 20 || bitposition == 19) { 
+      // The start bit. Actually, 1 1/2 start bits. If we assume that the
+      // receiver waits 1 1/2 bits to sample at the middle of the bit, this
+      // might be ok.
+      bit = false;
+    } else if (bitposition < 19 && bitposition > 2) {
+      bit = ((*SerInBuffer >> (7 - ((bitposition - 3) >> 1))) & 0x01)?true:false;
+    } 
+    //
+    // Stop bits are one.
+    //
+    // Now insert the bit into the output.
+    if (bit) {
+      out |=  0x10;
+    } else {
+      out &= ~0x10;
+    }
+  }
+
   return out;
 }
 ///
@@ -1238,15 +1379,11 @@ void Pokey::STimerWrite(void)
   // This resets all counters to zero and
   // initializes the output flip-flops
   for(ch=0;ch < 4;ch++) {
-    Ch[ch].DivNCnt = Ch[ch].DivNIRQ = 0;
+    Ch[ch].DivNCnt =  0;
+    Ch[ch].DivNIRQ =  -4;
   }
   //
-  // Also resets the polycounters 
-  PolyNonePtr          = PolyCounterNone;
-  Poly4Ptr             = PolyCounter4;
-  Poly5Ptr             = PolyCounter5;  
-  Poly9Ptr             = PolyCounter17;
-  Poly17Ptr            = PolyCounter17;
+  // STimer does not reset the polycounters
   // Channel 0,1 output is set to low, Channel 2,3 output
   // is set to high. Strange enough, but the manual says so.
   Ch[0].OutBit = Ch[1].OutBit = 0x00;
@@ -1261,33 +1398,36 @@ void Pokey::SerOutWrite(UBYTE val)
 {
   // First check whether we are connected at
   // 19200 baud. If not, ignore the request.
-  if (sio) {
-    // Note that we have to modify this here
-    // in case we have to emulate Happys
-    if ((SkCtrl & 0xf0) == 0x20) {    // Transfer mode fine?
-      if ((AudioCtrl & 0x28) == 0x28) { // Timer setup fine? Connect channels 3,4
-	sio->WriteByte(val);
-	// Signal the serial out and serial done IRQ
-	SerOut_Counter     = SerOut_Delay;  
-	// Serial port cannot go empty as we just refilled it.
-	SerXmtDone_Counter = 0;
-	if (SIOSound)
-	  UpdateSound(0x0c);
-	return;
-      } 
-    } else if ((SkCtrl & 0xf0) == 0x70) { 
-      // This is the concurrent mode transfer setting.
-      if ((AudioCtrl & 0x28) == 0x28) {
+  // Note that we have to modify this here
+  // in case we have to emulate Happys
+  if (SkCtrl & 0xf0) {    // Transfer mode fine?
+    if (sio && (AudioCtrl & 0x28) == 0x28) { // Timer setup fine? Connect channels 3,4
+      if ((SkCtrl & 0xf0) == 0x70) {
+	// Hacky. This is used for the concurrent mode.
 	// Transmit the byte thru the concurrent channel
 	sio->ConcurrentWrite(val);
-	// Wait until the byte has been written. We perform this
-	// relatively fast here.
-	SerOut_Counter     = 1;
-	SerXmtDone_Counter = 0;
-	return;
+      } else {
+	// This is used for the regular SIO mode.
+	sio->WriteByte(val);
       }
     }
-    // Note: We may otherwise still trigger a serial done here.
+    // Signal the serial out and serial done IRQ
+    // Any serial output that is still running must be included in
+    // the delay.
+    if (SerXmtDone_Counter) {
+      SerOut_Counter     = SerXmtDone_Delay;
+    } else {
+      SerOut_Counter     = SerOut_Delay;
+    }
+    //
+    // Place into the output buffer from where it is transfered into
+    // the shift register.
+    SerOut_Buffer = val;
+    //
+    // Serial port cannot go empty as we just refilled it.
+    SerXmtDone_Counter = 0;
+    if (SIOSound)
+      UpdateSound(0x0c);
   }
 }
 ///
@@ -1333,26 +1473,27 @@ void Pokey::SkStatClear(void)
 void Pokey::SkCtrlWrite(UBYTE val)
 {
   if ((val & 0x03) == 0) {
-    int ch;
-    //
-    // Audio reset?
-    for(ch=0;ch < 4;ch++) {
-      Ch[ch].DivNCnt = Ch[ch].DivNIRQ = 0;
-    }
-    //
-    // Also resets the polycounters 
+    // Also resets the polycounters: The CPU steps us
+    // *after* the execution, so we must be one step ahead. Bummer!
     PolyNonePtr          = PolyCounterNone;
-    Poly4Ptr             = PolyCounter4;
-    Poly5Ptr             = PolyCounter5;  
-    Poly9Ptr             = PolyCounter17;
-    Poly17Ptr            = PolyCounter17;
-    // Channel 0,1 output is set to low, Channel 2,3 output
-    // is set to high. Strange enough, but the manual says so.
-    Ch[0].OutBit = Ch[1].OutBit = 0x00;
-    Ch[2].OutBit = Ch[3].OutBit = 0x0f;
+    Poly4Ptr             = PolyCounter4  + Poly4Size  - 1;
+    Poly5Ptr             = PolyCounter5  + Poly5Size  - 1;  
+    Poly9Ptr             = PolyCounter9  + Poly9Size  - 1;
+    Poly17Ptr            = PolyCounter17 + Poly17Size - 1;
+    Random9Ptr           = Random9       + Poly9Size  - 1;
+    Random17Ptr          = Random17      + Poly17Size - 1; 
     //
-    // Ensure that the sound gets updated.
-    SkCtrl = ~val;
+    // Reset the serial port output. Cannot reset the input
+    // since that's on a different hardware.
+    SerOut_Counter     = 0;
+    SerXmtDone_Counter = 0;
+    SerOut_Buffer      = 0xff;
+    SerOut_Register    = 0xffff;
+    SerBitOut_Counter  = 0;
+    SerOut_BitCounter  = 0;
+    //
+    // Also reset the counters.
+    STimerWrite();
   }
   //
   // SkCtrl also has influence on the audio subsystem
@@ -1468,26 +1609,42 @@ void Pokey::UpdateAudioMapping(void)
 // Print the status of the chip over the monitor
 void Pokey::DisplayStatus(class Monitor *mon)
 {
-   mon->PrintStatus("Pokey.%d Status:\n"
-		    "\tAudioFreq0: %02x\tAudioFreq1: %02x\tAudioFreq2: %02x\tAudioFreq3: %02x\n"
-		    "\tAudioCtrl0: %02x\tAudioCtrl1: %02x\tAudioCtrl2: %02x\tAudioCtrl3: %02x\n"
-		    "\tCounter0: %04x\tCounter1: %04x\tCounter2: %04x\tCounter3  : %04x\n"
-		    "\tMax0    : %04x\tMax1    : %04x\tMax2    : %04x\tMax3      : %04x\n"
-		    "\tAudioCtrl : %02x\tSkStat    : %02x\tSkCtrl    : %02x\tKeyCode   : %02x\n"
-		    "\tIRQStat   : %02x\tIRQEnable : %02x\n"
-		    "\tSerInDly  : " LD "\tSerOutDly : " LD "\tSerXmtDly : " LD "\n"
-		    "\tSerInCnt  : " LD "\tSerOutCnt : " LD "\tSerXmtCnt : " LD "\n"
-		    "\tSerInBytes: %d\n",
-		    Unit,
-		    Ch[0].AudioF,Ch[1].AudioF,Ch[2].AudioF,Ch[3].AudioF,
-		    Ch[0].AudioC,Ch[1].AudioC,Ch[2].AudioC,Ch[3].AudioC,
-		    Ch[0].DivNIRQ,Ch[1].DivNIRQ,Ch[2].DivNIRQ,Ch[3].DivNIRQ,
-		    Ch[0].DivNMax,Ch[1].DivNMax,Ch[2].DivNMax,Ch[3].DivNMax,
-		    AudioCtrl,SkStat   ,SkCtrl,KBCodeRead(),
+  char serin[2];
+
+  if (SerInBytes > 0 && SerInBuffer) {
+    UBYTE t  = *SerInBuffer >> 4;
+    serin[0] = (t > 9)?('a'+t-10):('0'+t);
+    t        = *SerInBuffer & 0x0f;
+    serin[1] = (t > 9)?('a'+t-10):('0'+t);
+  } else {
+    serin[0] = '?';
+    serin[1] = '?';
+  }
+
+  mon->PrintStatus("Pokey.%d Status:\n"
+		   "\tAudioFreq0: %02x\tAudioFreq1: %02x\tAudioFreq2: %02x\tAudioFreq3: %02x\n"
+		   "\tAudioCtrl0: %02x\tAudioCtrl1: %02x\tAudioCtrl2: %02x\tAudioCtrl3: %02x\n"
+		   "\tCounter0: %04x\tCounter1: %04x\tCounter2: %04x\tCounter3  : %04x\n"
+		   "\tMax0    : %04x\tMax1    : %04x\tMax2    : %04x\tMax3      : %04x\n"
+		   "\tAudioCtrl : %02x\tSkStat    : %02x\tSkCtrl    : %02x\tKeyCode   : %02x\n"
+		   "\tIRQStat   : %02x\tIRQEnable : %02x\n"
+		   "\tSerInDly  : " LD "\tSerOutDly : " LD "\tSerXmtDly : " LD "\n"
+		   "\tSerInCnt  : " LD "\tSerOutCnt : " LD "\tSerXmtCnt : " LD "\n"
+		   "\tSerInBytes: %d\tSerInData : %c%c\n",
+		   Unit,
+		   Ch[0].AudioF,Ch[1].AudioF,Ch[2].AudioF,Ch[3].AudioF,
+		   Ch[0].AudioC,Ch[1].AudioC,Ch[2].AudioC,Ch[3].AudioC,
+		   int((Ch[0].DivNIRQ > 0)?(Ch[0].DivNIRQ):(0)),
+		   int((Ch[1].DivNIRQ > 0)?(Ch[1].DivNIRQ):(0)),
+		   int((Ch[2].DivNIRQ > 0)?(Ch[2].DivNIRQ):(0)),
+		   int((Ch[3].DivNIRQ > 0)?(Ch[3].DivNIRQ):(0)),
+		   int(Ch[0].DivNMax),int(Ch[1].DivNMax),int(Ch[2].DivNMax),int(Ch[3].DivNMax),
+		   AudioCtrl,SkStat   ,SkCtrl,KBCodeRead(),
 		    IRQStat  ,IRQEnable,
-		    SerIn_Delay,SerOut_Delay,SerXmtDone_Delay,
-		    SerIn_Counter,SerOut_Counter,SerXmtDone_Counter,SerInBytes
-		    );
+		   SerIn_Delay,SerOut_Delay,SerXmtDone_Delay,
+		   SerIn_Counter,SerOut_Counter,SerXmtDone_Counter,SerInBytes,
+		   serin[0],serin[1]
+		   );
 }
 ///
 
@@ -1511,6 +1668,7 @@ void Pokey::ParseArgs(class ArgParser *args)
   args->DefineSelection("VideoMode","set POKEY base frequency",palvector,ntsc);
   args->DefineBool("SIOSound","emulate serial transfer sounds",SIOSound);
   args->DefineBool("CyclePrecise","cycle precise pokey timers",cycle);
+  args->DefineBool("LongStartBit","enlarge the start bit to 1 1/2 bits",LongStartBit);
   args->DefineLong("FilterConstant","set high-pass filtering constant",0,1024,DCFilterConstant);
   //
   // Initialize the pokey base clock.
@@ -1577,6 +1735,11 @@ void Pokey::State(class SnapShot *sn)
   sn->DefineLong("SerInCnt","serial input IRQ event counter",0,0xffff,SerIn_Counter);
   sn->DefineLong("SerOutCnt","serial output IRQ event counter",0,0xffff,SerOut_Counter);
   sn->DefineLong("SerXmtCnt","serial transmission done IRQ event counter",0,0xffff,SerXmtDone_Counter);
+  sn->DefineLong("SerBitOutCnt","serial output bit timer",0,0xffff,SerBitOut_Counter);
+  sn->DefineLong("SerOutRegister","hidden serial output register",0,0xffff,SerOut_Register);
+  sn->DefineLong("SerOutBuffer","user addressable serial register",0,0xff,SerOut_Buffer);
+  sn->DefineLong("SerOutBitCounter","bits in the serial output register",0,16,SerOut_BitCounter);
+  //
   // FIXME:
   // Serial input cannot be setup completely. The problem is that we cannot save the serial input
   // queue here. *sigh*  
@@ -1584,6 +1747,10 @@ void Pokey::State(class SnapShot *sn)
   SerOut_Counter     = 0;
   SerXmtDone_Counter = 0;
   SerInBytes         = 0;
+  SerOut_Register    = 0xffff;
+  SerOut_Buffer      = 0xff;
+  SerBitOut_Counter  = 0;
+  SerOut_BitCounter  = 0;
   ConcurrentBusy     = false;
 }
 ///

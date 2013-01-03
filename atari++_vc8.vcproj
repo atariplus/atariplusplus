@@ -515,6 +515,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cartoss8k.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cartossb.cpp"
 				>
 			</File>
@@ -588,6 +592,10 @@
 			</File>
 			<File
 				RelativePath=".\dcmimage.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\debugadrspace.cpp"
 				>
 			</File>
 			<File
@@ -1209,6 +1217,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\cartoss8k.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\cartossb.hpp"
 				>
 			</File>
@@ -1282,6 +1294,10 @@
 			</File>
 			<File
 				RelativePath=".\dcmimage.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\debugadrspace.hpp"
 				>
 			</File>
 			<File

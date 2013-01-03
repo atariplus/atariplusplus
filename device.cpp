@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: device.cpp,v 1.23 2008/08/25 16:42:57 thor Exp $
+ ** $Id: device.cpp,v 1.23 2008-08-25 16:42:57 thor Exp $
  **
  ** In this module: CIO device interface
  **********************************************************************************/

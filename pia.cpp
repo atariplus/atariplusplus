@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pia.cpp,v 1.27 2005/06/18 15:43:36 thor Exp $
+ ** $Id: pia.cpp,v 1.30 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: PIA emulation module
  **********************************************************************************/
@@ -40,7 +40,12 @@ PIA::PIA(class Machine *mach)
   // We could trigger interrupts by selecting CA2 or CB2 as output,
   // enable interrupts there and then change the state of these
   // lines manually by program control. This is a tad stupid, but
-  // it should be emulated.
+  // it should be emulated.  
+  CA2LowEdge  = false;
+  CA2HighEdge = false;
+  CB2Edge     = false;
+  CA2State    = true;
+  CB2State    = true;
 }
 ///
 
@@ -129,6 +134,11 @@ void PIA::WarmStart(void)
   PortBCtrl  = 0x00;
   PortAMask  = 0x00; // all as input
   PortBMask  = 0x00;
+  CA2LowEdge  = false;
+  CA2HighEdge = false;
+  CB2Edge     = false; 
+  CA2State    = true;
+  CB2State    = true;
   ChangeMMUMapping(0xff,0xff);
 }
 ///
@@ -143,54 +153,72 @@ void PIA::ColdStart(void)
 
 /// PIA::PortARead
 UBYTE PIA::PortARead(void)
-{
-  int stick0;
-  int stick1;
+{ 
+  if ((PortACtrl & 0x04) == 0) {
+    // Port A DDR access
+    return PortAMask;
+  } else {
+    int stick0;
+    int stick1;
+    
+    stick0  = machine->Joystick(0)->Stick();
+    stick1  = machine->Joystick(1)->Stick();
+    if (machine->Paddle(0)->Strig()) stick0 &= ~0x04;
+    if (machine->Paddle(1)->Strig()) stick0 &= ~0x08;
+    if (machine->Paddle(2)->Strig()) stick1 &= ~0x04;
+    if (machine->Paddle(3)->Strig()) stick1 &= ~0x08;
 
-  stick0  = machine->Joystick(0)->Stick();
-  stick1  = machine->Joystick(1)->Stick();
-  if (machine->Paddle(0)->Strig()) stick0 &= ~0x04;
-  if (machine->Paddle(1)->Strig()) stick0 &= ~0x08;
-  if (machine->Paddle(2)->Strig()) stick1 &= ~0x04;
-  if (machine->Paddle(3)->Strig()) stick1 &= ~0x08;
-
-  // Port A tries to output the bits in the output register,
-  // leaves bits open that are not set, but the input may pull
-  // these low because reading from port A reads the hardware
-  // directly rather than the output buffer. This is different
-  // for port B reading!
-  
-  return UBYTE(((PortA & (PortAMask)) | ~PortAMask) & ((stick0) | (stick1 << 4)));
+    //
+    // Reset port A interrupts
+    PortACtrl &= 0x3f;
+    DropIRQ();
+    // Port A tries to output the bits in the output register,
+    // leaves bits open that are not set, but the input may pull
+    // these low because reading from port A reads the hardware
+    // directly rather than the output buffer. This is different
+    // for port B reading!
+    
+    return UBYTE(((PortA & (PortAMask)) | ~PortAMask) & ((stick0) | (stick1 << 4)));
+  }
 }
 ///
 
 /// PIA::PortBRead
 UBYTE PIA::PortBRead(void)
 { 
-  int stick2;
-  int stick3;
-
-  switch(machine->MachType()) {
-  case Mach_Atari800:
-    stick2  = machine->Joystick(2)->Stick();
-    stick3  = machine->Joystick(3)->Stick();
-    if (machine->Paddle(0)->Strig()) stick2 &= ~0x04;
-    if (machine->Paddle(1)->Strig()) stick2 &= ~0x08;
-    if (machine->Paddle(2)->Strig()) stick3 &= ~0x04;
-    if (machine->Paddle(3)->Strig()) stick3 &= ~0x08;
+  if ((PortBCtrl & 0x04) == 0) {
+    // Port A DDR access
+    return PortBMask;
+  } else {
+    int stick2;
+    int stick3;
+    //
+    // Reset port B interrupts
+    PortBCtrl &= 0x3f;
+    DropIRQ();
     
-    return UBYTE(((PortB & (PortBMask)) | (((stick2) | (stick3 << 4)) & ~PortBMask)));
-  case Mach_AtariXL:
-  case Mach_AtariXE:
-  case Mach_Atari1200:
-    return UBYTE((PortB & (PortBMask)) | (~PortBMask));
-  case Mach_5200: // The 5200 doesn't have a PIA.
-    return 0xff;
-  case Mach_None:
-    // Shut up compiler
-    Throw(NotImplemented,"PIA::PortBRead","Unknown machine type");
+    switch(machine->MachType()) {
+    case Mach_Atari800:
+      stick2  = machine->Joystick(2)->Stick();
+      stick3  = machine->Joystick(3)->Stick();
+      if (machine->Paddle(0)->Strig()) stick2 &= ~0x04;
+      if (machine->Paddle(1)->Strig()) stick2 &= ~0x08;
+      if (machine->Paddle(2)->Strig()) stick3 &= ~0x04;
+      if (machine->Paddle(3)->Strig()) stick3 &= ~0x08;
+      
+      return UBYTE(((PortB & (PortBMask)) | (((stick2) | (stick3 << 4)) & ~PortBMask)));
+    case Mach_AtariXL:
+    case Mach_AtariXE:
+    case Mach_Atari1200:
+      return UBYTE((PortB & (PortBMask)) | (~PortBMask));
+    case Mach_5200: // The 5200 doesn't have a PIA.
+      return 0xff;
+    case Mach_None:
+      // Shut up compiler
+      Throw(NotImplemented,"PIA::PortBRead","Unknown machine type");
+    }
+    return 0; // shut up!
   }
-  return 0; // shut up!
 }
 ///
 
@@ -250,24 +278,113 @@ void PIA::PortBWrite(UBYTE val)
 /// PIA::PortACtrlWrite
 void PIA::PortACtrlWrite(UBYTE val)
 { 
+  //
   // Mask out the state of the interrupt flags
-  // which are always read as zero. There are
-  // no interrupts we could possibly cause since
-  // no known hardware makes use of them.
-  PortACtrl = val & 0x3f;
+  PortACtrl    = (PortACtrl & 0xc0) | (val & 0x3f);
+  //
+  // Check for changes of the CA2 state.
+  if (val & 0x20) {
+    // Output mode for CA2.
+    PortACtrl &= 0x3f; // Clear all interrupts.
+    //
+    switch(val & 0x18) {
+    case 0x10: // output mode, set CA2 low.
+      if (CA2State) { // high to low transition. Sets the trigger flag.
+	CA2State   = false;
+	CA2LowEdge = true;
+      }
+      break;
+    case 0x18: // output mode, set CA2 high.
+      if (!CA2State) { // low to high transition. Sets the trigger flag.
+	CA2State    = true;
+	CA2HighEdge = true;
+      }
+      break;
+    case 0x08: // pulse output.
+      CA2State    = true; // Keep it high, resets the trigger flag.
+      CA2LowEdge  = false;
+      CA2HighEdge = false;
+      break;
+    case 0x00: // handshake mode.
+      break;
+    }
+  } else {
+    // Input modes. CA2 edges set the IRQ flag.
+    if (((PortACtrl & 0x10) && CA2LowEdge) || ((PortACtrl & 0x10) == 0 && CA2HighEdge)) {
+      PortACtrl  |= 0x40;
+    }
+    CA2LowEdge  = false;
+    CA2HighEdge = false;
+    // CA2 on port A is latched, status comes from the latch, not the port.
+  }
+  //
+  // Check whether IRQs are enabled.
+  // If so, trigger now an interrupt.
+  // Note that CA1 can never trigger an interrupt here since the input
+  // is not under control of the CPU.
+  if ((PortACtrl & 0x68) == 0x48) {
+    // Input mode, interrupt pending and interrupt enabled.
+    PullIRQ();
+  } else {
+    DropIRQ();
+  }
 }
 ///
 
 /// PIA::PortBCtrlWrite
 void PIA::PortBCtrlWrite(UBYTE val)
-{
-  PortBCtrl = val & 0x3f;
+{ 
   //
-  // Set the COMMAND line accordingly: This is part of
-  // the SIO emulation layer. For this to work, the CB2
-  // pin must be a level output.
-  if ((val & 0x30) == 0x30) {
-    machine->SIO()->SetCommandLine((val & 0x08)?false:true);
+  // Mask out the state of the interrupt flags
+  PortBCtrl    = (PortBCtrl & 0xc0) | (val & 0x3f);
+  //
+  // Check for changes of the CB2 state.
+  if (val & 0x20) {
+    // Output mode for CB2.
+    PortBCtrl &= 0x3f; // Clear all interrupts.
+    //
+    switch(val & 0x18) {
+    case 0x10: // output mode, set CB2 low.
+      if (CB2State) { // high to low transition. Resets the trigger flag.
+	CB2State = false;
+	CB2Edge  = false;
+	// Set SIO command line.
+	machine->SIO()->SetCommandLine(true);
+      }
+      break;
+    case 0x18: // output mode, set CB2 high.
+      if (!CB2State) { // low to high transition. Sets the trigger flag.
+	CB2State = true;
+	CB2Edge  = true;
+	// Reset SIO command line.
+	machine->SIO()->SetCommandLine(false);
+      }
+      break;
+    case 0x08: // pulse output.
+      CB2State = true; // Keep it high, resets the trigger flag.
+      CB2Edge  = false;
+      break;
+    case 0x00: // handshake mode.
+      break;
+    }
+  } else {
+    // Input modes. CB2 edges set the IRQ flag.
+    if (CB2Edge) {
+      PortBCtrl |= 0x40;
+      CB2Edge    = false;
+    }
+    CB2State = true; // Floating.
+  }
+  //
+  // Check whether IRQs are enabled.
+  // If so, trigger now an interrupt.
+  // Note that CB1 can never trigger an interrupt here since the input
+  // is not under control of the CPU.
+  if ((PortBCtrl & 0x68) == 0x48) {
+    // Input mode, interrupt pending and interrupt enabled.
+    PullIRQ();
+  } else {
+    DropIRQ();
   }
 }
 ///
@@ -293,7 +410,7 @@ UBYTE PIA::ComplexRead(ADR mem)
 
 /// PIA::ComplexWrite
 // Write a byte into PIA: Write dispatcher
-bool PIA::ComplexWrite(ADR mem,UBYTE val)
+void PIA::ComplexWrite(ADR mem,UBYTE val)
 {
   switch(mem & 0x03) {
   case 0:
@@ -309,9 +426,6 @@ bool PIA::ComplexWrite(ADR mem,UBYTE val)
     PortBCtrlWrite(val);
     break;
   }
-  //
-  // Never needs a VSYNC
-  return false;
 }
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: axlonextension.hpp,v 1.3 2005/09/23 19:38:45 thor Exp $
+ ** $Id: axlonextension.hpp,v 1.4 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: This RAM extension implements various AXLON compatible
  ** RAM extensions.
@@ -70,7 +70,7 @@ class AxlonExtension: public RamExtension {
     // IO register, but might get thru to the hidden page
     // directly.
     virtual UBYTE ComplexRead(ADR mem);
-    virtual bool ComplexWrite(ADR mem,UBYTE value);
+    virtual void  ComplexWrite(ADR mem,UBYTE value);
   } ControlPage;
   //
   //

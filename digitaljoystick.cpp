@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: digitaljoystick.cpp,v 1.15 2008/05/19 19:55:40 thor Exp $
+ ** $Id: digitaljoystick.cpp,v 1.16 2012-12-31 19:48:16 thor Exp $
  **
  ** In this module: Frontend for the Linux /dev/jsx handler with interface
  ** adapter for Amiga/Atari style joysticks
@@ -203,8 +203,8 @@ void DigitalJoystick::VBI(class Timer *,bool,bool)
     }
     // Check for the cause of the fault. Might be something serious
     if (errno != EAGAIN) {
-      ThrowIo("DigitalJoystick::VBI","cannot read from the analog joystick");
       enable = false;
+      ThrowIo("DigitalJoystick::VBI","cannot read from the analog joystick");
     }
     //
     // Now generate dx and dy from the data.

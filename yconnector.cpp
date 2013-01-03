@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: yconnector.cpp,v 1.1 2003/05/24 21:37:09 thor Exp $
+ ** $Id: yconnector.cpp,v 1.2 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Definition of a Y (or T) connector that links two
  ** or more chips/pages into one page.
@@ -90,7 +90,7 @@ UBYTE YConnector::ComplexRead(ADR mem)
 /// YConnector::ComplexWrite
 // Write to eone of the sub-pages, selected
 // by the discriminator-bits.
-bool YConnector::ComplexWrite(ADR mem,UBYTE data)
+void YConnector::ComplexWrite(ADR mem,UBYTE data)
 {
   class Page *page;
   //
@@ -100,9 +100,7 @@ bool YConnector::ComplexWrite(ADR mem,UBYTE data)
   //
   // For occupied bits: Forward to the sub-pages.
   if (page) {
-    return page->WriteByte(mem,data);
-  } else {
-    return false;
+    page->WriteByte(mem,data);
   }
 }
 ///

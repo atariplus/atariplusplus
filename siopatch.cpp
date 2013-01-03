@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: siopatch.cpp,v 1.6 2003/03/25 15:59:35 thor Exp $
+ ** $Id: siopatch.cpp,v 1.7 2012-12-26 00:28:37 thor Exp $
  **
  ** In this module: SIOPatch for advanced speed communication
  **********************************************************************************/
@@ -43,12 +43,19 @@ void SIOPatch::RunPatch(class AdrSpace *adr,class CPU *cpu,UBYTE)
   UBYTE timout = UBYTE(adr->ReadByte(0x306));
   UWORD size   = UWORD(adr->ReadWord(0x308));
   UWORD aux    = UWORD(adr->ReadWord(0x30a));
+  UWORD i;
   UBYTE result;
   
   // Bypass the serial overhead for the SIO patch and issues the
   // command directly. It returns a status
   // indicator similar to the ROM SIO call.
   result = sio->RunSIOCommand(device,unit,cmd,mem,size,aux,timout);
+
+  // Restore the pokey IRQ, reset the sound.
+  adr->WriteByte(0xd20e,adr->ReadByte(0x10));
+  for(i = 1;i < 8;i += 2) {
+    adr->WriteByte(0xd200+i,0xa0);
+  }
 
   // Now install the result code of the above command.
   adr->WriteByte(0x303,result);

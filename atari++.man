@@ -1,7 +1,7 @@
 .\"**********************************************************************
 .\"** Documentation of the the atari++ Emulator
 .\"** Thomas Richter, THOR Software
-.\"** $Id: atari++.man,v 1.58 2011-01-06 14:33:05 thor Exp $
+.\"** $Id: atari++.man,v 1.59 2013-01-03 00:18:39 thor Exp $
 .\"**
 .\"**********************************************************************
 .TH atari++ 6 "atari++ Emulator"
@@ -307,13 +307,6 @@ would crash under the same circumstances.
 
 .SS CPU Options
 The following options control the emulation of the 6502 CPU:
-.IP "-wsyncpos 80..114"
-A technical option that defines the horizontal position where
-ANTIC releases the CPU if it has been formerly blocked by a
-.B STA WSYNC.
-This is counted in CPU cycles clocks from the falling edge of the
-horizontal sync. It defaults to 105 cycles and is adjustable within a range
-of 80 to 114 color clocks.
 .IP "-traceonreset bool"
 This boolean option is useful for debugging. If enabled with the
 .B on
@@ -403,6 +396,11 @@ pixel of a player to the first possible horizontal position where the CPU
 can write again into the same register to take an effect on the screen. The
 default for this setting is 8, thus it takes two CPU cycles before a player
 or missile can be re-used.
+.IP "-playerresize 0..32"
+the delay in half color-clocks for resizing a player/missile on the same
+scanline. As above, this measures the distance from the CPU modifying the
+size register of the object to the point where the actual modification takes
+place.
 .IP "-colormapname filename"
 requires a filename to a color map to be used instead of the default PAL
 or NTSC color map. The color map file must be exactly 768 bytes long and
@@ -467,23 +465,6 @@ switch controls the height of the video output. For
 .B NTSC
 , only 262 lines of output are displayed. Note that not all lines are
 available for graphics as the vertical retrace takes up some of them.
-.IP "-beforedlicycles 0..16"
-This option controls the number of CPU cycles from the end of the horizontal
-blank to the falling edge of the NMI interrupt signal when a display list
-interrupt is generated, and thus the number of cycles ANTIC requires to
-decode the display list and to generate the DLI signal. This is a very
-technical setting and usually should not be required to be adjusted. It
-defaults to 12 CPU cycles.
-.IP "-beforedisplayclocks 0..32"
-Controls the number of CPU cycles, in total, from the end of the horizontal
-blank to the first visible display cycle. This setting controls the
-placement of horizontal kernel modifications on the screen since it defines
-the relative placement of the CPU to the GTIA display generation. The
-default for this value is 16 CPU cycles.
-.IP "-yposinccycle 104..114"
-This setting defines the horizontal cycle position at which the vertical
-line counter gets incremented, and thus defines the start of the horizontal
-blanking signal. By default, this happens at cycle 108.
 
 .SS POKEY Options
 The next set of options influences the sound generation. For sound output,
@@ -535,6 +516,12 @@ is not enabled and bypasses hardware driven serial i/o. This option enables
 a more complete Pokey emulation by also taking care of the serial transfer
 modes for generating sound. Thus, you get the very unique \(lqAtari sound
 effects\(rq for all kinds of disk access.
+.IP "longstartbit bool"
+enlarges the size of the start bit for direct serial input a bit so that
+the timing when scanning the serial input line manually is a bit more
+relaxed. This might be only required if the program running in the emulation
+performs bitwise serial IO manually instead of using the POKEY serial input
+register.
 .IP "-cycleprecise bool"
 Controls wether the Pokey emulation works cycle-precise, that is, whether
 pokey interrupts and potentiometer registers are are updated and queried on

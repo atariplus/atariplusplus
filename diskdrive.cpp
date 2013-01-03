@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.72 2009-08-10 13:08:25 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.73 2011-12-28 00:07:47 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -1228,7 +1228,7 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
 		     "\tImage file format: %s\n"
 		     "\tSectors          : " LU "\n"
 		     "\tSector size      : %d\n"
-		     "\tSectors per track: %d",
+		     "\tSectors per track: " LU "\n",
 		     ImageName,disktype,imagetype,SectorCount,SectorSize,SectorsPerTrack);
   }
   mon->PrintStatus("\n");

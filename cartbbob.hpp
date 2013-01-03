@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartbbob.hpp,v 1.5 2006/05/25 17:44:16 thor Exp $
+ ** $Id: cartbbob.hpp,v 1.6 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: The implementation of the wierd bounty bob cart
  **********************************************************************************/
@@ -59,7 +59,7 @@ class CartBBOB : public Cartridge {
     // We also need the special accessor functions
     // for reading and writing this "ROM"
     virtual UBYTE ComplexRead(ADR mem);
-    virtual bool ComplexWrite(ADR,UBYTE);
+    virtual void  ComplexWrite(ADR,UBYTE);
     //
     // Constructor and destructor
     BankPage(class MMU *mmu,UBYTE pageoffset);

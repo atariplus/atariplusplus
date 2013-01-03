@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rampage.hpp,v 1.6 2003/04/24 21:15:58 thor Exp $
+ ** $Id: rampage.hpp,v 1.7 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Definition of a page of memory
  **********************************************************************************/
@@ -41,12 +41,10 @@ public:
     return memory[mem & PAGE_MASK];
   }
   //
-  // Write a byte to a page, return the "vsync" flag to indicate whether the
-  // CPU should wait to the end of the scan line
-  bool WriteByte(ADR mem,UBYTE val)
+  // Write a byte to a page.
+  void WriteByte(ADR mem,UBYTE val)
   {
     memory[mem & PAGE_MASK] = val;
-    return false;
   }
   //
   // The following "complex" functions should never be called since the page
@@ -58,12 +56,10 @@ public:
     return memory[mem & PAGE_MASK];
   }
   //
-  // Write a byte to a page, return the "vsync" flag to indicate whether the
-  // CPU should wait to the end of the scan line
-  bool ComplexWrite(ADR mem,UBYTE val)
+  // Write a byte to a page.
+  void ComplexWrite(ADR mem,UBYTE val)
   {
     memory[mem & PAGE_MASK] = val;
-    return false;
   }  
   //
   // Patch a byte into a RAM. 

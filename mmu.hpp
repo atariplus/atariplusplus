@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mmu.hpp,v 1.29 2005/07/10 15:26:00 thor Exp $
+ ** $Id: mmu.hpp,v 1.31 2011-06-25 22:13:45 thor Exp $
  **
  ** In this module: Definition of all MMU functions required for the Atari emulator
  **********************************************************************************/
@@ -15,6 +15,7 @@
 #include "list.hpp"
 #include "exceptions.hpp"
 #include "adrspace.hpp"
+#include "debugadrspace.hpp"
 #include "argparser.hpp"
 #include "chip.hpp"
 #include "memcontroller.hpp"
@@ -54,8 +55,9 @@ class MMU : public Chip, public Saveable, public MemController {
   class RomPage   *blank;      // up to 8K blank undefined ROM
   class RomPage   *handlers;   // used by the emulator to patch-in CIO extensions
   //
-  class AdrSpace  *cpuspace;   // memory as visible from the CPU
-  class AdrSpace  *anticspace; // memory as visible from ANTIC
+  class AdrSpace  *cpuspace;       // memory as visible from the CPU
+  class AdrSpace  *anticspace;     // memory as visible from ANTIC
+  class DebugAdrSpace *debugspace; // debug memory, otherwise the CPU space
   //
   // The list of currently active RAM extensions (including the 130XE RAM)
   List<RamExtension> Extensions;
@@ -201,6 +203,11 @@ public:
     return cpuspace;
   }
   //
+  // Return an address space copy for debug.
+  class DebugAdrSpace *DebugRAM(void) const
+  {
+    return debugspace;
+  }
   //
   // Return the currently active Os type
   OsROM::OsType ActiveOsType(void) const

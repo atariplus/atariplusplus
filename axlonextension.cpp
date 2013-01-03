@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: axlonextension.cpp,v 1.5 2005/09/20 21:13:02 thor Exp $
+ ** $Id: axlonextension.cpp,v 1.6 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: This RAM extension implements various AXLON compatible
  ** RAM extensions.
@@ -82,7 +82,7 @@ UBYTE AxlonExtension::AxlonControlPage::ComplexRead(ADR mem)
 // Emulate a write access into the axlon control page,
 // hence into the memory from 0xcf00 to 0xcfff. This may
 // result in a request to change the banking.
-bool AxlonExtension::AxlonControlPage::ComplexWrite(ADR mem,UBYTE value)
+void AxlonExtension::AxlonControlPage::ComplexWrite(ADR mem,UBYTE value)
 {
  #if CHECK_LEVEL > 0
   if (Hidden == NULL)
@@ -103,8 +103,8 @@ bool AxlonExtension::AxlonControlPage::ComplexWrite(ADR mem,UBYTE value)
   }
   //
   // Otherwise, perform the write into the RAM/ROM/Whatever as
-  // normal, and return the WSYNC flag (which should be false).
-  return Hidden->WriteByte(mem,value);
+  // normal.
+  Hidden->WriteByte(mem,value);
 }
 ///
 

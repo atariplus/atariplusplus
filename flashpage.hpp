@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: flashpage.hpp,v 1.1 2006/05/21 15:22:30 thor Exp $
+ ** $Id: flashpage.hpp,v 1.2 2012-12-31 14:34:59 thor Exp $
  **
  ** In this module: Definition of a page of an AMD FlashROM
  **********************************************************************************/
@@ -44,9 +44,9 @@ protected:
   }
   //
   // Write data into the chip area.
-  virtual bool ComplexWrite(ADR mem,UBYTE val)
+  virtual void ComplexWrite(ADR mem,UBYTE val)
   {
-    return parent->RomAreaWrite(mem, val);
+    parent->RomAreaWrite(mem, val);
   }
   //
 public:
@@ -81,10 +81,8 @@ public:
   //
   // Write a byte to a page, return the "vsync" flag to indicate whether the
   // CPU should wait to the end of the scan line
-  bool WriteByte(ADR,UBYTE)
+  void WriteByte(ADR,UBYTE)
   {
-    // Writes to ROM are not allowed
-    return false;
   }
   //
   // Blank a FlashPage to all zeros. For the flash ROM, this means
