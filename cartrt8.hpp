@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartrt8.hpp,v 1.4 2006/05/25 17:44:16 thor Exp $
+ ** $Id: cartrt8.hpp,v 1.4 2006-05-25 17:44:16 thor Exp $
  **
  ** In this module: Implementation of the RTime8 real-time cartridge as "pass thru" 
  **

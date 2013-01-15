@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: separatorgadget.cpp,v 1.2 2005/09/10 12:55:42 thor Exp $
+ ** $Id: separatorgadget.cpp,v 1.2 2005-09-10 12:55:42 thor Exp $
  **
  ** In this module: Definition of a separator bar gadget
  **********************************************************************************/

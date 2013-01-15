@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dxsoundfront.hpp,v 1.2 2004/06/27 16:08:52 thor Exp $
+ ** $Id: dxsoundfront.hpp,v 1.2 2004-06-27 16:08:52 thor Exp $
  **
  ** In this module: wrapper class for the DirectX sound interface
  **********************************************************************************/

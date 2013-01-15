@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: verticalgroup.cpp,v 1.5 2005/09/10 12:55:42 thor Exp $
+ ** $Id: verticalgroup.cpp,v 1.5 2005-09-10 12:55:42 thor Exp $
  **
  ** In this module: Definition of a meta gadget keeping a vertical arrangement
  ** of gadgets that is scroll-able

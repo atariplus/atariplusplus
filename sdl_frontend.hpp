@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdl_frontend.hpp,v 1.39 2009-08-10 16:48:15 thor Exp $
+ ** $Id: sdl_frontend.hpp,v 1.40 2013-01-12 11:06:00 thor Exp $
  **
  ** In this module: A frontend using the sdl library
  **********************************************************************************/
@@ -19,7 +19,7 @@
 #include "keyboardstick.hpp"
 #include "gameport.hpp"
 #include "string.hpp"
-#include "gtia.hpp"
+#include "colorentry.hpp"
 #include "screendump.hpp"
 #include "sdlclient.hpp"
 #if HAVE_SDL_SDL_H && HAVE_SDL_SETVIDEOMODE
@@ -52,7 +52,7 @@ class SDL_FrontEnd : public AtariDisplay, public SDLClient {
   SDL_Color      *colors;
   // Clone from the GTIA here, used to get notified about
   // color table changes.
-  const struct GTIA::ColorEntry *colormap;
+  const struct ColorEntry *colormap;
   //
   // The base name for the screen dumps goes here
   char           *ScreenBaseName;

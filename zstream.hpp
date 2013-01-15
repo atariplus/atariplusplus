@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: zstream.hpp,v 1.4 2004/05/30 17:04:01 thor Exp $
+ ** $Id: zstream.hpp,v 1.4 2004-05-30 17:04:01 thor Exp $
  **
  ** In this module: Disk image source stream interface towards zlib
  **********************************************************************************/

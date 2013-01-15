@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: curses.hpp,v 1.1 2003/02/23 00:40:32 thor Exp $
+ ** $Id: curses.hpp,v 1.1 2003-02-23 00:40:32 thor Exp $
  **
  ** In this module: Curses abstraction layer
  **********************************************************************************/

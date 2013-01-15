@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.29 2011-04-21 21:35:15 thor Exp $
+ ** $Id: alsasound.cpp,v 1.31 2013-01-08 19:02:15 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -412,7 +412,9 @@ void AlsaSound::AlsaCallBack(void)
   if (EnableSound && SoundStream) {
     // Get the number of available frames in the output buffer.
     avail = snd_pcm_avail_update(SoundStream);
-    while(avail) {
+    while(avail >= (1L << FragSize)) {
+      // Round down to integers of the fragment size.
+      avail &= -(1L << FragSize);
       // Get the next buffer we want to play back.
       if (PlayingBuffer == NULL) {
 	// No playing buffer. Pull a new one from the list of ready buffers.

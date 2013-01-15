@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filegadget.cpp,v 1.4 2006/05/21 15:22:29 thor Exp $
+ ** $Id: filegadget.cpp,v 1.4 2006-05-21 15:22:29 thor Exp $
  **
  ** In this module: A string gadget with a file requester attached
  **********************************************************************************/

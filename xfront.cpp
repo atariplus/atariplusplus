@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfront.cpp,v 1.16 2005/09/10 12:55:42 thor Exp $
+ ** $Id: xfront.cpp,v 1.16 2005-09-10 12:55:42 thor Exp $
  **
  ** In this module: Interface definition for a generic X11 frontend
  **********************************************************************************/

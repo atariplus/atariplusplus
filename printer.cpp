@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: printer.cpp,v 1.34 2008-05-22 13:03:54 thor Exp $
+ ** $Id: printer.cpp,v 1.35 2013-01-15 11:21:50 thor Exp $
  **
  ** In this module: Support for printer output.
  **********************************************************************************/
@@ -322,7 +322,7 @@ UBYTE Printer::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &)
 // Return a SIO error indicator
 UBYTE Printer::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,int &datasize)
 {
-  UBYTE *p;
+  const UBYTE *p = NULL;
   struct PrintNode *node;
   int size = datasize;
   
@@ -334,20 +334,21 @@ UBYTE Printer::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,int &da
       return 'E';
     }
     // Now check the real size: The first EOL terminates the line!
-    p = (UBYTE *)memchr(buffer,0x9b,size);
+    p = (const UBYTE *)memchr(buffer,0x9b,size);
     if (p) {
       size = int(p - buffer + 1);
-      if (TransposeEOL) {
-	// Here: Translate an EOL to a LF. We could do this much smarter,
-	// actually, but we don't.
-	*p = '\n';
-      }
     }
     // Add a print node for the printer now, and a buffer.
     node       = new struct PrintNode;
     node->Data = new UBYTE[size];
     node->Size = size;
     memcpy(node->Data,buffer,size);
+    //
+    if (p && TransposeEOL) {
+      // Here: Translate an EOL to a LF. 
+      node->Data[p - buffer] = '\n';
+    }
+    //
     // Link it into the buffer as a FIFO
     if (LastPrintNode) {
       LastPrintNode->Next = node;

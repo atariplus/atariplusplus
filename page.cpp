@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: page.cpp,v 1.10 2003/02/16 16:46:24 thor Exp $
+ ** $Id: page.cpp,v 1.10 2003-02-16 16:46:24 thor Exp $
  **
  ** In this module: Definition of an abstract page, keeping 256 in common
  **********************************************************************************/

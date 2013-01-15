@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: ram.cpp,v 1.4 2003/04/24 21:15:58 thor Exp $
+ ** $Id: ram.cpp,v 1.4 2003-04-24 21:15:58 thor Exp $
  **
  ** In this module: Definition of the RAM as a complete object with a single
  ** state.

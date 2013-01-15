@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: interfacebox.hpp,v 1.11 2005/07/24 17:11:31 thor Exp $
+ ** $Id: interfacebox.hpp,v 1.11 2005-07-24 17:11:31 thor Exp $
  **
  ** In this module: Emulation of the 850 interface box.
  **********************************************************************************/

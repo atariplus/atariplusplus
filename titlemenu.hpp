@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: titlemenu.hpp,v 1.9 2003/05/11 15:33:57 thor Exp $
+ ** $Id: titlemenu.hpp,v 1.9 2003-05-11 15:33:57 thor Exp $
  **
  ** In this module: Definition of the class describing the short menu in the
  ** title bar

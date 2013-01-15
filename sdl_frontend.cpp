@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdl_frontend.cpp,v 1.92 2009-08-10 20:19:06 thor Exp $
+ ** $Id: sdl_frontend.cpp,v 1.93 2013-01-12 11:06:00 thor Exp $
  **
  ** In this module: A frontend using the sdl library
  **
@@ -119,7 +119,7 @@ SDL_FrontEnd::~SDL_FrontEnd(void)
 // Initialize and setup the display towards SDL
 void SDL_FrontEnd::CreateDisplay(void)
 {
-  const struct GTIA::ColorEntry *cmap;
+  const struct ColorEntry *cmap;
   SDL_Color *cp;
   int i,x,y,buttons;
   UBYTE appstatus;

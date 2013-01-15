@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: serialstream.hpp,v 1.3 2005/02/12 21:39:38 thor Exp $
+ ** $Id: serialstream.hpp,v 1.3 2005-02-12 21:39:38 thor Exp $
  **
  ** In this module: An interface abstraction for serial ports,
  ** one level above the operating system. This here grands access

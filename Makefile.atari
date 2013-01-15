@@ -3,7 +3,7 @@
 ## Makefile.atari                                                                
 ##                                                                               
 ## This makefile defines compiler-independent dependencies                       
-## $Id: Makefile.atari,v 1.96 2011-06-25 21:42:30 thor Exp $
+## $Id: Makefile.atari,v 1.97 2013-01-12 11:06:00 thor Exp $
 ##
 ###################################################################################
 
@@ -37,6 +37,8 @@ FILES		=	new list adrspace debugadrspace monitor instruction serialdevice \
 			cartphoenix cartatmax \
 			amdchip flashpage \
 			keyboard pokey \
+			colorentry postprocessor palcolorblurer \
+			flickerfixer palflickerfixer \
 			x11_mappedbuffer x11_truecolorbuffer x11_displaybuffer \
 			chip machine printer interfacebox x11_frontend dpms \
 			configurable main rampage xfront \

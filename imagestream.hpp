@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: imagestream.hpp,v 1.3 2003/06/15 17:44:56 thor Exp $
+ ** $Id: imagestream.hpp,v 1.3 2003-06-15 17:44:56 thor Exp $
  **
  ** In this module: Abstract base class for disk image source streams
  **********************************************************************************/

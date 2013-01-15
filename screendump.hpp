@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: screendump.hpp,v 1.8 2005/09/10 12:55:42 thor Exp $
+ ** $Id: screendump.hpp,v 1.9 2013-01-12 11:06:00 thor Exp $
  **
  ** In this module: Creation of screendumps into a file
  **********************************************************************************/
@@ -13,8 +13,8 @@
 /// Includes
 #include "types.h"
 #include "types.hpp"
-#include "gtia.hpp"
 #include "display.hpp"
+#include "colorentry.hpp"
 #if HAVE_PNG_CREATE_INFO_STRUCT && HAVE_PNG_CREATE_WRITE_STRUCT && HAVE_PNG_H && HAVE_PNG_WRITE_CHUNK
 #define USE_PNG
 #include <png.h>
@@ -48,7 +48,7 @@ private:
   //
   // The colormap defines how each atari color has to be mapped
   // to an RGB value.
-  const struct GTIA::ColorEntry *colormap;
+  const struct ColorEntry *colormap;
   //
   // Dimensions of the screen, to be given on construction
   LONG           LeftEdge,TopEdge;
@@ -109,7 +109,7 @@ private:
   //
 public:
   ScreenDump(class Machine *mach,
-	     const struct GTIA::ColorEntry *colors,
+	     const struct ColorEntry *colors,
 	     LONG leftedge,LONG topedge,LONG width,LONG height,LONG modulo,
 	     GfxFormat format = PNM);
   ~ScreenDump(void);

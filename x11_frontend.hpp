@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.hpp,v 1.39 2009-08-10 16:48:15 thor Exp $
+ ** $Id: x11_frontend.hpp,v 1.40 2013-01-12 11:06:01 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -17,7 +17,7 @@
 #include "chip.hpp"
 #include "xfront.hpp"
 #include "keyboardstick.hpp"
-#include "gtia.hpp"
+#include "colorentry.hpp"
 #include "screendump.hpp"
 #include "string.hpp"
 #ifndef X_DISPLAY_MISSING
@@ -49,7 +49,7 @@ class X11_FrontEnd : public XFront {
   // The used color map
   Colormap        cmap;
   // Copy of the GTIA color map to get colormap changes
-  const struct GTIA::ColorEntry *colormap;
+  const struct ColorEntry *colormap;
   //
   // Copy of the frame buffer variable.
   class X11_DisplayBuffer *framebuffer;

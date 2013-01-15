@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.20.1 -->
-<!-- CreationDate: Thu Jan  3 13:45:51 2013 -->
+<!-- CreationDate: Tue Jan 15 12:25:24 2013 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -477,39 +477,35 @@ mixes the colors already in the GTIA display generation at
 the price of a higher complexity. This option also requires
 a true-color display, i.e. a bit depth of 24 bit.</p>
 
-<p style="margin-left:11%;">-playerallocate 0..32</p>
+<p style="margin-left:11%;">-playerpositiondelay 0..32</p>
 
 <p style="margin-left:22%;">this setting controls the
-number of half-color clocks required by the GTIA
-player/missile logic to get aware of a player/missile
-horizontal position change. This is the minimal horizontal
-displacement between writing to a player/missile register
-and the first visible pixel of a player on the screen. If
-the modification of the register happens closer to the
-horizontal position than the indicated amount, GTIA will not
-get aware of the change and will delay the change to the
-next scanline. The default value for this setting is 12,
-i.e. it takes 12/4 = 3 CPU clocks before a player/missile
-horizontal position change takes effect.</p>
+number of half color-clocks required by GTIA to detect any
+change of the player/missile horizontal position register.
+It is the minimal screen distance in half color-clocks after
+writing to the horizontal position register until the change
+becomes effective. The default for this value is 12, i.e. it
+takes 12/4 = 3 CPU clocks before a horizontal adjustment is
+recognized.</p>
 
-<p style="margin-left:11%;">-playerrelease 0..32</p>
+<p style="margin-left:11%;">-playerresizedelay 0..32</p>
 
-<p style="margin-left:22%;">the number of half-color clocks
-before a player/missile channel can be re-used on the same
-scanline. That is, the distance from the first visible pixel
-of a player to the first possible horizontal position where
-the CPU can write again into the same register to take an
-effect on the screen. The default for this setting is 8,
-thus it takes two CPU cycles before a player or missile can
-be re-used.</p>
+<p style="margin-left:22%;">this controls, similar to the
+above, the internal GTIA propagation delay until a change of
+a player/missile size register becomes effective, and thus
+the distance in screen hires pixels from the modification to
+the position where the change becomes visible. The default
+is six half color-clocks.</p>
 
-<p style="margin-left:11%;">-playerresize 0..32</p>
+<p style="margin-left:11%;">-playerreshapedelay 0..32</p>
 
-<p style="margin-left:22%;">the delay in half color-clocks
-for resizing a player/missile on the same scanline. As
-above, this measures the distance from the CPU modifying the
-size register of the object to the point where the actual
-modification takes place.</p>
+<p style="margin-left:22%;">quite similar again, this
+setting controls the propagation delay for player shape
+changes, i.e. how long it takes for a write to the P/M
+graphics register to propagate to the output logic of GTIA.
+If the write comes too late, the shape change will become
+visible only on the next scanline - unless GTIA fetches the
+data through the ANTIC DMA, of course.</p>
 
 <p style="margin-left:11%;">-colormapname filename</p>
 
@@ -1140,7 +1136,7 @@ hard-wired to the upper part of <b>RomA.</b> The following
 table shows the mapping for the lower region:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247191.png" alt="Image grohtml-247191.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200341.png" alt="Image grohtml-200341.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em"><b>OssB</b> is
 also an Oss super-cart except that the cartridge ROM has
@@ -1966,7 +1962,7 @@ keyboard, or the following special names. Note that names
 containing spaces need to be quoted on the command line:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247192.png" alt="Image grohtml-247192.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200342.png" alt="Image grohtml-200342.png"></p>
 
 
 <p style="margin-left:11%; margin-top: 1em"><b>ANALOGJOYSTICK
@@ -3479,7 +3475,7 @@ CMD 3: OPEN</p>
 values are:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247193.png" alt="Image grohtml-247193.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200343.png" alt="Image grohtml-200343.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">This follows
 closely the DOS 2.0S conventions with the addition that mode
@@ -3672,7 +3668,7 @@ following standard ANSI control characters will be
 recognized and translated accordingly:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247194.png" alt="Image grohtml-247194.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200344.png" alt="Image grohtml-200344.png"></p>
 
 <p style="margin-left:11%; margin-top: 1em">Cursor movement
 and other advanced sequences are left alone, they are output
@@ -3788,7 +3784,7 @@ are filled with useful information. Location $2ea contains
 the error flags of the serial transfer as follows:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247195.png" alt="Image grohtml-247195.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200345.png" alt="Image grohtml-200345.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">The difference
 between bit 6 and bit 4 is that bit 6 gets set if the
@@ -3801,7 +3797,7 @@ catched successfully.</p>
 contains the state of the handshake lines in block mode:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247196.png" alt="Image grohtml-247196.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200346.png" alt="Image grohtml-200346.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">The history
 bits mirror the state of the lines that has been returned by
@@ -3831,7 +3827,7 @@ the data line TxD can be selected, too. The bits in Aux1 are
 interpreted as follows:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247197.png" alt="Image grohtml-247197.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200347.png" alt="Image grohtml-200347.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">Currently, the
 emulator does not support direct state changes on TxD,
@@ -3855,7 +3851,7 @@ five data bits are sent. Bits 3 to 0 define the baud rate
 according to this table:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247198.png" alt="Image grohtml-247198.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200348.png" alt="Image grohtml-200348.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">Note that
 values 14 and 15 generate the same rate.</p>
@@ -3867,7 +3863,7 @@ not set, an error is generated. For the emulator, monitoring
 of CTS also enables hardware handshake.</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-247199.png" alt="Image grohtml-247199.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-200349.png" alt="Image grohtml-200349.png"></p>
 
 <p style="margin-left:11%;">CMD 38: SETPARITY</p>
 
@@ -3878,7 +3874,7 @@ selects input and output parity. The bits in Aux1 have the
 following meaning:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2471910.png" alt="Image grohtml-2471910.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-2003410.png" alt="Image grohtml-2003410.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">If the
 character translation is set to 0, EOL is translated to CR
@@ -4578,7 +4574,7 @@ AUX1 and AUX2. For AUX1 = 0, the following modes are
 used:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2471911.png" alt="Image grohtml-2471911.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-2003411.png" alt="Image grohtml-2003411.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">Note that mode
 9 does not waste a sector, unlike the Dos 2.0S
@@ -4602,7 +4598,7 @@ POINT/NOTE commands. The following open modes are available
 for AUX1 = 128:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2471912.png" alt="Image grohtml-2471912.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-2003412.png" alt="Image grohtml-2003412.png"></p>
 
 <p style="margin-left:11%;">CMD 5: GET RECORD</p>
 
@@ -5195,7 +5191,7 @@ modes and various other related issues as listed in the
 following table:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2471913.png" alt="Image grohtml-2471913.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-2003413.png" alt="Image grohtml-2003413.png"></p>
 
 <p style="margin-left:11%;">0x3f6,0x3f7 DUPVECTOR</p>
 

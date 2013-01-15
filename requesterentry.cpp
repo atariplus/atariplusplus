@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: requesterentry.cpp,v 1.3 2005/09/10 12:55:42 thor Exp $
+ ** $Id: requesterentry.cpp,v 1.3 2005-09-10 12:55:42 thor Exp $
  **
  ** In this module: Definition of a modified button gadget for requesters
  **********************************************************************************/

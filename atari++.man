@@ -1,7 +1,7 @@
 .\"**********************************************************************
 .\"** Documentation of the the atari++ Emulator
 .\"** Thomas Richter, THOR Software
-.\"** $Id: atari++.man,v 1.59 2013-01-03 00:18:39 thor Exp $
+.\"** $Id: atari++.man,v 1.60 2013-01-14 14:27:13 thor Exp $
 .\"**
 .\"**********************************************************************
 .TH atari++ 6 "atari++ Emulator"
@@ -379,28 +379,24 @@ faster, causing an anoying flicker for these programs. This switch enables a
 flicker-fixer that mixes the colors already in the GTIA display generation
 at the price of a higher complexity. This option also requires a true-color
 display, i.e. a bit depth of 24 bit.
-.IP "-playerallocate 0..32"
-this setting controls the number of half-color clocks required by the GTIA
-player/missile logic to get aware of a player/missile horizontal position
-change. This is the minimal horizontal displacement between writing to a
-player/missile register and the first visible pixel of a player on the
-screen. If the modification of the register happens closer to the horizontal
-position than the indicated amount, GTIA will not get aware of the change
-and will delay the change to the next scanline. The default value for this 
-setting is 12, i.e. it takes 12/4 = 3 CPU clocks before a player/missile 
-horizontal position change takes effect.
-.IP "-playerrelease 0..32"
-the number of half-color clocks before a player/missile channel can be
-re-used on the same scanline. That is, the distance from the first visible
-pixel of a player to the first possible horizontal position where the CPU
-can write again into the same register to take an effect on the screen. The
-default for this setting is 8, thus it takes two CPU cycles before a player
-or missile can be re-used.
-.IP "-playerresize 0..32"
-the delay in half color-clocks for resizing a player/missile on the same
-scanline. As above, this measures the distance from the CPU modifying the
-size register of the object to the point where the actual modification takes
-place.
+.IP "-playerpositiondelay 0..32"
+this setting controls the number of half color-clocks required by GTIA to
+detect any change of the player/missile horizontal position register. It is
+the minimal screen distance in half color-clocks after writing to the
+horizontal position register until the change becomes effective. The default
+for this value is 12, i.e. it takes 12/4 = 3 CPU clocks before a horizontal
+adjustment is recognized.
+.IP "-playerresizedelay 0..32"
+this controls, similar to the above, the internal GTIA propagation delay
+until a change of a player/missile size register becomes effective, and thus
+the distance in screen hires pixels from the modification to the position
+where the change becomes visible. The default is six half color-clocks.
+.IP "-playerreshapedelay 0..32"
+quite similar again, this setting controls the propagation delay for player
+shape changes, i.e. how long it takes for a write to the P/M graphics
+register to propagate to the output logic of GTIA. If the write comes too
+late, the shape change will become visible only on the next scanline -
+unless GTIA fetches the data through the ANTIC DMA, of course.
 .IP "-colormapname filename"
 requires a filename to a color map to be used instead of the default PAL
 or NTSC color map. The color map file must be exactly 768 bytes long and

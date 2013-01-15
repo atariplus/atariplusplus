@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: wavsound.cpp,v 1.29 2006/05/21 15:22:30 thor Exp $
+ ** $Id: wavsound.cpp,v 1.29 2006-05-21 15:22:30 thor Exp $
  **
  ** In this module: Os interface for .wav file output
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: siopatch.hpp,v 1.4 2003/04/12 12:16:22 thor Exp $
+ ** $Id: siopatch.hpp,v 1.4 2003-04-12 12:16:22 thor Exp $
  **
  ** In this module: SIOPatch for advanced speed communication
  **********************************************************************************/

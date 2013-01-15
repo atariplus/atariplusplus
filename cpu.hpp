@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.68 2013-01-03 12:01:09 thor Exp $
+ ** $Id: cpu.hpp,v 1.69 2013-01-13 10:23:48 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -205,9 +205,21 @@ public:
   //
   // A wrapper for the above that supplies a virtual execution method.
   class MicroCode {
+    //
+    // The stop mask. Defines on which conditions this
+    // code can be halted. If 0x01, only on HALT, if 0x03, also on RDY.
+    UBYTE m_ucStopMask;
+    //
   public:
+    // Constructor: The argument is true (which should be the default)
+    // if the code should also stop on an RDY signal. The NMOS 6502
+    // does not do this on memory writes.
+    MicroCode(bool haltonrdy)
+      : m_ucStopMask((haltonrdy)?(0x03):(0x01))
+    { }
+    //
     virtual ~MicroCode(void)
-    {}
+    { }
     // The instruction step this execution unit performs
     // This is why we implement this, after all. It returns a value
     // required for the next execution unit. As registers are at most
@@ -218,6 +230,13 @@ public:
     // Insert another slot intermediately into the execution order. Might be called
     // dependent on the execution data.
     void Insert(class CPU *cpu);
+    //
+    // The stop mask. Can be 0x03 to stop on RDY (WSYNC) and HALT (DMA) or
+    // 0x01 to stop on HALT only. The latter goes for write instructions.
+    UBYTE StopMask(void) const
+    {
+      return m_ucStopMask;
+    }
   };
   //
   // The concatenation unit: This is a templated class that takes two basic instructions
@@ -228,8 +247,8 @@ public:
     Step2 Second;
     //
   public:
-    Cat2(class CPU *cpu)
-      : First(cpu), Second(cpu)
+    Cat2(class CPU *cpu, bool haltonrdy = true)
+      : MicroCode(haltonrdy), First(cpu), Second(cpu)
     { }
     //
     UWORD Execute(UWORD operand)
@@ -246,8 +265,8 @@ public:
     Step3 Third;
     //
   public:
-    Cat3(class CPU *cpu)
-      : First(cpu), Second(cpu), Third(cpu)
+    Cat3(class CPU *cpu,bool haltonrdy = true)
+      : MicroCode(haltonrdy), First(cpu), Second(cpu), Third(cpu)
     { }
     //
     UWORD Execute(UWORD operand)
@@ -262,8 +281,8 @@ public:
     Step First;
     //
   public:
-    Cat1(class CPU *cpu)
-      : First(cpu)
+    Cat1(class CPU *cpu,bool haltonrdy = true)
+      : MicroCode(haltonrdy), First(cpu)
     { }
     //
     UWORD Execute(UWORD operand)
@@ -1501,29 +1520,27 @@ public:
   // CPU driver to emulate a single cycle of the CPU.
   void Step(void)
   {
+    class MicroCode *current = NextStep; // get the next step to be performed
     //
     // Check whether we have a legal pointer here.
 #if CHECK_LEVEL > 0
     if (size_t(CurCycle - StolenCycles) >= sizeof(StolenCycles)) {
       Throw(OutOfRange,"CPU::Step","execution HPOS out of range");
     }
+    if (current == NULL) {
+      machine->PutWarning("GlobalPC = %04x, IR = %02x\n",GlobalPC,LastIR);
+      Throw(ObjectDoesntExist,"CPU::Step","no current execution step");
+    }
 #endif
     //
     // Check whether there is a CPU slot available (and not stolen by DMA)
     // or blocked by WSync wait
-    if (*CurCycle == 0) {
-      class MicroCode *current = NextStep; // get the next step to be performed
+    if ((*CurCycle & current->StopMask()) == 0) {
       // Get already the step following this step such that the AEU may insert a step
       // between this and the next. This might be required to implement some data
       // dependent delay slots.
       NextStep = *ExecutionSteps;
       ExecutionSteps++;
-#if CHECK_LEVEL > 0
-      if (current == NULL) {
-	machine->PutWarning("GlobalPC = %04x, IR = %02x\n",GlobalPC,LastIR);
-	Throw(ObjectDoesntExist,"CPU::Step","no current execution step");
-      }
-#endif
       AtomicExecutionOperand = current->Execute(AtomicExecutionOperand);
     }
     CycleCounter++;

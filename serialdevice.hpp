@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: serialdevice.hpp,v 1.14 2003/08/02 15:40:14 thor Exp $
+ ** $Id: serialdevice.hpp,v 1.14 2003-08-02 15:40:14 thor Exp $
  **
  ** In this module: Interface specifications for serial devices.
  ** All serial devices (printer, disks, ...) must be derived from

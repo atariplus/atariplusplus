@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuvertitem.cpp,v 1.8 2005/09/10 12:55:40 thor Exp $
+ ** $Id: menuvertitem.cpp,v 1.8 2005-09-10 12:55:40 thor Exp $
  **
  **
  ** In this module: Implementation of a superitem class that keeps

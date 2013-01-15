@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: charmap.cpp,v 1.2 2004/10/11 20:47:46 thor Exp $
+ ** $Id: charmap.cpp,v 1.2 2004-10-11 20:47:46 thor Exp $
  **
  ** In this module: Atari default character map
  **********************************************************************************/

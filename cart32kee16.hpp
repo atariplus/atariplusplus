@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart32kee16.hpp,v 1.1 2003/10/26 19:08:08 thor Exp $
+ ** $Id: cart32kee16.hpp,v 1.1 2003-10-26 19:08:08 thor Exp $
  **
  ** In this module: The implementation of a 5200 16K cart with
  ** incomplete mapping

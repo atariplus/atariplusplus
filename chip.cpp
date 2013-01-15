@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: chip.cpp,v 1.3 2003/02/01 20:32:02 thor Exp $
+ ** $Id: chip.cpp,v 1.3 2003-02-01 20:32:02 thor Exp $
  **
  ** In this module: Definition of a generic chip
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: string.hpp,v 1.5 2003/03/16 23:11:15 thor Exp $
+ ** $Id: string.hpp,v 1.5 2003-03-16 23:11:15 thor Exp $
  **
  ** In this module: Os compatibility layer for string management.
  ** This file takes definitions from "types.h" build by autoconf/configure

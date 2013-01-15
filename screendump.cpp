@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: screendump.cpp,v 1.10 2009-05-16 20:00:28 thor Exp $
+ ** $Id: screendump.cpp,v 1.11 2013-01-12 11:06:00 thor Exp $
  **
  ** In this module: Creation of screendumps into a file
  **********************************************************************************/
@@ -23,7 +23,7 @@
 
 /// ScreenDump::ScreenDump
 ScreenDump::ScreenDump(class Machine *mach,
-		       const struct GTIA::ColorEntry *colors,
+		       const struct ColorEntry *colors,
 		       LONG leftedge,LONG topedge,LONG width,LONG height,LONG modulo,
 		       GfxFormat format)
   : machine(mach), colormap(colors),

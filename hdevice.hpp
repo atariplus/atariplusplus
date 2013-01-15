@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hdevice.hpp,v 1.17 2005/09/10 12:55:40 thor Exp $
+ ** $Id: hdevice.hpp,v 1.17 2005-09-10 12:55:40 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/

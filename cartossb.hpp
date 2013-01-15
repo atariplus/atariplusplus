@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartossb.hpp,v 1.5 2006/05/25 17:44:16 thor Exp $
+ ** $Id: cartossb.hpp,v 1.5 2006-05-25 17:44:16 thor Exp $
  **
  ** In this module: The implementation of an Oss supercart,
  ** alternative mapping

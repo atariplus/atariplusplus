@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.87 2013-01-01 02:29:21 thor Exp $
+ ** $Id: monitor.cpp,v 1.88 2013-01-15 11:21:50 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -799,7 +799,7 @@ bool Monitor::Command::GetAddress(UWORD &adr)
 {
   bool valid = false;
   char *token;
-  LONG value;
+  LONG value = here;
 
   token = NextToken();
   if (token) {

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dcmimage.cpp,v 1.6 2003/04/24 21:15:58 thor Exp $
+ ** $Id: dcmimage.cpp,v 1.6 2003-04-24 21:15:58 thor Exp $
  **
  ** In this module: Disk image interface towards the dcm format
  **********************************************************************************/

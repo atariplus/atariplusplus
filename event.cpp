@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: event.cpp,v 1.9 2008-05-19 19:55:40 thor Exp $
+ ** $Id: event.cpp,v 1.10 2013-01-15 11:21:50 thor Exp $
  **
  ** In this module: Definition of GUI events
  **********************************************************************************/
@@ -22,10 +22,10 @@ void EventFeeder::PositionMouse(int dx,int dy)
   struct Event sent;
   const class Gadget *gad;
   bool button;
-  LONG x,y,mx,my;
+  LONG x,y,mx;
   // Locate the nearest gadget and move the mouse over it.
   Display->MousePosition(x,y,button);
-  mx = x,my = y;
+  mx = x;
   gad = Gadget::FindGadgetInDirection(*GList,x,y,dx,dy);
   if (gad == NULL) {
     // If there is no gadget in that direction, try to

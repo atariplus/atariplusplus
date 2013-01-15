@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: new.hpp,v 1.1 2003/04/24 21:15:58 thor Exp $
+ ** $Id: new.hpp,v 1.1 2003-04-24 21:15:58 thor Exp $
  **
  ** In this module: Customized memory handling functions
  **********************************************************************************/

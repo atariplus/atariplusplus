@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: listbrowsergadget.cpp,v 1.8 2005/09/10 13:58:34 thor Exp $
+ ** $Id: listbrowsergadget.cpp,v 1.8 2005-09-10 13:58:34 thor Exp $
  **
  ** In this module: A gadget showing a list of text gadgets
  **********************************************************************************/

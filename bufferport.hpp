@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: bufferport.hpp,v 1.4 2005/09/10 12:55:39 thor Exp $
+ ** $Id: bufferport.hpp,v 1.4 2005-09-10 12:55:39 thor Exp $
  **
  ** In this module: A descendend of the render port that also allows
  ** buffering of rectangular screen regions

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.115 2013-01-03 10:53:05 Administrator Exp $
+ ** $Id: cpu.cpp,v 1.124 2013-01-14 13:31:46 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -300,7 +300,7 @@ UWORD CPU::LoadVectorUnitQuirk<vector,alternative,mask>::Execute(UWORD operand)
 {
   Cpu->GlobalP |= mask; // Set I or B bit, dependending on what is required.
   if (Cpu->NMI) {
-    return UWORD((operand & 0xff00) | Ram->ReadByte(alternative));
+    return UWORD((Ram->ReadByte(alternative+1) << 8) | Ram->ReadByte(alternative));
   } else {
     return UWORD((operand & 0xff00) | Ram->ReadByte(vector));
   }
@@ -886,7 +886,8 @@ UWORD CPU::CPYUnit::Execute(UWORD operand)
 UWORD CPU::HaltUnit::Execute(UWORD operand)
 { 
   // do not loop forever if the emulator is waiting for an instruction boundary sync.
-  if (!Cpu->NMI && !(Cpu->IRQMask && ((Cpu->GlobalP & I_Mask) == 0)) && !Cpu->ISync) {
+  // Note that the I-flag is ignored here!
+  if (!Cpu->NMI && !Cpu->IRQMask && !Cpu->ISync) {
     Cpu->ExecutionSteps--; // repeat this step forever.
     Cpu->NextStep = Cpu->ExecutionSteps[-1];
   }
@@ -1251,23 +1252,20 @@ void CPU::BuildInstructions00(void)
   //
   // 0x00: BRK: 7 cycles
   Disassembled[0x00] =Instruction("BRK",Instruction::NoArgs,7);
-  Instructions[0x00]->AddStep(new Cat2<LoadPCUnit<1>,PushUnitExtend<Adr> >(this));    // PC+2->op,op.hi->Stack
-  Instructions[0x00]->AddStep(new Cat1<PushUnit<Adr> >(this));                        // op.lo->Stack
-  Instructions[0x00]->AddStep(new Cat2<OrToStatusUnit<B_Mask>,PushUnit<Adr> >(this)); // P|Break->op, op->Stack
-  Instructions[0x00]->AddStep(new Cat1<LoadVectorUnitExtend<0xfffe> >(this));   // IRQ_Vector.hi->op
+  Instructions[0x00]->AddStep(new Cat2<LoadPCUnit<1>,PushUnitExtend<Adr> >(this,Emulate65C02));    // PC+2->op,op.hi->Stack
+  Instructions[0x00]->AddStep(new Cat1<PushUnit<Adr> >(this,Emulate65C02));                        // op.lo->Stack
+  Instructions[0x00]->AddStep(new Cat2<OrToStatusUnit<B_Mask>,PushUnit<Adr> >(this,Emulate65C02)); // P|Break->op, op->Stack
   if (Emulate65C02) {
+    Instructions[0x00]->AddStep(new Cat2<AndToStatusUnit<NOT(D_Mask)>,LoadVectorUnitExtend<0xfffe> >(this));         // IRQ_Vector.hi->op
     // The 65c02 clears the D bit
-    Instructions[0x00]->AddStep(new Cat2<AndToStatusUnit<NOT(D_Mask)>,LoadVectorUnit<0xfffe,I_Mask> >(this));
+    Instructions[0x00]->AddStep(new Cat1<LoadVectorUnit<0xfffe,I_Mask> >(this));
+    Instructions[0x00]->AddStep(new Cat1<JMPUnit<0> >(this));                                 // op->PC,P|=I_Mask;
   } else {
+    Instructions[0x00]->AddStep(new Cat1<LoadVectorUnitExtend<0xfffe> >(this));         // IRQ_Vector.hi->op
     Instructions[0x00]->AddStep(new Cat1<LoadVectorUnitQuirk<0xfffe,0xfffa,I_Mask> >(this));  // IRQ_Vector.lo->op
+    Instructions[0x00]->AddStep(new Cat2<NMIResetUnit, JMPUnit<0> >(this));                   // op->PC,P|=I_Mask;
   }
-  Instructions[0x00]->AddStep(new Cat1<JMPUnit<0> >(this));                     // op->PC,P|=I_Mask;
-  if (Emulate65C02) {
-    Instructions[0x00]->AddStep(new Cat1<DecodeUnit>(this));                    // decode next instruction
-  } else {
-    // Another wierd 6502 bug that BRK can disable the NMI if timed correctly.
-    Instructions[0x00]->AddStep(new Cat2<NMIResetUnit,DecodeUnit>(this));       // decode next instruction
-  }
+  Instructions[0x00]->AddStep(new Cat1<DecodeUnit>(this));                    // decode next instruction
   //
   // 0x01: ORA (addr,X): 6 cycles
   Disassembled[0x01] =Instruction("ORA",Instruction::Indirect_X,6);
@@ -1301,8 +1299,8 @@ void CPU::BuildInstructions00(void)
     Instructions[0x03]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0x03]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));  // (op)->op
     Instructions[0x03]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0x03]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));// op<<1->op
-    Instructions[0x03]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));        // op->ea
+    Instructions[0x03]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));// op<<1->op
+    Instructions[0x03]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));        // op->ea
     Instructions[0x03]->AddStep(new Cat1<ORAUnit>(this));                         // op|A->A
     Instructions[0x03]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
@@ -1334,7 +1332,7 @@ void CPU::BuildInstructions00(void)
   Instructions[0x06]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
   Instructions[0x06]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0x06]->AddStep(new Cat1<ASLUnit>(this));                           // op<<1->op
-  Instructions[0x06]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->ea
+  Instructions[0x06]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->ea
   Instructions[0x06]->AddStep(new Cat1<DecodeUnit>(this));                        // decode next instruction
   //
   if (Emulate65C02) {
@@ -1351,14 +1349,14 @@ void CPU::BuildInstructions00(void)
     Instructions[0x07]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
     Instructions[0x07]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0x07]->AddStep(new Cat1<ASLUnit>(this));                         // op<<1->op
-    Instructions[0x07]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ORAUnit>(this)); // op->ea,op|A->A
+    Instructions[0x07]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02)); // op->ea,op|A->A
     Instructions[0x07]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
   //
   // 0x08: PHP, 3 cycles
   Disassembled[0x08] =Instruction("PHP",Instruction::NoArgs,3);
   Instructions[0x08]->AddStep(new Cat1<OrToStatusUnit<B_Mask> >(this));            // P->op (with B set)
-  Instructions[0x08]->AddStep(new Cat1<PushUnit<Adr> >(this));                     // op->stack
+  Instructions[0x08]->AddStep(new Cat1<PushUnit<Adr> >(this,Emulate65C02));                     // op->stack
   Instructions[0x08]->AddStep(new Cat1<DecodeUnit>(this));                         // decode next instruction
   //
   // 0x09: ORA immediate, 2 cycles
@@ -1418,9 +1416,9 @@ void CPU::BuildInstructions00(void)
   if (Emulate65C02) {
     Instructions[0x0e]->AddStep(new Cat1<ASLUnit>(this));                         // op<<1->op
   } else {
-    Instructions[0x0e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));// op<<1->op
+    Instructions[0x0e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));// op<<1->op
   }
-  Instructions[0x0e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));          // op->(ea)
+  Instructions[0x0e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));          // op->(ea)
   Instructions[0x0e]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -1436,8 +1434,8 @@ void CPU::BuildInstructions00(void)
     Instructions[0x0f]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0x0f]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));      // hi->op
     Instructions[0x0f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0x0f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));// op<<1->op
-    Instructions[0x0f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this));// op->(ea)
+    Instructions[0x0f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));// op<<1->op
+    Instructions[0x0f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02));// op->(ea)
     Instructions[0x0f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -1487,8 +1485,8 @@ void CPU::BuildInstructions10(void)
     Instructions[0x13]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
     Instructions[0x13]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this));  // (op)->op,op+Y->op
     Instructions[0x13]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                   // op->ea,(op)->op
-    Instructions[0x13]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));        // op<<1->op
-    Instructions[0x13]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this));        // op->(ea)
+    Instructions[0x13]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));        // op<<1->op
+    Instructions[0x13]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02));        // op->(ea)
     Instructions[0x13]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -1522,7 +1520,7 @@ void CPU::BuildInstructions10(void)
   Instructions[0x16]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
   Instructions[0x16]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0x16]->AddStep(new Cat1<ASLUnit>(this));                           // op<<1->op
-  Instructions[0x16]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->(ea)
+  Instructions[0x16]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->(ea)
   Instructions[0x16]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -1540,7 +1538,7 @@ void CPU::BuildInstructions10(void)
     Instructions[0x17]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
     Instructions[0x17]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0x17]->AddStep(new Cat1<ASLUnit>(this));                         // op<<1->op
-    Instructions[0x17]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ORAUnit>(this)); // op->(ea),op|A->A
+    Instructions[0x17]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02)); // op->(ea),op|A->A
     Instructions[0x17]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -1578,8 +1576,8 @@ void CPU::BuildInstructions10(void)
     Instructions[0x1b]->AddStep(new Cat1<ImmediateUnit>(this));                     // lo->op
     Instructions[0x1b]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this)); // hi->op, op+Y->op
     Instructions[0x1b]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                   // op->ea,(op)->op
-    Instructions[0x1b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));        // op<<1->op
-    Instructions[0x1b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this));        // op->(ea),op|A->A
+    Instructions[0x1b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));        // op<<1->op
+    Instructions[0x1b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02));        // op->(ea),op|A->A
     Instructions[0x1b]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -1619,8 +1617,8 @@ void CPU::BuildInstructions10(void)
   if (Emulate65C02)
     Instructions[0x1e]->AddStep(new Cat1<ASLUnit>(this));                               // op<<1->op
   else
-    Instructions[0x1e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));      // op<<1->op
-  Instructions[0x1e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0x1e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));      // op<<1->op
+  Instructions[0x1e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0x1e]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -1636,8 +1634,8 @@ void CPU::BuildInstructions10(void)
     Instructions[0x1f]->AddStep(new Cat1<ImmediateUnit>(this));                         // lo->op
     Instructions[0x1f]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this)); // hi->op, op+X->op
     Instructions[0x1f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0x1f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this));      // op<<1->op
-    Instructions[0x1f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this));      // op->(ea),op|A->A
+    Instructions[0x1f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ASLUnit>(this,Emulate65C02));      // op<<1->op
+    Instructions[0x1f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02));      // op->(ea),op|A->A
     Instructions[0x1f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -1651,8 +1649,8 @@ void CPU::BuildInstructions20(void)
   //
   // 0x20: JSR absolute unit
   Disassembled[0x20] =Instruction("JSR",Instruction::Absolute,6);
-  Instructions[0x20]->AddStep(new Cat2<LoadPCUnit<1>,PushUnitExtend<Adr> >(this)); // pc+1->op,hi->stack
-  Instructions[0x20]->AddStep(new Cat1<PushUnit<Adr> >(this));                  // lo->stack
+  Instructions[0x20]->AddStep(new Cat2<LoadPCUnit<1>,PushUnitExtend<Adr> >(this,Emulate65C02)); // pc+1->op,hi->stack
+  Instructions[0x20]->AddStep(new Cat1<PushUnit<Adr> >(this,Emulate65C02));                  // lo->stack
   Instructions[0x20]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
   Instructions[0x20]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));      // hi->op
   Instructions[0x20]->AddStep(new Cat1<JMPUnit<0> >(this));                     // op->PC
@@ -1669,11 +1667,8 @@ void CPU::BuildInstructions20(void)
   //
   // 0x22: First escape code: Pulls the immediate operand from the code,
   // runs the emulation cycle and executes an RTS
-  if (Emulate65C02) {
-    Disassembled[0x22] =Instruction("NOPE",Instruction::Immediate,2);
-  } else {
-    Disassembled[0x22] =Instruction("HALT",Instruction::Immediate,0);
-  }
+  // This would be a NOP on the CMOS version, a HALT on the NMOS.
+  Disassembled[0x22] =Instruction("ESCA",Instruction::Immediate,6);
   Instructions[0x22]->AddStep(new Cat1<ImmediateUnit>(this));                   // fetch operand
   Instructions[0x22]->AddStep(new Cat1<ESCUnit>(this));                         // run the machine emulator
   Instructions[0x22]->AddStep(new Cat1<PullUnit<Adr> >(this));                  // stack->lo
@@ -1692,8 +1687,8 @@ void CPU::BuildInstructions20(void)
     Instructions[0x23]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0x23]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));  // (op)->op
     Instructions[0x23]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0x23]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));// op<<1->op
-    Instructions[0x23]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));        // op->ea
+    Instructions[0x23]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));// op<<1->op
+    Instructions[0x23]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));        // op->ea
     Instructions[0x23]->AddStep(new Cat1<ANDUnit>(this));                         // op&A->A
     Instructions[0x23]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
@@ -1715,7 +1710,7 @@ void CPU::BuildInstructions20(void)
   Instructions[0x26]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
   Instructions[0x26]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
   Instructions[0x26]->AddStep(new Cat1<ROLUnit>(this));                         // op<<1->op
-  Instructions[0x26]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->ea
+  Instructions[0x26]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->ea
   Instructions[0x26]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   //
   if (Emulate65C02) {
@@ -1732,7 +1727,7 @@ void CPU::BuildInstructions20(void)
     Instructions[0x27]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
     Instructions[0x27]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // op->ea,(op)->op
     Instructions[0x27]->AddStep(new Cat1<ROLUnit>(this));                       // op<<1->op
-    Instructions[0x27]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ANDUnit>(this));// op->ea,op&A->A
+    Instructions[0x27]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ANDUnit>(this,Emulate65C02));// op->ea,op&A->A
     Instructions[0x27]->AddStep(new Cat1<DecodeUnit>(this));                    // decode next instruction
   }
   //
@@ -1758,18 +1753,13 @@ void CPU::BuildInstructions20(void)
     Disassembled[0x2b] =Instruction("NOPE",Instruction::NoArgs,1);
     Instructions[0x2b]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
+    Disassembled[0x2b] =Instruction("UNST",Instruction::NoArgs,0);
     // 0x2b: ANC, 3 cycles FIXME: Should this be two? I won't believe it.
     // Actually, the result of this instruction cannot be predicted exactly,
     // it seems to differ depending on conditions I cannot control. The same
     // P registers generate differning results.
     Instructions[0x2b]->AddStep(new Cat1<UnstableUnit<0x2b> >(this));           // just crash
     Instructions[0x2b]->AddStep(new Cat1<DecodeUnit>(this));
-    /*
-    Disassembled[0x2b] =Instruction("ANDC",Instruction::Immediate,3);
-    Instructions[0x2b]->AddStep(new Cat2<ImmediateUnit,ANDUnit>(this));         // #->op,op&A->A
-    Instructions[0x2b]->AddStep(new Cat1<ROLUnit>(this));                       // op<<1->op
-    Instructions[0x2b]->AddStep(new Cat1<DecodeUnit>(this));
-    */
   }
   //
   // 0x2c: BIT abs, 4 cycles
@@ -1794,8 +1784,8 @@ void CPU::BuildInstructions20(void)
   if (Emulate65C02)
     Instructions[0x2e]->AddStep(new Cat1<ROLUnit>(this));                       // op<<1->op
   else
-    Instructions[0x2e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));    // op<<1->op
-  Instructions[0x2e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));              // op->(ea)
+    Instructions[0x2e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));    // op<<1->op
+  Instructions[0x2e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));              // op->(ea)
   Instructions[0x2e]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -1811,8 +1801,8 @@ void CPU::BuildInstructions20(void)
     Instructions[0x2f]->AddStep(new Cat1<ImmediateUnit>(this));                 // lo->op
     Instructions[0x2f]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));    // hi->op
     Instructions[0x2f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));               // op->ea,(op)->op
-    Instructions[0x2f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));    // op<<1->op
-    Instructions[0x2f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this));    // op->(ea)
+    Instructions[0x2f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));    // op<<1->op
+    Instructions[0x2f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this,Emulate65C02));    // op->(ea)
     Instructions[0x2f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -1862,8 +1852,8 @@ void CPU::BuildInstructions30(void)
     Instructions[0x33]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
     Instructions[0x33]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this));   // (op)->op,op+Y->op
     Instructions[0x33]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));               // op->ea,(op)->op
-    Instructions[0x33]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));    // op<<1->op
-    Instructions[0x33]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this));    // op->(ea)
+    Instructions[0x33]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));    // op<<1->op
+    Instructions[0x33]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this,Emulate65C02));    // op->(ea)
     Instructions[0x33]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -1896,7 +1886,7 @@ void CPU::BuildInstructions30(void)
   Instructions[0x36]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
   Instructions[0x36]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
   Instructions[0x36]->AddStep(new Cat1<ROLUnit>(this));                         // op<<1->op
-  Instructions[0x36]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->(ea)
+  Instructions[0x36]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
   Instructions[0x36]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -1914,7 +1904,7 @@ void CPU::BuildInstructions30(void)
     Instructions[0x37]->AddStep(new Cat1<AddXUnit>(this));                      // op+X->op
     Instructions[0x37]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // op->ea,(op)->op
     Instructions[0x37]->AddStep(new Cat1<ROLUnit>(this));                       // op<<1->op
-    Instructions[0x37]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ANDUnit>(this)); // op->(ea),op&A->A
+    Instructions[0x37]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ANDUnit>(this,Emulate65C02)); // op->(ea),op&A->A
     Instructions[0x37]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -1952,8 +1942,8 @@ void CPU::BuildInstructions30(void)
     Instructions[0x3b]->AddStep(new Cat1<ImmediateUnit>(this));                  // lo->op
     Instructions[0x3b]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this)); // hi->op, op+Y->op
     Instructions[0x3b]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                // op->ea,(op)->op
-    Instructions[0x3b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));     // op<<1->op
-    Instructions[0x3b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this));     // op->(ea),op&A->A
+    Instructions[0x3b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));     // op<<1->op
+    Instructions[0x3b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this,Emulate65C02));     // op->(ea),op&A->A
     Instructions[0x3b]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -1991,8 +1981,8 @@ void CPU::BuildInstructions30(void)
   if (Emulate65C02)
     Instructions[0x3e]->AddStep(new Cat1<ROLUnit>(this));                         // op<<1->op
   else
-    Instructions[0x3e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));      // op<<1->op
-  Instructions[0x3e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0x3e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));      // op<<1->op
+  Instructions[0x3e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0x3e]->AddStep(new Cat1<DecodeUnit>(this));
   //  
   if (Emulate65C02) {
@@ -2008,8 +1998,8 @@ void CPU::BuildInstructions30(void)
     Instructions[0x3f]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0x3f]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this)); // hi->op, op+X->op
     Instructions[0x3f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0x3f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this));      // op<<1->op
-    Instructions[0x3f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this));      // op->(ea),op&A->A
+    Instructions[0x3f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ROLUnit>(this,Emulate65C02));      // op<<1->op
+    Instructions[0x3f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ANDUnit>(this,Emulate65C02));      // op->(ea),op&A->A
     Instructions[0x3f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -2062,8 +2052,8 @@ void CPU::BuildInstructions40(void)
     Instructions[0x43]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0x43]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));  // (op)->op
     Instructions[0x43]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0x43]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));// op>>1->op
-    Instructions[0x43]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));        // op->ea
+    Instructions[0x43]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));// op>>1->op
+    Instructions[0x43]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));        // op->ea
     Instructions[0x43]->AddStep(new Cat1<EORUnit>(this));                         // op^A->A
     Instructions[0x43]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
@@ -2085,7 +2075,7 @@ void CPU::BuildInstructions40(void)
   Instructions[0x46]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
   Instructions[0x46]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0x46]->AddStep(new Cat1<LSRUnit>(this));                           // op>>1->op
-  Instructions[0x46]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->ea
+  Instructions[0x46]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->ea
   Instructions[0x46]->AddStep(new Cat1<DecodeUnit>(this));                        // decode next instruction
   // 
   if (Emulate65C02) {
@@ -2102,14 +2092,14 @@ void CPU::BuildInstructions40(void)
     Instructions[0x47]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
     Instructions[0x47]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0x47]->AddStep(new Cat1<LSRUnit>(this));                         // op>>1->op
-    Instructions[0x47]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,EORUnit>(this)); // op->ea,op^A->A
+    Instructions[0x47]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,EORUnit>(this,Emulate65C02)); // op->ea,op^A->A
     Instructions[0x47]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
   //
   // 0x48: PHA, 3 cycles
   Disassembled[0x48] =Instruction("PHA",Instruction::NoArgs,3);
   Instructions[0x48]->AddStep(new Cat1<AccuUnit>(this));                          // A->op
-  Instructions[0x48]->AddStep(new Cat1<PushUnit<Adr> >(this));                    // op->stack
+  Instructions[0x48]->AddStep(new Cat1<PushUnit<Adr> >(this,Emulate65C02));                    // op->stack
   Instructions[0x48]->AddStep(new Cat1<DecodeUnit>(this));                        // decode next instruction
   //
   // 0x49: EOR immediate, 2 cycles
@@ -2156,8 +2146,8 @@ void CPU::BuildInstructions40(void)
   if (Emulate65C02)
     Instructions[0x4e]->AddStep(new Cat1<LSRUnit>(this));                         // op>>1->op
   else
-    Instructions[0x4e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));      // op>>1->op
-  Instructions[0x4e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0x4e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));      // op>>1->op
+  Instructions[0x4e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0x4e]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -2173,8 +2163,8 @@ void CPU::BuildInstructions40(void)
     Instructions[0x4f]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0x4f]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));      // hi->op
     Instructions[0x4f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0x4f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));      // op>>1->op
-    Instructions[0x4f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this));      // op->(ea)
+    Instructions[0x4f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));      // op>>1->op
+    Instructions[0x4f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this,Emulate65C02));      // op->(ea)
     Instructions[0x4f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -2224,8 +2214,8 @@ void CPU::BuildInstructions50(void)
     Instructions[0x53]->AddStep(new Cat1<ImmediateUnit>(this));                    // ZPage address->op
     Instructions[0x53]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this));// (op)->op,op+Y->op
     Instructions[0x53]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                  // op->ea,(op)->op
-    Instructions[0x53]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));       // op>>1->op
-    Instructions[0x53]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this));       // op->(ea)
+    Instructions[0x53]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));       // op>>1->op
+    Instructions[0x53]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this,Emulate65C02));       // op->(ea)
     Instructions[0x53]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2249,7 +2239,7 @@ void CPU::BuildInstructions50(void)
   Instructions[0x56]->AddStep(new Cat1<AddXUnit>(this));                           // op+X->op
   Instructions[0x56]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));         // op->ea,(op)->op
   Instructions[0x56]->AddStep(new Cat1<LSRUnit>(this));                            // op>>1->op
-  Instructions[0x56]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));      // op->(ea)
+  Instructions[0x56]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));      // op->(ea)
   Instructions[0x56]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -2267,7 +2257,7 @@ void CPU::BuildInstructions50(void)
     Instructions[0x57]->AddStep(new Cat1<AddXUnit>(this));                         // op+X->op
     Instructions[0x57]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));       // op->ea,(op)->op
     Instructions[0x57]->AddStep(new Cat1<LSRUnit>(this));                          // op>>1->op
-    Instructions[0x57]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,EORUnit>(this));  // op->(ea),op^A->A
+    Instructions[0x57]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,EORUnit>(this,Emulate65C02));  // op->(ea),op^A->A
     Instructions[0x57]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2306,8 +2296,8 @@ void CPU::BuildInstructions50(void)
     Instructions[0x5b]->AddStep(new Cat1<ImmediateUnit>(this));                    // lo->op
     Instructions[0x5b]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this));            // hi->op, op+Y->op
     Instructions[0x5b]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                  // op->ea,(op)->op
-    Instructions[0x5b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));       // op>>1->op
-    Instructions[0x5b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this));       // op->(ea),op^A->A
+    Instructions[0x5b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));       // op>>1->op
+    Instructions[0x5b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this,Emulate65C02));       // op->(ea),op^A->A
     Instructions[0x5b]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2340,8 +2330,8 @@ void CPU::BuildInstructions50(void)
   if (Emulate65C02)
     Instructions[0x5e]->AddStep(new Cat1<LSRUnit>(this));                          // op>>1->op
   else
-    Instructions[0x5e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));       // op>>1->op
-  Instructions[0x5e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                 // op->(ea)
+    Instructions[0x5e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));       // op>>1->op
+  Instructions[0x5e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                 // op->(ea)
   Instructions[0x5e]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -2357,8 +2347,8 @@ void CPU::BuildInstructions50(void)
     Instructions[0x5f]->AddStep(new Cat1<ImmediateUnit>(this));                    // lo->op
     Instructions[0x5f]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this));// hi->op, op+X->op
     Instructions[0x5f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                  // op->ea,(op)->op
-    Instructions[0x5f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this));       // op>>1->op
-    Instructions[0x5f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this));       // op->(ea),op^A->A
+    Instructions[0x5f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,LSRUnit>(this,Emulate65C02));       // op>>1->op
+    Instructions[0x5f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,EORUnit>(this,Emulate65C02));       // op->(ea),op^A->A
     Instructions[0x5f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -2415,8 +2405,8 @@ void CPU::BuildInstructions60(void)
     Instructions[0x63]->AddStep(new Cat1<AddXUnitZero>(this));                  // op+X->op
     Instructions[0x63]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));// (op)->op
     Instructions[0x63]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));         // op->ea,(op)->op
-    Instructions[0x63]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-    Instructions[0x63]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));      // op->ea
+    Instructions[0x63]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+    Instructions[0x63]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));      // op->ea
     Instructions[0x63]->AddStep(new Cat1<ADCUnit>(this));                       // op+A->A
     Instructions[0x63]->AddStep(new Cat1<DecodeUnit>(this));                    // decode next instruction
   }
@@ -2450,7 +2440,7 @@ void CPU::BuildInstructions60(void)
   Instructions[0x66]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
   Instructions[0x66]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
   Instructions[0x66]->AddStep(new Cat1<RORUnit>(this));                         // op>>1->op
-  Instructions[0x66]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->ea
+  Instructions[0x66]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->ea
   Instructions[0x66]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   // 
   if (Emulate65C02) {
@@ -2467,7 +2457,7 @@ void CPU::BuildInstructions60(void)
     Instructions[0x67]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
     Instructions[0x67]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // op->ea,(op)->op
     Instructions[0x67]->AddStep(new Cat1<RORUnit>(this));                       // op>>1->op
-    Instructions[0x67]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ADCUnit>(this)); // op->ea,op+A->A
+    Instructions[0x67]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ADCUnit>(this,Emulate65C02)); // op->ea,op+A->A
     Instructions[0x67]->AddStep(new Cat1<DecodeUnit>(this));                    // decode next instruction
   }
   //
@@ -2536,8 +2526,8 @@ void CPU::BuildInstructions60(void)
   if (Emulate65C02)
     Instructions[0x6e]->AddStep(new Cat1<RORUnit>(this));                       // op>>1->op
   else
-    Instructions[0x6e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-  Instructions[0x6e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));              // op->(ea)
+    Instructions[0x6e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+  Instructions[0x6e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));              // op->(ea)
   Instructions[0x6e]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -2553,8 +2543,8 @@ void CPU::BuildInstructions60(void)
     Instructions[0x6f]->AddStep(new Cat1<ImmediateUnit>(this));                 // lo->op
     Instructions[0x6f]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));    // hi->op
     Instructions[0x6f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));               // op->ea,(op)->op
-    Instructions[0x6f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-    Instructions[0x6f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this));    // op->(ea)
+    Instructions[0x6f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+    Instructions[0x6f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this,Emulate65C02));    // op->(ea)
     Instructions[0x6f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -2608,8 +2598,8 @@ void CPU::BuildInstructions70(void)
     Instructions[0x73]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
     Instructions[0x73]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this));// (op)->op,op+Y->op
     Instructions[0x73]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));               // op->ea,(op)->op
-    Instructions[0x73]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-    Instructions[0x73]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this));    // op+A->A
+    Instructions[0x73]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+    Instructions[0x73]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this,Emulate65C02));    // op+A->A
     Instructions[0x73]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2645,7 +2635,7 @@ void CPU::BuildInstructions70(void)
   Instructions[0x76]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
   Instructions[0x76]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
   Instructions[0x76]->AddStep(new Cat1<RORUnit>(this));                         // op>>1->op
-  Instructions[0x76]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->(ea)
+  Instructions[0x76]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
   Instructions[0x76]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -2663,7 +2653,7 @@ void CPU::BuildInstructions70(void)
     Instructions[0x77]->AddStep(new Cat1<AddXUnit>(this));                      // op+X->op
     Instructions[0x77]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // op->ea,(op)->op
     Instructions[0x77]->AddStep(new Cat1<RORUnit>(this));                       // op>>1->op
-    Instructions[0x77]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ADCUnit>(this));// op->(ea),op+A->A
+    Instructions[0x77]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ADCUnit>(this,Emulate65C02));// op->(ea),op+A->A
     Instructions[0x77]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2707,8 +2697,8 @@ void CPU::BuildInstructions70(void)
     Instructions[0x7b]->AddStep(new Cat1<ImmediateUnit>(this));                 // lo->op
     Instructions[0x7b]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this)); // hi->op, op+Y->op
     Instructions[0x7b]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));               // op->ea,(op)->op
-    Instructions[0x7b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-    Instructions[0x7b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this));    // op+A->A
+    Instructions[0x7b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+    Instructions[0x7b]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this,Emulate65C02));    // op+A->A
     Instructions[0x7b]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2751,8 +2741,8 @@ void CPU::BuildInstructions70(void)
   if (Emulate65C02)
     Instructions[0x7e]->AddStep(new Cat1<RORUnit>(this));                       // op>>1->op
   else
-    Instructions[0x7e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-  Instructions[0x7e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));              // op->(ea)
+    Instructions[0x7e]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+  Instructions[0x7e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));              // op->(ea)
   Instructions[0x7e]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -2768,8 +2758,8 @@ void CPU::BuildInstructions70(void)
     Instructions[0x7f]->AddStep(new Cat1<ImmediateUnit>(this));                 // lo->op
     Instructions[0x7f]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this)); // hi->op, op+X->op
     Instructions[0x7f]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));               // op->ea,(op)->op
-    Instructions[0x7f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this));    // op>>1->op
-    Instructions[0x7f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this));    // op->(ea),op+A->A
+    Instructions[0x7f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,RORUnit>(this,Emulate65C02));    // op>>1->op
+    Instructions[0x7f]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,ADCUnit>(this,Emulate65C02));    // op->(ea),op+A->A
     Instructions[0x7f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -2799,7 +2789,7 @@ void CPU::BuildInstructions80(void)
   Instructions[0x81]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
   Instructions[0x81]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));  // (op)->op
   Instructions[0x81]->AddStep(new Cat1<AccuUnit>(this));                        // op->ea,A->op
-  Instructions[0x81]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));        // op->(ea)
+  Instructions[0x81]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));        // op->(ea)
   Instructions[0x81]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x82 NOP immed, 2 cycles
@@ -2818,26 +2808,26 @@ void CPU::BuildInstructions80(void)
     Instructions[0x83]->AddStep(new Cat1<AddXUnitZero>(this));                  // op+X->op
     Instructions[0x83]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));// (op)->op
     Instructions[0x83]->AddStep(new Cat1<ANXUnit>(this));                       // op->ea,A&X->op
-    Instructions[0x83]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));      // op->(ea)
+    Instructions[0x83]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));      // op->(ea)
     Instructions[0x83]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
   // 0x84: STY zpage 3 cycles
   Disassembled[0x84] =Instruction("STY",Instruction::ZPage,3);
   Instructions[0x84]->AddStep(new Cat2<ImmediateUnit,YUnit>(this));             // address->op,op->ea,Y->op
-  Instructions[0x84]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->(ea)
+  Instructions[0x84]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
   Instructions[0x84]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x85: STA zpage 3 cycles
   Disassembled[0x85] =Instruction("STA",Instruction::ZPage,3);
   Instructions[0x85]->AddStep(new Cat2<ImmediateUnit,AccuUnit>(this));          // address->op,op->ea,A->op
-  Instructions[0x85]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->(ea)
+  Instructions[0x85]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
   Instructions[0x85]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x86: STX zpage 3 cycles
   Disassembled[0x86] =Instruction("STX",Instruction::ZPage,3);
   Instructions[0x86]->AddStep(new Cat2<ImmediateUnit,XUnit>(this));             // address->op,op->ea,X->op
-  Instructions[0x86]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));   // op->(ea)
+  Instructions[0x86]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
   Instructions[0x86]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -2852,7 +2842,7 @@ void CPU::BuildInstructions80(void)
     // 0x87: SAX zpage 3 cycles
     Disassembled[0x87] =Instruction("ANSX",Instruction::ZPage,3);
     Instructions[0x87]->AddStep(new Cat2<ImmediateUnit,ANXUnit>(this));         // address->op,op->ea,A&X->op
-    Instructions[0x87]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this)); // op->(ea)
+    Instructions[0x87]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02)); // op->(ea)
     Instructions[0x87]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -2877,7 +2867,7 @@ void CPU::BuildInstructions80(void)
     Instructions[0x8b]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
     // 0x8b: this is an unstable opcode
-    Disassembled[0x8b] =Instruction("HALT",Instruction::NoArgs,0);
+    Disassembled[0x8b] =Instruction("UNST",Instruction::NoArgs,0);
     Instructions[0x8b]->AddStep(new Cat1<UnstableUnit<0x8b> >(this));           // just crash
     Instructions[0x8b]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -2886,21 +2876,21 @@ void CPU::BuildInstructions80(void)
   Disassembled[0x8c] =Instruction("STY",Instruction::Absolute,4);
   Instructions[0x8c]->AddStep(new Cat1<ImmediateUnit>(this));                    // lo->op
   Instructions[0x8c]->AddStep(new Cat2<ImmediateWordExtensionUnit,YUnit>(this)); // hi->op,op->ea,Y->op
-  Instructions[0x8c]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));               // op->(ea)
+  Instructions[0x8c]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));               // op->(ea)
   Instructions[0x8c]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x8d: STA absolute, 4 cycles
   Disassembled[0x8d] =Instruction("STA",Instruction::Absolute,4);
   Instructions[0x8d]->AddStep(new Cat1<ImmediateUnit>(this));                    // lo->op
   Instructions[0x8d]->AddStep(new Cat2<ImmediateWordExtensionUnit,AccuUnit>(this)); // hi->op,op->ea,A->op
-  Instructions[0x8d]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));               // op->(ea)
+  Instructions[0x8d]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));               // op->(ea)
   Instructions[0x8d]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x8e: STX absolute, 4 cycles
   Disassembled[0x8e] =Instruction("STX",Instruction::Absolute,4);
   Instructions[0x8e]->AddStep(new Cat1<ImmediateUnit>(this));                    // lo->op
   Instructions[0x8e]->AddStep(new Cat2<ImmediateWordExtensionUnit,XUnit>(this)); // hi->op,op->ea,X->op
-  Instructions[0x8e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));               // op->(ea)
+  Instructions[0x8e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));               // op->(ea)
   Instructions[0x8e]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -2915,7 +2905,7 @@ void CPU::BuildInstructions80(void)
     Disassembled[0x8f] =Instruction("ANSX",Instruction::Absolute,4);
     Instructions[0x8f]->AddStep(new Cat1<ImmediateUnit>(this));                  // lo->op
     Instructions[0x8f]->AddStep(new Cat2<ImmediateWordExtensionUnit,ANXUnit>(this)); // hi->op,op->ea,A&X->op
-    Instructions[0x8f]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));             // op->(ea)
+    Instructions[0x8f]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));             // op->(ea)
     Instructions[0x8f]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -2937,7 +2927,7 @@ void CPU::BuildInstructions90(void)
   Instructions[0x91]->AddStep(new Cat1<ImmediateUnit>(this));                    // ZPage address->op
   Instructions[0x91]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this)); // (op)->op,op+Y->op
   Instructions[0x91]->AddStep(new Cat1<AccuUnit>(this));                         // op->ea,A->op
-  Instructions[0x91]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));         // op->(ea)
+  Instructions[0x91]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));         // op->(ea)
   Instructions[0x91]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x92: JAM
@@ -2961,6 +2951,7 @@ void CPU::BuildInstructions90(void)
     Instructions[0x93]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
     // 0x93: does not work reliable. Maybe later
+    Disassembled[0x93] =Instruction("UNST",Instruction::NoArgs,0);
     Instructions[0x93]->AddStep(new Cat1<UnstableUnit<0x93> >(this));            // just crash
     Instructions[0x93]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -2969,21 +2960,21 @@ void CPU::BuildInstructions90(void)
   Disassembled[0x94] =Instruction("STY",Instruction::ZPage_X,4);
   Instructions[0x94]->AddStep(new Cat1<ImmediateUnit>(this));                    // address->op
   Instructions[0x94]->AddStep(new Cat1<AddXUnitZero>(this));                     // op+X->op
-  Instructions[0x94]->AddStep(new Cat2<YUnit,ZPageIndirectWriterUnit<Adr> >(this)); // op->ea,Y->(ea)
+  Instructions[0x94]->AddStep(new Cat2<YUnit,ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02)); // op->ea,Y->(ea)
   Instructions[0x94]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x95: STA zpage,X 4 cycles
   Disassembled[0x95] =Instruction("STA",Instruction::ZPage_X,4);
   Instructions[0x95]->AddStep(new Cat1<ImmediateUnit>(this));                    // address->op
   Instructions[0x95]->AddStep(new Cat1<AddXUnitZero>(this));                     // op+X->op
-  Instructions[0x95]->AddStep(new Cat2<AccuUnit,ZPageIndirectWriterUnit<Adr> >(this)); // op->ea,A->(ea)
+  Instructions[0x95]->AddStep(new Cat2<AccuUnit,ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02)); // op->ea,A->(ea)
   Instructions[0x95]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x96: STX zpage,Y 4 cycles
   Disassembled[0x96] =Instruction("STX",Instruction::ZPage_Y,4);
   Instructions[0x96]->AddStep(new Cat1<ImmediateUnit>(this));                    // address->op
   Instructions[0x96]->AddStep(new Cat1<AddYUnitZero>(this));                     // op+Y->op
-  Instructions[0x96]->AddStep(new Cat2<XUnit,ZPageIndirectWriterUnit<Adr> >(this));    // op->ea,X->(ea)
+  Instructions[0x96]->AddStep(new Cat2<XUnit,ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));    // op->ea,X->(ea)
   Instructions[0x96]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -2999,7 +2990,7 @@ void CPU::BuildInstructions90(void)
     Disassembled[0x97] =Instruction("ANSX",Instruction::ZPage_Y,3);
     Instructions[0x97]->AddStep(new Cat1<ImmediateUnit>(this));                  // address->op
     Instructions[0x97]->AddStep(new Cat1<AddYUnitZero>(this));                   // op+Y->op
-    Instructions[0x97]->AddStep(new Cat2<ANXUnit,ZPageIndirectWriterUnit<Adr> >(this));// op->ea,A&X->(ea)
+    Instructions[0x97]->AddStep(new Cat2<ANXUnit,ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));// op->ea,A&X->(ea)
     Instructions[0x97]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3012,7 +3003,7 @@ void CPU::BuildInstructions90(void)
   Disassembled[0x99] =Instruction("STA",Instruction::Absolute_Y,5);
   Instructions[0x99]->AddStep(new Cat1<ImmediateUnit>(this));                    // lo->op
   Instructions[0x99]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this)); // op->hi,op+Y->op
-  Instructions[0x99]->AddStep(new Cat2<AccuUnit,IndirectWriterUnit<Adr> >(this));      // op->ea,A->op,op->(ea)
+  Instructions[0x99]->AddStep(new Cat2<AccuUnit,IndirectWriterUnit<Adr> >(this,Emulate65C02));      // op->ea,A->op,op->(ea)
   Instructions[0x99]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x9a: TXS, 2 cycles
@@ -3026,6 +3017,7 @@ void CPU::BuildInstructions90(void)
     Instructions[0x9b]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
     // 0x9b: Unreliable (TAS)
+    Disassembled[0x9b] =Instruction("UNST",Instruction::NoArgs,0);
     Instructions[0x9b]->AddStep(new Cat1<UnstableUnit<0x9b> >(this));            // Just crash
     Instructions[0x9b]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -3044,7 +3036,7 @@ void CPU::BuildInstructions90(void)
     Instructions[0x9c]->AddStep(new Cat1<ImmediateUnit>(this));                // lo->op
     Instructions[0x9c]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));   // op->hi,op+X->op
     Instructions[0x9c]->AddStep(new Cat1<AndHiPlusOneYAddXUnit>(this));
-    Instructions[0x9c]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));
+    Instructions[0x9c]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));
     Instructions[0x9c]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3056,7 +3048,7 @@ void CPU::BuildInstructions90(void)
   } else {
     Instructions[0x9d]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this)); // op->hi,op+X->op
   }
-  Instructions[0x9d]->AddStep(new Cat2<AccuUnit,IndirectWriterUnit<Adr> >(this));      // op->ea,A->op,op->(ea)
+  Instructions[0x9d]->AddStep(new Cat2<AccuUnit,IndirectWriterUnit<Adr> >(this,Emulate65C02));      // op->ea,A->op,op->(ea)
   Instructions[0x9d]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x9e: Unreliable (SHX)
@@ -3073,7 +3065,7 @@ void CPU::BuildInstructions90(void)
     Instructions[0x9e]->AddStep(new Cat1<ImmediateUnit>(this));                // lo->op
     Instructions[0x9e]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));   // op->hi,op+X->op
     Instructions[0x9e]->AddStep(new Cat1<AndHiPlusOneXAddYUnit>(this));
-    Instructions[0x9e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));
+    Instructions[0x9e]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));
     Instructions[0x9e]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3086,6 +3078,7 @@ void CPU::BuildInstructions90(void)
     Instructions[0x9f]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
     // 0x9f: Unreliable (AHX)
+    Disassembled[0x9f] =Instruction("UNST",Instruction::NoArgs,0);
     Instructions[0x9f]->AddStep(new Cat1<UnstableUnit<0x9f> >(this));
     Instructions[0x9f]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -3341,6 +3334,7 @@ void CPU::BuildInstructionsB0(void)
     Instructions[0xbb]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
     // 0xbb: Unreliable (LAS)
+    Disassembled[0xbb] =Instruction("UNST",Instruction::NoArgs,0);
     Instructions[0xbb]->AddStep(new Cat1<UnstableUnit<0xbb> >(this));             // just crash
     Instructions[0xbb]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -3420,8 +3414,8 @@ void CPU::BuildInstructionsC0(void)
     Instructions[0xc3]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0xc3]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));  // (op)->op
     Instructions[0xc3]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0xc3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));// --op->op
-    Instructions[0xc3]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));        // op->ea
+    Instructions[0xc3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));// --op->op
+    Instructions[0xc3]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));        // op->ea
     Instructions[0xc3]->AddStep(new Cat1<CMPUnit>(this));                         // A-op->flags
     Instructions[0xc3]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
@@ -3443,7 +3437,7 @@ void CPU::BuildInstructionsC0(void)
   Instructions[0xc6]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
   Instructions[0xc6]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0xc6]->AddStep(new Cat1<DECUnit>(this));                           // --op->op
-  Instructions[0xc6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->ea
+  Instructions[0xc6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->ea
   Instructions[0xc6]->AddStep(new Cat1<DecodeUnit>(this));                        // decode next instruction
   //
   if (Emulate65C02) {
@@ -3460,7 +3454,7 @@ void CPU::BuildInstructionsC0(void)
     Instructions[0xc7]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
     Instructions[0xc7]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0xc7]->AddStep(new Cat1<DECUnit>(this));                         // op<<1->op
-    Instructions[0xc7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,CMPUnit>(this)); // op->ea,A-op->flags
+    Instructions[0xc7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,CMPUnit>(this,Emulate65C02)); // op->ea,A-op->flags
     Instructions[0xc7]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
   //
@@ -3513,8 +3507,8 @@ void CPU::BuildInstructionsC0(void)
   if (Emulate65C02)
     Instructions[0xce]->AddStep(new Cat1<DECUnit>(this));                         // --op->op
   else
-    Instructions[0xce]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));      // --op->op
-  Instructions[0xce]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0xce]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));      // --op->op
+  Instructions[0xce]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0xce]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -3530,8 +3524,8 @@ void CPU::BuildInstructionsC0(void)
     Instructions[0xcf]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0xcf]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));      // hi->op
     Instructions[0xcf]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0xcf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));      // --op->op
-    Instructions[0xcf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this));      // op->(ea)
+    Instructions[0xcf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));      // --op->op
+    Instructions[0xcf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this,Emulate65C02));      // op->(ea)
     Instructions[0xcf]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -3581,8 +3575,8 @@ void CPU::BuildInstructionsD0(void)
     Instructions[0xd3]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
     Instructions[0xd3]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this));// (op)->op,op+Y->op
     Instructions[0xd3]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0xd3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));// --op->op
-    Instructions[0xd3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this));// op->(ea)
+    Instructions[0xd3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));// --op->op
+    Instructions[0xd3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this,Emulate65C02));// op->(ea)
     Instructions[0xd3]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3606,7 +3600,7 @@ void CPU::BuildInstructionsD0(void)
   Instructions[0xd6]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
   Instructions[0xd6]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0xd6]->AddStep(new Cat1<DECUnit>(this));                           // --op->op
-  Instructions[0xd6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->(ea)
+  Instructions[0xd6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->(ea)
   Instructions[0xd6]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -3624,7 +3618,7 @@ void CPU::BuildInstructionsD0(void)
     Instructions[0xd7]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
     Instructions[0xd7]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0xd7]->AddStep(new Cat1<DECUnit>(this));                         // --op->op
-    Instructions[0xd7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,CMPUnit>(this)); // op->(ea),A-op->A
+    Instructions[0xd7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,CMPUnit>(this,Emulate65C02)); // op->(ea),A-op->A
     Instructions[0xd7]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3664,8 +3658,8 @@ void CPU::BuildInstructionsD0(void)
     Instructions[0xdb]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0xdb]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this)); // hi->op, op+Y->op
     Instructions[0xdb]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0xdb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));      // --op->op
-    Instructions[0xdb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this));      // op->(ea),A-op->flags
+    Instructions[0xdb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));      // --op->op
+    Instructions[0xdb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this,Emulate65C02));      // op->(ea),A-op->flags
     Instructions[0xdb]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3691,8 +3685,8 @@ void CPU::BuildInstructionsD0(void)
   if (Emulate65C02)
     Instructions[0xde]->AddStep(new Cat1<DECUnit>(this));                         // --op->op
   else
-    Instructions[0xde]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));      // --op->op
-  Instructions[0xde]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0xde]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));      // --op->op
+  Instructions[0xde]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0xde]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -3708,8 +3702,8 @@ void CPU::BuildInstructionsD0(void)
     Instructions[0xdf]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0xdf]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this)); // hi->op, op+X->op
     Instructions[0xdf]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0xdf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this));      // --op->op
-    Instructions[0xdf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this));      // op->(ea),A-op->flags
+    Instructions[0xdf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,DECUnit>(this,Emulate65C02));      // --op->op
+    Instructions[0xdf]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,CMPUnit>(this,Emulate65C02));      // op->(ea),A-op->flags
     Instructions[0xdf]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -3755,8 +3749,8 @@ void CPU::BuildInstructionsE0(void)
     Instructions[0xe3]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0xe3]->AddStep(new Cat1<ZPageWordIndirectionUnit<Adr> >(this));  // (op)->op
     Instructions[0xe3]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));           // op->ea,(op)->op
-    Instructions[0xe3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));// ++op->op
-    Instructions[0xe3]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));        // op->ea
+    Instructions[0xe3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));// ++op->op
+    Instructions[0xe3]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));        // op->ea
     Instructions[0xe3]->AddStep(new Cat1<SBCUnit>(this));                         // A-op->A
     Instructions[0xe3]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
@@ -3782,7 +3776,7 @@ void CPU::BuildInstructionsE0(void)
   Instructions[0xe6]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
   Instructions[0xe6]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0xe6]->AddStep(new Cat1<INCUnit>(this));                           // ++op->op
-  Instructions[0xe6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->ea
+  Instructions[0xe6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->ea
   Instructions[0xe6]->AddStep(new Cat1<DecodeUnit>(this));                        // decode next instruction
   //
   if (Emulate65C02) {
@@ -3799,7 +3793,7 @@ void CPU::BuildInstructionsE0(void)
     Instructions[0xe7]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
     Instructions[0xe7]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0xe7]->AddStep(new Cat1<INCUnit>(this));                         // ++op->op
-    Instructions[0xe7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,SBCUnit>(this)); // op->ea,A-op->A
+    Instructions[0xe7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,SBCUnit>(this,Emulate65C02)); // op->ea,A-op->A
     Instructions[0xe7]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
   }
   //
@@ -3859,8 +3853,8 @@ void CPU::BuildInstructionsE0(void)
   if (Emulate65C02)
     Instructions[0xee]->AddStep(new Cat1<INCUnit>(this));                         // ++op->op
   else
-    Instructions[0xee]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));      // ++op->op
-  Instructions[0xee]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0xee]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));      // ++op->op
+  Instructions[0xee]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0xee]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -3876,8 +3870,8 @@ void CPU::BuildInstructionsE0(void)
     Instructions[0xef]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0xef]->AddStep(new Cat1<ImmediateWordExtensionUnit>(this));      // hi->op
     Instructions[0xef]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0xef]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));      // ++op->op
-    Instructions[0xef]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this));      // op->(ea)
+    Instructions[0xef]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));      // ++op->op
+    Instructions[0xef]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this,Emulate65C02));      // op->(ea)
     Instructions[0xef]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -3931,8 +3925,8 @@ void CPU::BuildInstructionsF0(void)
     Instructions[0xf3]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
     Instructions[0xf3]->AddStep(new Cat2<ZPageWordIndirectionUnit<Adr>,AddYUnitWait>(this)); // (op)->op,op+Y->op
     Instructions[0xf3]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));             // op->ea,(op)->op
-    Instructions[0xf3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));  // --op->op
-    Instructions[0xf3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this));  // A-op->A
+    Instructions[0xf3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));  // --op->op
+    Instructions[0xf3]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this,Emulate65C02));  // A-op->A
     Instructions[0xf3]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -3960,7 +3954,7 @@ void CPU::BuildInstructionsF0(void)
   Instructions[0xf6]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
   Instructions[0xf6]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0xf6]->AddStep(new Cat1<INCUnit>(this));                           // ++op->op
-  Instructions[0xf6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this));     // op->(ea)
+  Instructions[0xf6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->(ea)
   Instructions[0xf6]->AddStep(new Cat1<DecodeUnit>(this));
   // 
   if (Emulate65C02) {
@@ -3978,7 +3972,7 @@ void CPU::BuildInstructionsF0(void)
     Instructions[0xf7]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
     Instructions[0xf7]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0xf7]->AddStep(new Cat1<INCUnit>(this));                         // ++op->op
-    Instructions[0xf7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,SBCUnit>(this)); // op->(ea),A-op->A
+    Instructions[0xf7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,SBCUnit>(this,Emulate65C02)); // op->(ea),A-op->A
     Instructions[0xf7]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -4022,8 +4016,8 @@ void CPU::BuildInstructionsF0(void)
     Instructions[0xfb]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0xfb]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddYUnitWait>(this)); // hi->op, op+Y->op
     Instructions[0xfb]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0xfb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));      // ++op->op
-    Instructions[0xfb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this));      // A-op->A
+    Instructions[0xfb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));      // ++op->op
+    Instructions[0xfb]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this,Emulate65C02));      // A-op->A
     Instructions[0xfb]->AddStep(new Cat1<DecodeUnit>(this));
   }
   //
@@ -4053,8 +4047,8 @@ void CPU::BuildInstructionsF0(void)
   if (Emulate65C02)
     Instructions[0xfe]->AddStep(new Cat1<INCUnit>(this));                               // ++op->op
   else
-    Instructions[0xfe]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));      // ++op->op
-  Instructions[0xfe]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this));                // op->(ea)
+    Instructions[0xfe]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));      // ++op->op
+  Instructions[0xfe]->AddStep(new Cat1<IndirectWriterUnit<Adr> >(this,Emulate65C02));                // op->(ea)
   Instructions[0xfe]->AddStep(new Cat1<DecodeUnit>(this));
   //
   if (Emulate65C02) {
@@ -4070,8 +4064,8 @@ void CPU::BuildInstructionsF0(void)
     Instructions[0xff]->AddStep(new Cat1<ImmediateUnit>(this));                   // lo->op
     Instructions[0xff]->AddStep(new Cat2<ImmediateWordExtensionUnit,AddXUnitWait>(this)); // hi->op, op+X->op
     Instructions[0xff]->AddStep(new Cat1<IndirectionUnit<Adr> >(this));                 // op->ea,(op)->op
-    Instructions[0xff]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this));      // ++op->op
-    Instructions[0xff]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this));      // op->(ea),A-op->A
+    Instructions[0xff]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,INCUnit>(this,Emulate65C02));      // ++op->op
+    Instructions[0xff]->AddStep(new Cat2<IndirectWriterUnit<Adr> ,SBCUnit>(this,Emulate65C02));      // op->(ea),A-op->A
     Instructions[0xff]->AddStep(new Cat1<DecodeUnit>(this));
   }
 }
@@ -4093,36 +4087,37 @@ void CPU::BuildInstructionsExtra(void)
   Instructions[0x100]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // NMI reaction. Pushes P, return address onto the stack and executes from the 0xfffa vector
-  Instructions[0x101]->AddStep(new Cat2<LoadPCUnit<0>,PushUnitExtend<Adr> >(this)); // PC->op,op.hi->Stack
-  Instructions[0x101]->AddStep(new Cat1<PushUnit<Adr> >(this));                     // op.lo->Stack
-  Instructions[0x101]->AddStep(new Cat2<AndToStatusUnit<NOT(B_Mask)>,PushUnit<Adr> >(this)); // P->stack
+  // Takes 7 cycles.
+  Instructions[0x101]->AddStep(new Cat2<LoadPCUnit<0>,PushUnitExtend<Adr> >(this,Emulate65C02)); // PC->op,op.hi->Stack
+  Instructions[0x101]->AddStep(new Cat1<PushUnit<Adr> >(this,Emulate65C02));                     // op.lo->Stack
+  Instructions[0x101]->AddStep(new Cat2<AndToStatusUnit<NOT(B_Mask)>,PushUnit<Adr> >(this,Emulate65C02)); // P->stack
   if (Emulate65C02) {
+    Instructions[0x101]->AddStep(new Cat2<AndToStatusUnit<NOT(D_Mask)>,LoadVectorUnitExtend<0xfffa> >(this));      // IRQ_Vector.hi->op
     // The 65C02 clears the D flag.
-    Instructions[0x101]->AddStep(new Cat2<AndToStatusUnit<NOT(D_Mask)>,LoadVectorUnit<0xfffa,I_Mask> >(this));
+    Instructions[0x101]->AddStep(new Cat1<LoadVectorUnit<0xfffa,I_Mask> >(this));
   } else {
+    Instructions[0x101]->AddStep(new Cat1<LoadVectorUnitExtend<0xfffa> >(this));      // IRQ_Vector.hi->op
     Instructions[0x101]->AddStep(new Cat1<LoadVectorUnit<0xfffa,I_Mask> >(this));  // IRQ_Vector.lo->op
   }
-  Instructions[0x101]->AddStep(new Cat2<LoadVectorUnitExtend<0xfffa>,JMPUnit<0> >(this));// IRQ_Vector.hi->op
-  Instructions[0x101]->AddStep(new Cat2<NMIResetUnit,DecodeUnit>(this));                 // decode next instruction
+  Instructions[0x101]->AddStep(new Cat2<NMIResetUnit,JMPUnit<0> >(this));
+  Instructions[0x101]->AddStep(new Cat1<DecodeUnit>(this));                     // decode next instruction
   //
   // IRQ reaction. Pushes P, return address onto the stack and executes from the 0xfffe vector
-  Instructions[0x102]->AddStep(new Cat2<LoadPCUnit<0>,PushUnitExtend<Adr> >(this));// PC->op,op.hi->Stack
-  Instructions[0x102]->AddStep(new Cat1<PushUnit<Adr> >(this));                    // op.lo->Stack
-  Instructions[0x102]->AddStep(new Cat2<AndToStatusUnit<NOT(B_Mask)>,PushUnit<Adr> >(this)); // P->stack
+  // Takes 7 cycles.
+  Instructions[0x102]->AddStep(new Cat2<LoadPCUnit<0>,PushUnitExtend<Adr> >(this,Emulate65C02));// PC->op,op.hi->Stack
+  Instructions[0x102]->AddStep(new Cat1<PushUnit<Adr> >(this,Emulate65C02));                    // op.lo->Stack
+  Instructions[0x102]->AddStep(new Cat2<AndToStatusUnit<NOT(B_Mask)>,PushUnit<Adr> >(this,Emulate65C02)); // P->stack
   if (Emulate65C02) {
     // The 65C02 clears the D flag
-    Instructions[0x102]->AddStep(new Cat2<AndToStatusUnit<NOT(D_Mask)>,LoadVectorUnit<0xfffe,I_Mask> >(this));
+    Instructions[0x102]->AddStep(new Cat2<AndToStatusUnit<NOT(D_Mask)>,LoadVectorUnitExtend<0xfffe> >(this));// IRQ_Vector.hi->op
+    Instructions[0x102]->AddStep(new Cat1<LoadVectorUnit<0xfffe,I_Mask> >(this));
+    Instructions[0x102]->AddStep(new Cat1<JMPUnit<0> >(this));
   } else { 
-    Instructions[0x102]->AddStep(new Cat1<LoadVectorUnit<0xfffe,I_Mask> >(this));  // IRQ_Vector.lo->op
+    Instructions[0x102]->AddStep(new Cat1<LoadVectorUnitExtend<0xfffe> >(this));// IRQ_Vector.hi->op
+    Instructions[0x102]->AddStep(new Cat1<LoadVectorUnitQuirk<0xfffe,0xfffa,I_Mask> >(this));  // IRQ_Vector.lo->op
+    Instructions[0x102]->AddStep(new Cat2<NMIResetUnit,JMPUnit<0> >(this));
   }
-  Instructions[0x102]->AddStep(new Cat2<LoadVectorUnitExtend<0xfffe>,JMPUnit<0> >(this));
-  if (Emulate65C02) {
-    Instructions[0x102]->AddStep(new Cat1<DecodeUnit>(this));                      // decode next instruction
-  } else {
-    // The 6502 includes a bug here that disables the NMI when coming right into the
-    // IRQ slot.
-    Instructions[0x102]->AddStep(new Cat2<NMIResetUnit,DecodeUnit>(this));         // decode next instruction
-  }
+  Instructions[0x102]->AddStep(new Cat1<DecodeUnit>(this));                     // decode next instruction
 }
 ///
 
@@ -4464,8 +4459,10 @@ void CPU::WSyncStop(void)
   last      = StolenCycles + WSyncPosition;
   //
   // Plus one blocks the next available cycle (the one that will be used by the CPU)
-  cycle    += 2;
-  if (cycle > last) { // conflict Journey/Atlantis!
+  // We *are* currently executing "cycle". "cycle+1" must remain free, start
+  // blocking at cycle + 2.
+  cycle += 2;
+  if (cycle > last) {
 #if CHECK_LEVEL > 0
     if (cycle >= StolenCycles + sizeof(StolenCycles)) {
       Throw(OutOfRange,"CPU::WSyncStop","detected out of bounds CPU cycle");

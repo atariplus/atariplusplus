@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.82 2013-01-02 21:52:29 thor Exp $
+# $Id: README.History,v 1.84 2013-01-14 19:54:36 thor Exp $
 #
 
 Atari++ 1.00:
@@ -835,3 +835,60 @@ Atari++ 1.70
 	  and could have triggered false resets under some race conditions.
 	- The legacy return value for the write-byte bus access was removed as it
 	  was no longer required since a long time.
+
+Atari++ 1.71
+	The release how 1.70 should have been, but wasn't due to time constraints.
+	Lots of fixes left over from 1.70 are now integrated, and regressions have
+	been fixed:
+	- The ANTIC logic to roll over an instruction to the next scan was partially
+	broken and also rolled a "Jump on Vertical Blank" over, breaking some games
+	that played tricks with the DMA control register.
+	- The new CPU logic to fetch the wrong interrupt vector (NMI instead of IRQ)
+	was partially broken and forgot to fetch the right high-bit, potentially
+	breaking code.
+	- The 65C02 BRK instruction was emulated incorrectly. The NMOS version
+	worked fine, and continues to work fine.
+	- 1.70 had, as indicated, a regression for late writes on Antic CHARCTL that
+	broke at least one game ("Summer Games"). The corresponding logic has been
+	re-done in a much cleaner way and is now part of 1.71.
+	- Pokey lo-byte timer registers in a 16-bit timer pair did not underrun to
+	255 correctly. In fact, the timer emulation was partially re-done and should
+	now do correctly, including the relative offset of low and high-timer on
+	a STIMER resynchronization.
+	- GTIA priority logic for player 4 on top of playfield 0/1 was broken in
+	one priority selection, which got fixed now.
+	- Player/missile retriggering was partially incorrect. This has been fixed now.
+	- Player/missile resizing was, as stated, experimental in 1.70 and is now
+	implemented correctly.
+	- On-line player/missile shape changes are now experimentally supported.
+	- The ANTIC/CPU WSYNC logic was partially broken as it does not block writes,
+	only reads - the mechanism is a different one. Note that this only holds for
+	the NMOS version. The CMOS version works correctly. This is also emulated.
+	- The NMI/IRQ reaction times were short by one cycle. They are now 7 cycles
+	as indicated.
+	- GTIA mode 80 on top of a low-res screen created a wrong color for the
+	PF3:BK pixel combination. This got fixed.
+	- GTIA VDelay support was partially broken. Actually, the P/M DMA engine
+	was redesigned for this release and should now work correctly.
+	- Alsa sound support was broken on some hardware. For some Alsa drivers, 
+	audio hardware reacts allergic when trying to fill more samples into the
+	available buffer, stalling the main program. The updated Alsa sound support
+	rounds the samples written to the Alsa buffer to entire fragment sizes avoiding
+	this problem. The SDL or Oss/HQOss drivers were not affected, though in
+	general Alsa is preferably.
+Anti-News: (or, what does not yet work):
+	- P/M shape changes are currently supported experimentally until I get hands
+	on real hardware.
+	- P/M shift-register disable tricks with PSIZE=2 are currently not supported.
+	- Writes to GTIA color or priority registers are not delayed and happen
+	immediately. The same goes to many other registers in Pokey, Antic and PIA.
+	- Antic DMACtrl in-line adjustment tricks are not supported, neither any
+	HScroll adjustments to disable the DMA-stop.
+	- Bus noise picked up by GTIA if GRACTL is enabled but DMACTL is disabled is
+	currently not emulated correctly.
+	- Bus noise picked up by ANTIC on the right side of wide playfield screens is
+	currently not emulated at all (and neither visible if it would).
+	- The POKEY soft-reset cylce is currently not emulated completely.
+	- Bit-banging serial output is currently not emulated at all.
+
+	

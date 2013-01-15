@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: unistd.hpp,v 1.9 2005/09/10 12:55:42 thor Exp $
+ ** $Id: unistd.hpp,v 1.9 2005-09-10 12:55:42 thor Exp $
  **
  ** In this module: Os compatibility layer for (non-ANSI) file management.
  ** This file takes definitions from "types.h" build by autoconf/configure

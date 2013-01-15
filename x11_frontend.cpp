@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.77 2009-08-10 20:19:06 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.78 2013-01-12 11:06:01 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -18,6 +18,7 @@
 #include "exceptions.hpp"
 #include "x11_displaybuffer.hpp"
 #include "antic.hpp"
+#include "gtia.hpp"
 #include "stdio.hpp"
 #include "new.hpp"
 #ifndef X_DISPLAY_MISSING

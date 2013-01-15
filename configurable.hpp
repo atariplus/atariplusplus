@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: configurable.hpp,v 1.5 2002/09/25 21:40:50 thor Exp $
+ ** $Id: configurable.hpp,v 1.5 2002-09-25 21:40:50 thor Exp $
  **
  ** In this module: Configurable module(s)
  **********************************************************************************/

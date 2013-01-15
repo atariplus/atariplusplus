@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filerequester.cpp,v 1.3 2005/09/10 12:55:40 thor Exp $
+ ** $Id: filerequester.cpp,v 1.3 2005-09-10 12:55:40 thor Exp $
  **
  ** In this module: A requester class that requests a file name from the user
  **********************************************************************************/

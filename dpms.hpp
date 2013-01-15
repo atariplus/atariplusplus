@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dpms.hpp,v 1.1 2006/02/18 22:44:21 thor Exp $
+ ** $Id: dpms.hpp,v 1.1 2006-02-18 22:44:21 thor Exp $
  **
  ** In this module: DPMS interfaces for X11
  **********************************************************************************/

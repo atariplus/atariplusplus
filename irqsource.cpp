@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: irqsource.cpp,v 1.5 2003/05/25 11:09:51 thor Exp $
+ ** $Id: irqsource.cpp,v 1.5 2003-05-25 11:09:51 thor Exp $
  **
  ** In this module: IRQ forwarding/administration
  **********************************************************************************/

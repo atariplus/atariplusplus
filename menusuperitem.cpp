@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menusuperitem.cpp,v 1.13 2003/06/07 12:22:45 thor Exp $
+ ** $Id: menusuperitem.cpp,v 1.13 2003-06-07 12:22:45 thor Exp $
  **
  ** 
  ** In this module: Definition of the menu item class that keeps subitems. 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.hpp,v 1.22 2005/09/10 12:55:42 thor Exp $
+ ** $Id: sio.hpp,v 1.22 2005-09-10 12:55:42 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.

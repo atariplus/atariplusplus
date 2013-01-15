@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisio.hpp,v 1.9 2004/08/29 16:52:13 thor Exp $
+ ** $Id: atarisio.hpp,v 1.9 2004-08-29 16:52:13 thor Exp $
  **
  ** In this module: Support for real atari hardware, connected by 
  ** Matthias Reichl's atarisio interface.

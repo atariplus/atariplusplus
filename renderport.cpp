@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: renderport.cpp,v 1.13 2005/09/27 21:23:52 thor Exp $
+ ** $Id: renderport.cpp,v 1.13 2005-09-27 21:23:52 thor Exp $
  **
  ** In this module: Definition of graphic primitivies
  **********************************************************************************/

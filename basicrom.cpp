@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: basicrom.cpp,v 1.21 2006/07/08 11:19:08 thor Exp $
+ ** $Id: basicrom.cpp,v 1.21 2006-07-08 11:19:08 thor Exp $
  **
  ** In this module: Administration/loading of the Basic ROM
  **********************************************************************************/

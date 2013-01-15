@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.hpp,v 1.51 2005/09/10 12:55:40 thor Exp $
+ ** $Id: menu.hpp,v 1.51 2005-09-10 12:55:40 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atrimage.hpp,v 1.4 2003/03/03 21:38:00 thor Exp $
+ ** $Id: atrimage.hpp,v 1.4 2003-03-03 21:38:00 thor Exp $
  **
  ** In this module: Disk image class for .atr images.
  **********************************************************************************/

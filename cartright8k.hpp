@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartright8k.hpp,v 1.1 2003/10/26 16:10:02 thor Exp $
+ ** $Id: cartright8k.hpp,v 1.1 2003-10-26 16:10:02 thor Exp $
  **
  ** In this module: The implementation of the 800 "right cartridge" 8K cart
  ** that maps into 0x8000...0x9fff instead of 0xa000 and up.

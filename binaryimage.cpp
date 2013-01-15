@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: binaryimage.cpp,v 1.11 2005/09/10 12:55:39 thor Exp $
+ ** $Id: binaryimage.cpp,v 1.11 2005-09-10 12:55:39 thor Exp $
  **
  ** In this module: Disk image class for binary load files
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartxegs.hpp,v 1.8 2006/05/25 17:44:16 thor Exp $
+ ** $Id: cartxegs.hpp,v 1.8 2006-05-25 17:44:16 thor Exp $
  **
  ** In this module: The implementation of an XEGS supercart
  **********************************************************************************/

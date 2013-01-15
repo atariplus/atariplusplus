@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.121 2013-01-01 17:36:55 thor Exp $
+ ** $Id: pokey.cpp,v 1.123 2013-01-11 20:47:44 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -793,6 +793,8 @@ void Pokey::UpdatePots(int steps)
 // Forward the pokey status for N steps.
 void Pokey::GoNSteps(int steps)
 {
+  static const UBYTE irqbits[4]    = { 0x01, 0x02, 0x00, 0x04 };
+  static const UBYTE LinkLoFlag[4] = { 0x10, 0x00, 0x08, 0x00 };
   struct Channel *c;
   int ch,lastch;
   //
@@ -842,8 +844,8 @@ void Pokey::GoNSteps(int steps)
 	if (SerOut_BitCounter && --SerOut_BitCounter) {
 	  // Align the phase of timers 0 and 1 in two-tone mode.
 	  if (SkCtrl & 0x08) {
-	    Ch[0].DivNIRQ = 0;
-	    Ch[1].DivNIRQ = 0;
+	    Ch[0].DivNIRQ = Ch[0].DivNMax;
+	    Ch[1].DivNIRQ = Ch[1].DivNMax;
 	    Ch[0].DivNCnt = 0;
 	    Ch[1].DivNCnt = 0;
 	  }
@@ -895,51 +897,50 @@ void Pokey::GoNSteps(int steps)
       lastch = 2;
       // This locks timer 4 into reset. There is actually no
       // timer 3 interrupt, but for consisteny, reset it as well.
-      Ch[2].DivNIRQ = 0;
-      Ch[3].DivNIRQ = 0;
+      Ch[2].DivNIRQ = Ch[2].DivNMax;
+      Ch[3].DivNIRQ = Ch[3].DivNMax;
     } else {
       lastch = 4;
     }
     //
-    // Synchronization of channels for the two-tone modes.
-    if (SkCtrl & 0x08) { 
-      // Synchronized mode.
-      for(ch = 0, c = Ch;ch < lastch;ch++,c++) {
-	static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
-	// Yes, channel 3 cannot generate interrupts at all...
-	if ((c->DivNIRQ += steps) >= c->DivNMax) {
+    // Pokey timers. In reality, audio and IRQ are synchronous,
+    // they are not here - reason is that the audio timing is
+    // the real-world clock, but the IRQ timing is the emulated
+    // CPU clock.
+    for(ch = 0, c = Ch;ch < lastch;ch++,c++) {
+      // Yes, channel 3 cannot generate interrupts at all...
+      if ((c->DivNIRQ -= steps) <= 0) {
+	//
+	// Synchronized two-tone mode?
+	if (SkCtrl & 0x08) {
 	  switch(ch) {
 	  case 1:
 	    // Channel 1 syncs channel 0 always.
-	    Ch[0].DivNIRQ = 0;
+	    Ch[0].DivNIRQ = Ch[0].DivNMax;
 	    break;
 	  case 0:
 	    // Channel 0 syncs channel 1 if the serial register is set.
 	    if ((SerOut_Register & 0x01) && (SkCtrl & 0x80) == 0)
-	      Ch[1].DivNIRQ = 0;
+	      Ch[1].DivNIRQ = Ch[1].DivNMax;
 	    break;
 	  }
-	  //
-	  // Generate an IRQ now (or not for channel 3)
-	  if (IRQEnable & irqbits[ch]) {
-	    GenerateIRQ(irqbits[ch]);
-	  }	
-	  //c->DivNIRQ = 0; Allow accumulation of errors on average.
-	  c->DivNIRQ  -= c->DivNMax;
 	}
-      }
-    } else {
-      // Free-running mode.
-      for(ch = 0, c = Ch;ch < lastch;ch++,c++) {
-	static const UBYTE irqbits[4] = {0x01,0x02,0x00,0x04}; 
-	// Yes, channel 3 cannot generate interrupts at all...
-	if ((c->DivNIRQ += steps) >= c->DivNMax) {
-	  // Generate an IRQ now (or not for channel 3)
-	  if (IRQEnable & irqbits[ch]) {
-	    GenerateIRQ(irqbits[ch]);
-	  }	
-	  //c->DivNIRQ = 0; Allow accumulation of errors on average.
-	  c->DivNIRQ  -= c->DivNMax;
+	//
+	// Generate an IRQ now (or not for channel 3)
+	if (IRQEnable & irqbits[ch]) {
+	  GenerateIRQ(irqbits[ch]);
+	}	
+	//
+	// Reset the counters.
+	if ((AudioCtrl & LinkLoFlag[ch]) && c[1].DivNIRQ >= 0x100) {
+	  // This is the tricky case. The low-part of
+	  // the 16-bit counter with a partial underflow.
+	  c->DivNIRQ  += c->DivFullMax;
+	} else {
+	  // Average out errors by adding the timer constant
+	  // Equivalent if underflow to zero, otherwise its
+	  // the correct timing at least on average.
+	  c->DivNIRQ  += c->DivNMax;
 	}
       }
     }
@@ -1160,10 +1161,19 @@ UBYTE Pokey::RandomRead(void)
     // output, depending on AudCtrl.
     if (AudioCtrl & 0x80) {
       // The 9 bit poly counter.
-      return *Random9Ptr;
+      if (CycleTimers) {
+	return *Random9Ptr;
+      } else {
+	// Use also the CPU because otherwise the random generator is not very random...
+	return Random9[(Random9Ptr - Random9 + machine->CPU()->CurrentXPos()) % Poly9Size];
+      }
     } else {
       // The 17 bit poly counter.
-      return *Random17Ptr;
+      if (CycleTimers) {
+	return *Random17Ptr;
+      } else {
+	return Random17[(Random17Ptr - Random17 + machine->CPU()->CurrentXPos()) % Poly17Size];
+      }
     }
   } else {
     // This is also the first entry.
@@ -1379,8 +1389,22 @@ void Pokey::STimerWrite(void)
   // This resets all counters to zero and
   // initializes the output flip-flops
   for(ch=0;ch < 4;ch++) {
-    Ch[ch].DivNCnt =  0;
-    Ch[ch].DivNIRQ =  -4;
+    Ch[ch].DivNCnt =  Ch[ch].DivNMax+4;
+    Ch[ch].DivNIRQ =  Ch[ch].DivNMax+4;
+  }
+  //
+  // Clock reset is offset if timers drive each
+  // other since the underrun requires some time
+  // to propagade.
+  if ((AudioCtrl & 0x50) == 0x50) {
+    // 1.79 Mhz clock on channel 0 also driving channel 1.
+    Ch[0].DivNCnt -= 3;
+    Ch[0].DivNIRQ -= 3;
+  }
+  if ((AudioCtrl & 0x28) == 0x38) {
+    // 1.79 Mhz clock on channel 2 also driving channel 3.
+    Ch[0].DivNCnt -= 3;
+    Ch[0].DivNIRQ -= 3;
   }
   //
   // STimer does not reset the polycounters

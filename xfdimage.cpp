@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfdimage.cpp,v 1.3 2003/10/05 21:14:31 thor Exp $
+ ** $Id: xfdimage.cpp,v 1.3 2003-10-05 21:14:31 thor Exp $
  **
  ** In this module: Disk image class for .xfd images.
  **********************************************************************************/

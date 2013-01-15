@@ -4,7 +4,7 @@
 ## builds the makefiles with small 'm' which are then searched first
 ## for the real program.
 ##
-## $Id: Makefile,v 1.52 2006/05/21 15:22:29 thor Exp $
+## $Id: Makefile,v 1.52 2006-05-21 15:22:29 thor Exp $
 ##
 ###################################################################################
 

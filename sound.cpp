@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sound.cpp,v 1.17 2003/05/29 18:14:02 thor Exp $
+ ** $Id: sound.cpp,v 1.17 2003-05-29 18:14:02 thor Exp $
  **
  ** In this module: Os interface towards sound output
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: ramextension.cpp,v 1.1 2003/01/15 21:57:20 thor Exp $
+ ** $Id: ramextension.cpp,v 1.1 2003-01-15 21:57:20 thor Exp $
  **
  ** In this module: Base class for all ram extension classes
  **********************************************************************************/

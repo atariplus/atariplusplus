@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: patchprovider.hpp,v 1.4 2003/02/01 20:32:02 thor Exp $
+ ** $Id: patchprovider.hpp,v 1.4 2003-02-01 20:32:02 thor Exp $
  **
  ** In this module: Interface class that bundles patches into a group
  **********************************************************************************/

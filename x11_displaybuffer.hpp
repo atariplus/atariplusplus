@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_displaybuffer.hpp,v 1.33 2008-03-22 23:05:20 thor Exp $
+ ** $Id: x11_displaybuffer.hpp,v 1.34 2013-01-12 11:06:00 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -15,7 +15,7 @@
 #include "types.hpp"
 #include "new.hpp"
 #include "chip.hpp"
-#include "gtia.hpp"
+#include "colorentry.hpp"
 #include "stdio.hpp"
 #include "screendump.hpp"
 #include "display.hpp"
@@ -41,7 +41,7 @@ protected:
   //
   // The colormap defines how each atari color has to be mapped
   // to an RGB value.
-  const struct GTIA::ColorEntry *colormap;
+  const struct ColorEntry       *colormap;
   // 
   // Display, screen and window we render to
   Display                       *display;

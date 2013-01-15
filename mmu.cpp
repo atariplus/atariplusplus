@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mmu.cpp,v 1.54 2011-06-26 20:25:41 thor Exp $
+ ** $Id: mmu.cpp,v 1.55 2013-01-09 12:47:43 thor Exp $
  **
  ** In this module: Definition of all MMU functions required for the Atari emulator
  **********************************************************************************/
@@ -364,13 +364,19 @@ void MMU::BuildRamRomMapping(void)
   if (machine->MachType() == Mach_5200) {
     int i;
     // 0xc000 to 0xf800 is blank, with some IO blocks in the middle
-    for(i=0xc000;i<0xf800;i+=PAGE_LENGTH) {
+    for(i = 0xc000;i < 0xf800;i += PAGE_LENGTH) {
       MapPage(i,blank);
     }
-    MapPage(0xc000,machine->GTIA());  // GTIA starts here for the 5200
-    MapPage(0xd400,machine->Antic()); // ANTIC starts a bit higher
-    MapPage(0xe800,machine->PokeyPage());
-    MapPage(0xeb00,machine->PokeyPage());
+    // Map in GTIA, total range is C000 to D000.
+    for(i = 0xc000;i < 0xd000;i += PAGE_LENGTH) 
+      MapPage(i,machine->GTIA());  
+    //
+    // Antic starts here as in the main line.
+    MapPage(0xd400,machine->Antic());
+    //
+    // Map in Pokey, again with a much larger address range
+    for(i = 0xe800;i < 0xf000;i += PAGE_LENGTH) 
+      MapPage(i,machine->PokeyPage());
   } else {
     // 0xd000 to 0xd800 is the IO space
     MapPage(0xd000,machine->GTIA());

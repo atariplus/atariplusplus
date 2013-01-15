@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: buttongadget.cpp,v 1.3 2005/09/10 12:55:39 thor Exp $
+ ** $Id: buttongadget.cpp,v 1.3 2005-09-10 12:55:39 thor Exp $
  **
  ** In this module: Definition of the button gadget
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: printer.hpp,v 1.13 2005/09/10 13:58:34 thor Exp $
+ ** $Id: printer.hpp,v 1.13 2005-09-10 13:58:34 thor Exp $
  **
  ** In this module: Support for printer output.
  **********************************************************************************/

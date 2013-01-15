@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuselectionitem.cpp,v 1.5 2005/09/10 12:55:40 thor Exp $
+ ** $Id: menuselectionitem.cpp,v 1.5 2005-09-10 12:55:40 thor Exp $
  **
  ** 
  ** In this module: Definition of an item that offers several selections 

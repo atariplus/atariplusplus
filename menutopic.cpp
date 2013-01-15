@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menutopic.cpp,v 1.19 2003/05/11 15:50:35 thor Exp $
+ ** $Id: menutopic.cpp,v 1.19 2003-05-11 15:50:35 thor Exp $
  **
  ** In this module: Definition of a topic, i.e. a collection of options.
  **********************************************************************************/
