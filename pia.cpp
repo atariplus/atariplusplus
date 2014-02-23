@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pia.cpp,v 1.30 2012-12-31 14:34:59 thor Exp $
+ ** $Id: pia.cpp,v 1.31 2013/05/31 22:08:00 thor Exp $
  **
  ** In this module: PIA emulation module
  **********************************************************************************/
@@ -292,18 +292,21 @@ void PIA::PortACtrlWrite(UBYTE val)
       if (CA2State) { // high to low transition. Sets the trigger flag.
 	CA2State   = false;
 	CA2LowEdge = true;
+	machine->SIO()->SetMotorLine(false);
       }
       break;
     case 0x18: // output mode, set CA2 high.
       if (!CA2State) { // low to high transition. Sets the trigger flag.
 	CA2State    = true;
 	CA2HighEdge = true;
+	machine->SIO()->SetMotorLine(true);
       }
       break;
     case 0x08: // pulse output.
       CA2State    = true; // Keep it high, resets the trigger flag.
       CA2LowEdge  = false;
       CA2HighEdge = false;
+      machine->SIO()->SetMotorLine(true);
       break;
     case 0x00: // handshake mode.
       break;

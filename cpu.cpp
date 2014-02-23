@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.124 2013-01-14 13:31:46 thor Exp $
+ ** $Id: cpu.cpp,v 1.126 2013-01-17 16:58:39 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -4337,32 +4337,6 @@ void CPU::DisablePC(void)
 }
 ///
 
-/// CPU::GenerateNMI
-// Generate a non-maskable interrupt here
-void CPU::GenerateNMI(void)
-{
-  NMI = true; // that's all!
-}
-///
-
-/// CPU::GenerateIRQ
-// Generate an IRQ, and if it is allowed to
-// execute now, execute it.
-void CPU::GenerateIRQ(ULONG mask)
-{
-  IRQMask  |= mask;
-}
-///
-
-/// CPU::ReleaseIRQ
-// Release the IRQ line for the specified device. If no other
-// IRQ source exists, release the IRQ completely.
-void CPU::ReleaseIRQ(ULONG mask)
-{
-  IRQMask &= ~mask;
-}
-///
-
 /// CPU::Go
 // Emulate the CPU for n cycles. This is the main loop of the
 // 6502 emulation. It returns the number of cycles left (if any).
@@ -4513,7 +4487,6 @@ void CPU::HBI(void)
     // Done.
     HaltStart = ClocksPerLine;
   }
-  NMI    = false;
 }
 ///
 

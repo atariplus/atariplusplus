@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: interfacebox.hpp,v 1.11 2005-07-24 17:11:31 thor Exp $
+ ** $Id: interfacebox.hpp,v 1.12 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: Emulation of the 850 interface box.
  **********************************************************************************/
@@ -167,15 +167,17 @@ public:
   //
   // Read bytes from the device into the system. Returns the number of
   // bytes read.
-  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &datasize);
+  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
+			   int &datasize,UWORD &delay);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error.
-  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,int &datasize);
+  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
+			    int &datasize,UWORD &delay);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame);
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay);
   //
   // Rather exotic concurrent read/write commands. These methods are used for
   // the 850 interface box to send/receive bytes when bypassing the SIO. In these

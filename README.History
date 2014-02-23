@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.84 2013-01-14 19:54:36 thor Exp $
+# $Id: README.History,v 1.92 2014/02/23 12:32:59 thor Exp $
 #
 
 Atari++ 1.00:
@@ -891,4 +891,69 @@ Anti-News: (or, what does not yet work):
 	- The POKEY soft-reset cylce is currently not emulated completely.
 	- Bit-banging serial output is currently not emulated at all.
 
-	
+Atari++ 1.72
+	- The binary file loader automatically generated when inserting a COM or EXE
+	into the disk drive and booting from it is now much shorter and requires a
+	lot less RAM. It requires now, however, an additional ESCape code and hence
+	emulator support. This will now also load binary files that require RAM from
+	0x800 and up.
+	- This release adds support for ATX files and includes an emulation of the 
+	disk drive timing, handling of bad and duplicate sectors and a more precise 
+	emulation of the SIO timing.
+	- An additional type of watch point was added: The default watch point now
+	only reacts on memory writes, whereas the new watch point continues to react
+	on reads and writes.
+	- Experimented a lot with the timing of the GTIA Prior writing and found that
+	the currently implemented logic is actually very close to the real system,
+	additional delay cycles make results only worse, not better. Thus, leaving it
+	as it is right now.
+	- The SDL StringGadget now reacts on Ctrl+Backspace and Ctrl+Delete and erases
+	its contents on this keyboard command.
+	- Added emulation for "stuck" Player/Missile shift registers when switching
+	from 4x or 2x expansion to the size register "2" value, which is almost, but
+	not quite 1x expansion.
+	- The built-in Os blocks NMIs now early in the reset cycle and by that tries
+	to work around bad display lists left over by buggy programs.
+	- Minor modification in the built-in FMS (Dos 2.++): CONFIG.SYS can now change 
+	the position of the FMS buffers by poking into DiskBufferBase $710,$711 and 
+	relocate them.
+	- Minor modification of the short VBI: GPrior, ColBK and Col1 are now only
+	reloaded if the graphics mode really requires it. This applies to fine 
+	scrolling text modes, and the text window modes with the GTIA modes (modes 
+	9+64,10+64 and 11+64). This fixes compatibility issues with Atari Tennis and
+	some Lucasfilms intros.
+	- Minor modifications in the FMS: Rename with wildcard was broken, and the FMS
+	no longer tries to load non-valid VTOCs.
+	- The DUP COPY command avoids now trying to overwrite BASIC program memory
+	or other user memory protected correctly by setting APPMEMHI. Some cartridges
+	do not set this Os pointer correctly, though. Mac/65 does not. The new DUP
+	command NEW will erase user memory and make it available for COPY.
+	- Fixed a long standing bug of all Dos 2.XX compatible FMS'es: Directory
+	reading mode did not cooperate with any other operations that would access
+	the directory, and would invalidate the directory access channel. This is
+	no longer the case now. Additionally, reading the directory sets now the
+	EOF warning flag (Y = 3) correctly right before the EOF.
+	- The STATUS command, as specified by DOS 2.0S and DOS 2.5, was actually
+	quite unuseful as it required a file specification which was never supplied
+	by BASIC. The new implementation returns the status of the last CIO command
+	on the same channel if the channel is open, allowing BASIC for example to
+	access the near-EOF warning return code.
+
+Atari++ 1.73
+	- Added emulation support for the tape drive, and .CAS files loaded into the
+	tape. Raw audio files in the .WAV format are not supported by the emulator
+	directly, but two external programs "wav2cas" and "cas2wav" can convert
+	between them.
+	- Added an additional rendering mode for the X11 video system of Linux
+	machines. Instead of drawing the emulated screen on the display rectangle by
+	rectangle, the "xvideo" mode uses the xv extension of X11 to render into an
+	off-screen memory which is then merged into the screen by the video overlay
+	mechanis of the hardware. This rendering mode may create a smoother display
+	and may improve performance on lower end hardware, but is not necessarily
+	available everywhere.
+	- A complete manual of Os++, including a memory map, is now available as
+	download.
+	- Included the Os++ system disk, including disk-based utilities around Os++
+	  including a Dos overlay manager that relocates Dos buffers behind the
+	  cartridge, an RS232 handler, an updated version of DISKIO, a disk-based 
+	  tape handler, a menu based DUP and a lot of tools.

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.cpp,v 1.117 2013-01-14 19:54:36 thor Exp $
+ ** $Id: antic.cpp,v 1.121 2013-01-17 20:08:18 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -841,7 +841,6 @@ void Antic::HBI(void)
 }
 ///
 
-
 /// Antic::FetchPlayfield
 // Load data from the playfield into the scanline buffer
 void Antic::FetchPlayfield(struct ModeLine *mode,struct DMAGenerator *dma)
@@ -944,18 +943,20 @@ void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
     //
     // First reserve P/M DMA slots. They appear first because
     // The CPU needs to see them before the DLI triggers in.
-    switch (DMACtrl & 0x0c) {      
-    case 0x08: // Player DMA
-    case 0x0c: // Missile DMA is for free if player DMA is turned on.
-      Cpu->StealCycles(PlayerFetchSlot);
-      // runs intentionally into the missile fetch
-    case 0x04: // Missile DMA
-      Cpu->StealCycles(MissileFetchSlot);
-      break;
+    if (YPos < DisplayHeight) {
+      switch (DMACtrl & 0x0c) {      
+      case 0x08: // Player DMA
+      case 0x0c: // Missile DMA is for free if player DMA is turned on.
+	Cpu->StealCycles(PlayerFetchSlot);
+	// runs intentionally into the missile fetch
+      case 0x04: // Missile DMA
+	Cpu->StealCycles(MissileFetchSlot);
+	break;
+      }
+      // Fetch now the P/M data for GTIA (or not).
+      FetchPlayerMissiles();
     }
-    // Fetch now the P/M data for GTIA (or not).
-    FetchPlayerMissiles();
-    // 
+    //
     // Advance the CPU for a couple of cycles before the DLI is triggered (Jetboot Jack)
     // and before the DMA settings become active.
     Cpu->Go(6); 
@@ -1207,7 +1208,8 @@ void Antic::RunDisplayList(void)
       if (DMACtrl & 0x20) {
 	// Here: Antic is active, we must generate a display.
 	AnticPCCur = AnticPC;
-	currentir = ram->ReadByte(AnticPC);
+	currentir  = ram->ReadByte(AnticPC);
+	PreviousIR = currentir;
 	INCPC; // Increment the PC.
 	// Reserve the slots for DMA access for the DLI counter.
 	Cpu->StealCycles(DListFetchSlot);
@@ -1274,14 +1276,15 @@ void Antic::RunDisplayList(void)
     // vertical position and runs the pokey activity
   } while(YPos <= DisplayHeight);
   //
-  // Store IR for next go-around.
-  PreviousIR  = currentir;
-  //
   // Display list ended now, or we reached the end of the frame.
   // Generate now some blank lines for the vertical blank
   // We are not displaying anything: If the CPU does character generator modifications
   // now, no immediate consequences will be drawn.
   ScanlineGenerator.NoMode();
+  //
+  // Note: Releasing NMI here breaks TWERPS because it uses a tight
+  // STA WSYNC loop that will extend beyond the current HPos. Leave it
+  // asserted as long as the vertical blank is active.
   //
   // Now run the vertical blank. The exact position depends on
   // whether we are a PAL or a NTSC machine
@@ -1350,7 +1353,7 @@ void Antic::ChBaseWrite(UBYTE val)
   // There should be a two-clock delay here...
   lastcycle = ActiveDMATiming->Regular.Playfield.FirstCycle + 
     ActiveDMATiming->Regular.Playfield.FirstCycle + 4;
-  if (Cpu->CurrentXPos() + 2 < lastcycle)
+  if (Cpu->CurrentXPos() >= GTIAStart && Cpu->CurrentXPos() + 2 < lastcycle)
     ScanlineGenerator.GenerateScanline();
 }
 ///
@@ -1371,7 +1374,7 @@ void Antic::ChCtrlWrite(UBYTE val)
   // There should be a two-clock delay here...
   lastcycle = ActiveDMATiming->Regular.Playfield.FirstCycle + 
     ActiveDMATiming->Regular.Playfield.FirstCycle + 4;
-  if (Cpu->CurrentXPos() + 2 < lastcycle)
+  if (Cpu->CurrentXPos() >= GTIAStart && Cpu->CurrentXPos() + 2 < lastcycle)
     ScanlineGenerator.GenerateScanline();
 }
 ///
@@ -1384,6 +1387,13 @@ void Antic::DListLoWrite(UBYTE val)
   //
   // The shadow copy is just for the debugger.
   AnticPCShadow = AnticPC;
+  // AxisAssesin seems to require this, otherwise the DLI
+  // in the title screen rolls around forever.
+  //
+  // Actually, this is just a matter of bad luck
+  // as it depends on when precisely the intro notices that
+  // the START button is pressed.
+  //PreviousIR    = 0x00;
 }
 ///
 
@@ -1391,8 +1401,16 @@ void Antic::DListLoWrite(UBYTE val)
 // Write int the high-address of the display list counter
 void Antic::DListHiWrite(UBYTE val)
 {
-  AnticPC  = (AnticPC & 0x00ff) | (ADR(val) << 8);
+  AnticPC       = (AnticPC & 0x00ff) | (ADR(val) << 8);
   AnticPCShadow = AnticPC;
+  //
+  // AxisAssesin seems to require this, otherwise the DLI
+  // in the title screen rolls around forever.
+  //
+  // Actually, this is just a matter of bad luck
+  // as it depends on when precisely the intro notices that
+  // the START button is pressed.
+  // PreviousIR    = 0x00;
 }
 ///
 
@@ -1406,10 +1424,12 @@ void Antic::DMACtrlWrite(UBYTE val)
   // Compute the width of the playfield display from bits 0..1
   switch (val & 0x03) {
   case 0x00: // no playfield DMA
-    ActiveDMATiming       = &DMA_None;
+    ActiveDMATiming         = &DMA_None;
     // Blank the display.
-    ScanlineGenerator.NoMode();
-    ScanlineGenerator.GenerateScanline();
+    if (Cpu->CurrentXPos() >= GTIAStart) {
+      ScanlineGenerator.Width = 0;
+      ScanlineGenerator.GenerateScanline();
+    }
     break;
   case 0x01: // narrow playfield
     ActiveDMATiming       = &DMA_Narrow;

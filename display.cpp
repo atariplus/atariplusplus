@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: display.cpp,v 1.6 2005-09-10 12:55:40 thor Exp $
+ ** $Id: display.cpp,v 1.7 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: Interface definition for the visual display frontend
  **********************************************************************************/

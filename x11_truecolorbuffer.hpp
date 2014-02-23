@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_truecolorbuffer.hpp,v 1.11 2013-01-12 11:06:01 thor Exp $
+ ** $Id: x11_truecolorbuffer.hpp,v 1.12 2014/01/08 19:02:01 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -39,7 +39,9 @@ class X11_TrueColorBuffer : public X11_DisplayBuffer {
   //
 public:
   // Size of the point/rectangle buffer in entries.
-  static const int RenderBufferSize INIT(16);
+ // Latest revisions of the i830M drivers slow down noticably
+  // with smaller buffer sizes.
+  static const int RenderBufferSize INIT(128);
   static const int ScanBuffNum      INIT(128);
   //
 private:

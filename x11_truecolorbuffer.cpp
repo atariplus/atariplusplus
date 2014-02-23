@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_truecolorbuffer.cpp,v 1.16 2013-01-12 11:06:01 thor Exp $
+ ** $Id: x11_truecolorbuffer.cpp,v 1.17 2014/01/08 20:07:10 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -101,7 +101,8 @@ void X11_TrueColorBuffer::ScanBlock::AddPixel(int x,int y,int w, int h)
       // Yup, connects fine to it. Just enlarge me horizontally
       last->width += w;
       return;
-    }
+    } 
+    //
     // Now test whether we have pixels one row above
     while(test >= 0) {
       int lastend = last->y + last->height;
@@ -110,7 +111,6 @@ void X11_TrueColorBuffer::ScanBlock::AddPixel(int x,int y,int w, int h)
 	last->height += h;
 	return;
       }
-      if (lastend < y) break; // cannot match anymore, these are sorted
       last--;
       test--;
     }

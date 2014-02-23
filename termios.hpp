@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: termios.hpp,v 1.3 2004-08-29 16:52:13 thor Exp $
+ ** $Id: termios.hpp,v 1.4 2013-03-16 15:08:53 thor Exp $
  ** 
  ** In this module: Low-level termios compatibility wrapper
  ** for low-level serial device handling.

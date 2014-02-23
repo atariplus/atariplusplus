@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.cpp,v 1.65 2009-08-10 20:19:06 thor Exp $
+ ** $Id: menu.cpp,v 1.66 2013-01-17 17:20:04 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/
@@ -278,9 +278,13 @@ void Menu::AcceptOptionChange(void)
   try {
     InstallTopics();
   } catch (const AtariException &ex) {
-    if (ex.TypeOf() != AtariException::Ex_BadPrefs && ex.TypeOf() != AtariException::Ex_IoErr) {
+    if (/*ex.TypeOf() != AtariException::Ex_BadPrefs && */ ex.TypeOf() != AtariException::Ex_IoErr) {
       class OptionExceptionPrinter Printer(Machine);
       //
+      if (ex.TypeOf() == AtariException::Ex_BadPrefs) {
+	InstallDefaults();
+	InstallTopics();
+      }
       // Print the warning over this printer.
       ex.PrintException(Printer);
     }

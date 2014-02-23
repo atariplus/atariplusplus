@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.hpp,v 1.65 2013-01-14 12:54:11 thor Exp $
+ ** $Id: gtia.hpp,v 1.68 2013-01-18 07:50:25 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -461,15 +461,19 @@ private:
   class PostProcessor        *PostProcessor;
   //
   // Combined Player/Missile/Playfield control register
-  // We also keep the prior value at the line start to support "strange" mappings
-  UBYTE                       Prior,InitialPrior;
+  // Prior is the currently visible one, PriorAhead what the CPU
+  // wrote into the register, one step earlier, InitialPrior the value
+  // at the start of the line.
+  // PriorAhead is currently not used.
+  UBYTE                       Prior,InitialPrior,PriorAhead;
+  //
   // Since fiddling is also part of the mode selection, this
   // is also kept here on a per-scanline basis
   bool                        Fiddling;
   //
   // Rendering target of the P/M engine within the P/M intermediate buffer
   // before it gets merged by the display generator.
-  UBYTE *PMTarget;
+  UBYTE                      *PMTarget;
   //
   // Graphics control register.
   // This register is only evaluated at the beginning of a line, not in
@@ -477,14 +481,22 @@ private:
   // keep a shadow that is updated after the scanline. Decathlon seems
   // to require this, but Gateway to Apshai does not and conflicts.
   // Fixed by moving WSYNCPOS to the right.
-  UBYTE Gractl,GractlShadow;
-  //
-  // Missile combined bit patterns buffered here before they are
-  // split.
-  UBYTE MissileBits0,MissileBits1;
+  UBYTE                       Gractl,GractlShadow;
   //
   // Vertical overall delay register. Actually, this is required by ANTIC
-  UBYTE VertDelay;
+  UBYTE                       VertDelay;
+  // 
+  // true if missile 0..3 get playfield color 3
+  bool                        MissilePF3; 
+  //
+  // true if the console speaker is on
+  bool Speaker;
+  //
+  // Active keyboard line for the 5200 model. Unused otherwise.
+  UBYTE ActiveInput;
+  //
+  // The current horizontal position in half-color clocks.
+  int   HPos;
   //
   // High level collision setup. The following masks are visible from the
   // configuration interface
@@ -497,22 +509,11 @@ private:
   //
   // Collisions players can cause
   LONG PlayerCollisions[4];
+  //
   // Collisions the playfield can cause.
   LONG PlayfieldCollisions[4];
   //
   static const int PMScanlineSize  INIT(640); // maximum size of a PM scanline
-  //
-  // Priority engine pre-generated boolean lookups
-  // 
-  bool misslepf3;              // true if missile 0..3 get playfield color 3
-  //
-  bool speaker;                // true if the console speaker is on
-  //
-  // Active keyboard line for the 5200 model. Unused otherwise.
-  UBYTE ActiveInput;
-  //
-  // The current horizontal position in half-color clocks.
-  int   hpos;
   //
   // Quick color lookup registers for the priority engine. This is indexed
   // by a bitmask set by the individual player/missile presence. Bit 0 is
@@ -581,7 +582,7 @@ private:
   //
   // Pick the proper mode generator, depending on the PRIOR and the fiddling
   // values.
-  void PickModeGenerator(void);
+  void PickModeGenerator(UBYTE prior);
   //
   // This pre-computes all the data for the priority engine from the
   // hardware registers.

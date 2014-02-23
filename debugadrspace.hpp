@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: debugadrspace.hpp,v 1.3 2012-12-31 14:34:59 thor Exp $
+ ** $Id: debugadrspace.hpp,v 1.4 2013-02-14 16:09:15 thor Exp $
  **
  ** In this module: Definition of the complete 64K address space of the emulator
  ** this one includes debug information
@@ -42,6 +42,9 @@ class DebugAdrSpace {
   // The break points enabled here.
   ADR             BreakPoint[16];
   //
+  // Test whether a read-hit is enough.
+  bool            HitOnRead[16];
+  //
   // Number of break points enabled.
   UBYTE           Count;
   //
@@ -62,6 +65,20 @@ class DebugAdrSpace {
     }
   }
   //
+  // Check whether an address is breaked on.
+  void TestReadAddress(ADR mem)
+  { 
+    if (Count) {
+      UBYTE i = Count;
+      while(i) {
+	--i;
+	if (BreakPoint[i] == mem && HitOnRead[i]) {
+	  CaptureWatch(i,mem);
+	}
+      }
+    }
+  }
+  //
   //
 public:
   // 
@@ -72,11 +89,12 @@ public:
   }
   // Install a breakpoint at the given address, return the break
   // point number, or -1 in case no free break point is found.
-  BYTE SetWatchPoint(ADR mem)
+  BYTE SetWatchPoint(ADR mem,bool hitonread)
   {
     //
     if (Count < 16) {
       BreakPoint[Count] = mem;
+      HitOnRead[Count]  = hitonread;
       return Count++;
     } else {
       return -1;
@@ -120,7 +138,7 @@ public:
   // Read and write from an address
   UBYTE ReadByte(ADR mem)
   {
-    TestAddress(mem);
+    TestReadAddress(mem);
     
     return Mem->ReadByte(mem);
   }
@@ -137,8 +155,8 @@ public:
   // 6502 order (little endian)
   UWORD ReadWord(ADR mem)
   {
-    TestAddress(mem);
-    TestAddress(mem+1);
+    TestReadAddress(mem);
+    TestReadAddress(mem+1);
 
     return Mem->ReadWord(mem);
   }

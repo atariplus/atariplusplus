@@ -1,7 +1,7 @@
 .\"**********************************************************************
 .\"** Documentation of the the atari++ Emulator
 .\"** Thomas Richter, THOR Software
-.\"** $Id: atari++.man,v 1.60 2013-01-14 14:27:13 thor Exp $
+.\"** $Id: atari++.man,v 1.66 2014/01/19 12:20:31 thor Exp $
 .\"**
 .\"**********************************************************************
 .TH atari++ 6 "atari++ Emulator"
@@ -1174,7 +1174,14 @@ header that bootstraps the
 format. Note that no full DOS will be available for these files, though this
 emulation is sufficient for most
 .I .exe
-based games right away. Last but not least, Atari++ also supports
+based games right away. While the above formats capture all high-level
+details of disks, they do not include enough information to reproduce the
+low-level behavior of the disk drive. Specifically, copy protected disks
+cannot be represented by them. Atari++ supports for that the
+.I .atx
+format, which includes pecularities such as disk timing, duplicate sectors
+or sector defects. Again, the emulator cannot create such disk images, but
+is able to read from them. Last but not least, Atari++ also supports
 .I .dcm
 images, which have been prepared by the \(lqDisk Communicator\(rq program
 and are (slightly) compressed. Similar to the
@@ -1251,7 +1258,7 @@ or the corresponding gadget in the DiskDrive menu.
 .IP "-cabletype 1050-2-PC|ProSystem"
 selects the type of the cable that has been used to interface a 1050 or 810
 drive to the PC. Currently, AtariSIO supports two cable types, the
-\(lq1050-2-PC\(rq and the \(lqProSystem\(lq layout.
+\(lq1050-2-PC\(rq and the \(lqProSystem\(rq layout.
 
 .IP "-enableatarisio bool"
 This is the overall enabling/disabling option for the AtariSIO
@@ -1284,6 +1291,69 @@ specifications, this delay shall be between 4060 and 5210usecs long, the
 default is here 5150usecs. Note that due to the load of the host system some
 fine tuning of this parameter might be required to get a stable SIO
 communication.
+
+.SS TAPE Options
+In addition to disk drives, Atari++ also supports an archaic medium for data
+storage, namely the 410 and 1010 tape drives. They store binary data in
+frequency-modulated form, a high tone for a one called \(lqmark\(rq , and a
+somewhat lower tone for a zero also called \(lqspace\(rq. While the emulator
+only supports the already decoded form as
+.I .cas
+files, two external programs \(lqwav2cas\(rq and \(lqcas2wav\(rq allow you
+to convert a frequency converted audio file to a binary tape representation
+the emulator can read, and back. The option
+.IP "-image filename"
+defines the
+.I .cas
+file that simulates the tape that is inserted into the tape drive. They must
+be in the \(lpcas\(rq file format to be recognized by the emulator. Such
+files can either be read, or written to. In the latter case, their contents
+is overwritten; neither the emulator nor the physical hardware supports
+appending or modifying data on tape once it has been written.
+
+.IP "-play bool"
+This option presses the simulated \(lqplay\(rq button of the tape drive and
+hence allows the motor to spin if enabled by the main system. This option
+does not make much sense as a command line option but is best used within
+the emulator. Once the Atari operating system beeps once, requesting you to
+start the tape, enter the menu and start the tape by the button of the same
+name in the
+.B Tape
+menu, then return to the emulation to start reading data from the tape.
+
+.IP "-record bool"
+For recording data on tape, the Atari operating system beeps twice,
+requesting you to press both the \(lqplay\(rq and \(lqrecord\(rq
+buttons. The same must be done in the emulator: Go to the menu, into the
+.B Tape
+menu, enable the \(lqplay\(rq option there, but
+.I also
+select the \(lqrecord\(rq button below. The corresponding command line
+option is as given above, but also makes little sense as stand-alone option.
+
+.IP "-eject bool"
+presses the simulated \(lpeject\(rq button of the tape drive, removing
+the recording from the drive. This unloads the image and completes it on
+disk. It is most useful as a button of the same name in the
+.B Tape
+menu as well.
+
+The following additional options are also recognized by the tape subsystem: 
+.IP "-videomode PAL|NTSC"
+defines the video mode the system operates in, and by that the timing of the
+tape. This should be, and on the command line only can be, set identical to
+the video mode of the host system.
+
+.IP "-motoroffeofgap 20..10000"
+controls when the emulator considers a stopping tape as the end of
+the recording. Unlike the real machine, where the tape is entirely
+controlled by the user, the emulator has to make some guessing as to when a
+recording should be considered as completed, and no additional data is
+following. It currently does this whenever the motor stops longer than the
+indicated time, in milliseconds. The value defaults to 3000, i.e. three
+seconds. Once the motor halts longer than this, the simulated tape is
+removed from the tape recorder and no further data is expected. Enlarge this
+value if a tape file is created by a relatively slow BASIC program.
 
 .SS ATARISIO Options
 Similar to the above set of options, the following fine-tune the behaivour
@@ -2050,6 +2120,18 @@ is that the display refresh must wait for the X server to perform the
 refresh and to notify the client about it, adding the turn-around times and
 the net transfer overhead to the display refresh time. It is therefore rarely a
 good idea to enable this option.
+.IP "-disableDPMS"
+disables the display management power signal extension and thus prevents the
+monitor blanker or screen safer of the operating system to jump in while
+playing with the emulator. It is usually a good idea to enable this option.
+.IP "-xvideorendering bool"
+will use the \(lqXVideo\(rq extension of the X11 system to render graphics
+on the screen. Unlike the default rendering mode which builts the image from
+lots of colored rectangles, this render mode writes the raw display data
+into a shared memory region which is then scaled and pushed to the screen
+directly with the video overlay mechanism of the graphics card, if
+available. Depending on the graphics hardware, this option may provide
+better performance on lower end hardware if it is available. 
 .IP "-renderindirect bool"
 If set to
 .B on,
@@ -2741,7 +2823,7 @@ emulator. Instead, only the line-buffering of the console is available,
 i.e. the emulator will not be able to see your input unless you press
 .B RETURN.
 This also holds for the keyboard device, for which a patch is provided along
-with this patch. Specifically, if software running in the emulator requires
+with this option. Specifically, if software running in the emulator requires
 you to press a key, you need to terminate this input by 
 .B RETURN
 to make it accessible to the emulator.
@@ -3012,7 +3094,8 @@ aware of. The emulation is complete enough to allow BASIC and many other
 programs operate properly, except that the re-implementation is usually a
 bit and sometimes considerably faster. You might also consider the
 .B MathPack patch
-option that evaluates the mathematical operations on the host CPU.
+option that evaluates the mathematical operations on the host CPU and
+improves the speed beyond what is achievable with the 6502 implementation.
 
 .IP "The C: Tape handler"
 is replaced by a dummy. This is because Atari++ does not emulate the tape
@@ -3025,12 +3108,19 @@ position 96 (Ctrl-.) is the german sharp-s. The pound sign and the inverted
 exclamation mark are no longer available.
 
 .SS INTERRUPT HANDLING
+.IO "NMI Handler"
+The Os NMI handler also checks the ANTIC Reset NMI signal and, if detected,
+jumps indirectly through the vector in location $24e. This vector points to
+the warmstart Os vector. Unknown NMI sources are ignored, unlike the
+original Os which handles them as VBIs.
+
 .IP "VBI Handler"
 The built-in Os vertical retrace handler (VBI) does not check whether TRIG3
 and its shadow-register coincide. This avoids a couple of deadlock
 situations in various games that overwrite the shadow register. VBI handling
 of 1200XL keyboard features is not present since atari++ does not emulate
 these keys and the author has no precise documentation about them.
+
 .IP "IRQ Handler"
 The IRQ handler is more streamlined than the original IRQ
 handler; it also no longer handles any parallel port related interrupts
@@ -3039,13 +3129,21 @@ since they are never generated by the emulator.
 .SS KERNEL
 .IP "Parallel port call-ins"
 have been replaced by dummies. 
-.IP "0xe48f: BOOT850"
+
+.IP "$e48f: BOOT850"
 This is a new kernel-call in that bootstraps the 850 interface handler thru
 SIO. It should be typically used by a minimal HANDLERS.SYS file that
 contains nothing but a RUN-vector to this call-in.
-.IP "0xe45c: SETIRQVECTOR"
+.IP "$e45c: SETIRQVECTOR"
 The SetIRQVector call-in can now also savely install IRQs as well without
 requiring the caller to set the interrupt bit of the CPU.
+.IP "$e492: RUNDUP"
+This vector launches the DUP keyboard command processor. The DUP vector at
+$a,$b points to this address by default. The built-in DUP can be replaced by
+a custom DUP by changing the reset-resident vector at $3f6.
+.IP "$e498: FMSINIT"
+This vector initializes the built-in FMS. The Os reset initializes the
+ROM-based FMS thru this vector if no bootable disk is found.
 
 .SS RESET/Bootstrap
 .IP "Tape bootstrap"
@@ -3125,7 +3223,7 @@ is only a dummy that returns error conditions on all I/O operations. It only
 remained in the ROM to allow the H: handler to patch it over.
 
 .SS THE K: KEYBOARD HANDLER
-should work mostly like its equivalent in the Atari 800XL ROM except that it
+works like its equivalent in the Atari 800XL ROM except that it
 does not check for Atari 1200XL function keys. Extended editor keyboard 
 functions are provided to the best knowledge of the author, though. The K:
 handler respects now the BREAK key correctly.
@@ -3142,8 +3240,7 @@ Unlike the original Atari Editor device, the emulated E: handler allows
 arbitrary high editor windows, not just four or 24 lines - if programmed
 properly.
 .IP "Editor Scrolling"
-on line insertion or delection does no longer erraneously try to overwrite
-the ROM area. 
+on line insertion or delection does no longer overwrite memory above MEMTOP.
 
 .SS THE S: SCREEN HANDLER
 As mentioned above, the S: handler is decoupled from the E: handler and
@@ -3152,12 +3249,14 @@ counterpart.
 .IP "Screen GET/PUT"
 The S: handler no longer tries to scroll, neither
 does it respect editor margins. If the put or get commands reach the end of
-the screen, an out-of-bounds error (error 141) is generated.
+the screen, an out-of-bounds error (error 141) is generated. The only
+control codes the screen handler handles separately are $7d, which clears
+the screen, and $9b, which implements a line feed, though dos not scroll.
 .IP "Open Command"
 The S: open provides more graphic modes than the original. If 64 is added to
 the graphics mode, then a text window is generated even for the graphic
-modes 9, 10 and 11. Smooth scrolling works flawlessy even in these text
-windows.
+modes 9, 10 and 11. Unlike in the original Os, smooth scrolling works
+correctly in text windows, even in text windows of the GTIA modes 9 to 11.
 .IP "DMA/Player-Missile"
 The S: handler no longer interacts with player/missile graphics and respects
 the corresponding bits in the DMACTRL shadow register.
@@ -3210,8 +3309,8 @@ provided.
 .IP "FASC $d8e6"
 Convert the floating point number in "fr0" ($d4 to $d9) into ATASCII in the
 output buffer at $580 and following. "fr0" is destroyed on completion. The
-end of the string is indicated by having the last character have its MSB
-set, the final string is pointed to by "inbuff" ($F3,$F4) on exit. Unlike
+end of the string is indicated by setting the MSB of the last character,
+the final string is pointed to by "inbuff" ($F3,$F4) on exit. Unlike
 the ROM implementation, this routine is more streamlined and does not
 overwrite bytes in front of the output buffer, the output will always start
 at, and not sometimes in front of $580. If called at FASC+3, the user can
@@ -3404,14 +3503,16 @@ Another floating point constant used by BASIC, here the value of Pi divided
 by four correct to ten decimal places. It is used by the ATN function in the
 BASIC rom.
 
-.SS THE D: HANDLER
+.SH THE D: HANDLER
 This handler is provided by the now built-in FMS that is used if
 disk-bootstrap was unsuccessful or aborted by the user, see also above. The
 FMS in ROM space is basically a reworked and bugfixed version of Dos 2.XL/XA
 of the same author that was streamlined to fit into the low memory Os area
 0xc002 to 0xcbff. It therefore provides 963 free sectors on a standard
-enhanced density disk while retaining Dos 2.0S compatibility. It can read
-Dos 2.5 disks, but it is not write-compatible to Dos 2.5. This route was
+enhanced density disk while retaining Dos 2.0S compatibility. In specific,
+the VTOC layout is identical.
+
+It can read Dos 2.5 disks, but it is not write-compatible to Dos 2.5. This route was
 choosen basically because the author had the Dos 2.XL sources available for
 obvious reasons, unlike the Dos 2.5 sources. The following documents the
 FMS command set:
@@ -3427,7 +3528,7 @@ _
 7	open the directory, excluding the disk name
 8	create/overwrite for write-only
 9	open for append write-only
-12	open for read and write (update).
+12	open for read and write (update)
 13	create for read, write and append
 .TE
 
@@ -3441,11 +3542,12 @@ provided.
 
 For AUX2 = 128, things change dramatically. This mode provides full random
 access to the raw disk without any file management functions; thus, this
-mode allows \(lqraw\(rq access to disks. File names do not matter here, and
-sectors are always 128 bytes long. The disk is understood as one big
-sequential file starting at sector one and extending to its last
-sector. Access to sectors is provided by means of the POINT/NOTE
-commands. The following open modes are available for AUX1 = 128:
+mode allows \(lqraw\(rq access to disks. File names do not matter here as
+long as they are syntactically correct, and sectors are always 128 bytes
+long. The disk is understood as one big sequential file starting at sector
+one and extending to its last sector. Access to sectors is provided by means
+of the POINT/NOTE commands. The following open modes are available for AUX1
+= 128:
 .TS
 l l.
 aux1	function
@@ -3472,22 +3574,46 @@ condition is generated. This command also implies bursting, if possible.
 Closes the file, writes the last buffer out and updates the directory unless
 the stream is \(rqraw\(lq.
 .IP "CMD 13: STATUS"
-Checks the given filespec for validity, tests wether the given disk is
+This command works a little bit different than under DOS 2.0S and DOS 2.5
+where it only checks the validity of a file specification and the
+availability of a drive. Since BASIC never supplies this information to
+.B STATUS
+, this command was actually unuseful in BASIC and never worked as
+intended. 
+
+Instead, if the channel is already open,
+.B STATUS
+returns the status of the last CIO operation on this specific channel, which
+allows now BASIC to check, for example, whether the next
+.B GET
+command will return an EOF by testing against the error code 3.
+
+If the channel is still closed, works as it did for DOS 2.0S and DOS 2.5: It
+checks the given filespec for validity, tests wether the given disk is
 available and readable, and whether the file can be written to. Otherwise,
-apropriate error conditions are generated.
+appropriate error conditions are generated. If used from BASIC, STATUS
+should then be rather replaced by a
+.B XIO 13
+command which supplies a file name.
+
 .IP "CMD 32: RENAME"
 Renames files. Requires the old filespec, then a comma, and the new target
-file name. This command may cause several identically named files, see below
-for file name specifications how to resolve this problem.
+file name. This command may cause several identically named files. Such
+files can be resolved by using the
+.B /1
+through
+.B /9
+file specification modifier defined below. Alternatively, this command and
+the next four, namely DELETE, FIND, LOCK and UNLOCK, take a non-zero
+.B aux2
+value which then specifies which of the specific matches to a wildcard is to
+be renamed, deleted, found, locked or unlocked.
 .IP "CMD 33: DELETE"
 Delete one or several files on the disk.
 .IP "CMD 34: FIND"
-Resolves a wild card filespec and returns a full file name in the
-input buffer. If several files match the wildcard, the value of the
-AUX2 selects the number of the file that is to be resolved. This
-command is used by the command line interpreter (\(lqDUP\(rq) 
-to resolve wild-cards. This command is here to maintain Dos 3
-compatibility, the author suggests to use CMD 40 instead.
+Resolves a wild card filespec and returns a full file name in the input
+buffer. This command is used by the command line interpreter (\(lqDUP\(rq)
+to resolve wild-cards. 
 .IP "CMD 35: LOCK"
 Prevents a file or several files from getting overwritten by setting their
 write-protecting bits.
@@ -3500,8 +3626,28 @@ an absolute sector/byte offset in AUX3,AUX4 (sector) and AUX5 (byte),
 similar to Dos 2.0S. If an invalid write position is specified here, then
 the disk might get corrupted. Only file pointers obtained by a previous NOTE
 onto the same file should be passed in as arguments here.
-This command is also used for absolute positioning within the disk if the
+
+Unlike under DOS 2.0S and DOS 2.5,
+.B POINT
+also works for files opened in
+.I write-only
+mode, i.e. mode 8, and can there be used to re-position the file pointer to
+some place in front of the EOF, overwriting data that has already been
+written. Similarly, 
+.B POINT
+is very helpful to append to files in the update/append mode 13 when the
+former EOF position has been recorded by a
+.B NOTE
+, which then works much faster than having the file opened in
+.I append
+mode. The latter has to find the EOF manually, the former will place the
+file pointer directly at the EOF.
+
+The
+.B POINT
+command is also used for absolute positioning within the disk if the
 corresponding stream is opened for raw mode, i.e. with AUX2 = 128.
+
 .IP "CMD 38: NOTE"
 Returns the current file pointer as sector/byte offset to be used for a
 future POINT command. AUX3/4 contain the low/high-byte of the sector, AUX5
@@ -3514,14 +3660,14 @@ for disks that have been formatted already. Optionally, a disk title can
 be given behind the device specification. This title will then appear in
 reverse video on each directory listing.
 .IP "CMD 40: FIND"
-Similar to CMD 34 to maintain Dos 2.XL compatibility. This is the suggested
-FIND command.
+Similar to CMD 34 to maintain Dos 2.XL compatibility.
 .IP "CMD 41: BINARY LOAD"
 Loads a binary file from disk, possibly initializing and running the binary.
 AUX2 specifies whether the loaded file shall be initialized or run. If set
 to 192, the file is initialized and run, 128 means \(lqinit only\(rq, 64 just
 runs, but does not initialize the file, and 0 neither runs nor initializes
-the file.
+the file. Note that Atari specified CMD 41 (and not CMD 40) for the binary
+load command.
 .IP "CMD 42: FORMAT"
 Formats a disk in various sizes. If AUX1 is set to 33, then the disk is
 formatted in single density to 707 sectors. For AUX1 set to 34, then an
@@ -3630,6 +3776,9 @@ Found a bad sector link to sector #0, the disk structure is damaged.
 .IP "Error 177, InvalidMode"
 The specified open mode is invalid.
 
+.IP "Error 178, NotADosDisk"
+The structure of the inserted disk is not compatible to Dos 2.++.
+
 .SS THE COMMAND LINE PROCESSOR (DUP)
 The built-in FMS also provides a disk utility package (a \(lqDUP\(rq). It is
 activated from BASIC via the
@@ -3642,17 +3791,18 @@ specification, i.e. a one- or two-letter string terminated by a colon, then
 the active device is changed. Otherwise, the command line tries to locate
 the command as file on disk, as a binary, and then runs it. It does
 .B NOT
-append a file extender, as for example \(lq.COM\(rq. The file name is loaded
-and executed as entered.
+append a file extender, unlike OS/A+ which would always append
+\(lq.COM\(rq. The file name is loaded and executed exactly as entered.
 
 The full command line including the command and its arguments is placed in a
-128 byte buffer at 0x580 where the executed binary may find it, and may
+128 byte buffer at $580 where the executed binary may find it, and may
 parse it itself if required. The command line does not provide functions to
 parse this buffer.
 
 .B NOTE
 This is not the way how Dos OS/A+ executes external commands. There was
-unfortunately not enough ROM space available to implement this interface.
+unfortunately not enough ROM space available to implement command line
+parsing service functions as OS/A+.
 
 If the command starts with a double quote, or is not found on disk, then the
 command line processor tries to locate this as an internal command. The
@@ -3693,7 +3843,8 @@ Removes the write protection again, the opposite of the above.
 
 .IP "CAR"
 Runs the cartridge should there be one inserted. If no cart is available,
-the command processor will be entered again.
+and neither any reset resident program is found, the command processor will
+be entered again.
 
 .IP "FORMAT [title]"
 Formats the specified disk to enhanced density, erasing all its contents. An
@@ -3712,7 +3863,7 @@ and intended to be a quick-format.
 
 .IP "RUN [hexaddress]"
 Runs a machine code program at the specified address.  If no address has
-been given, the previously loaded command will be run again.
+been given, the previously loaded command will be run, or run again.
 
 .IP "SAVE filespec,from,to,[[,init],run]"
 Saves a binary file to disk, starting at the given hex address, up to the
@@ -3736,18 +3887,25 @@ ask you again to insert the source disk if the file is too large to be read
 in one go, or if more than one file is to be copied.
 
 .B COPY 
-will invalidate the user RAM contents; therefore, a BASIC program
-that has been loaded into RAM will be lost after a COPY command if
-BASIC is re-entered. Similar restrictions arise for other cartridges
-(e.g. Mac/65 will loose the current assembly source code). 
-.B COPY 
-does not try to notify you about this fact. Due to ROM size limitations,
-there is neither a MEM.SAV file to protect you against this memory loss.
+tries to avoid using user RAM contents whenever possible. Application memory
+that is reserved correctly by setting the Os vector APPMEMHI will be
+preserved, and BASIC source code will be spared. However, not all
+applications adjust APPMEMHI correctly, Mac/65 is such an example.
+
+.IP "NEW"
+will erase user memory and will make this memory available for the
+.B COPY
+command, i.e. you will require to swap disks less often. The
+.B NEW
+command is also necessary to inform some cartridges or application programs
+that its memory has been overwritten after performing a copy operation. This
+is necessary if the corresponding program does not set APPMEMHI
+correctly. 
 
 .SS FMS HINTS AND TWEAKS
 
 Sometimes an external command has the same name as an internal one. In
-that case, the external command is prefered to the internal one and is
+this case, the external command is prefered to the internal one and is
 loaded, bypassing the internal one. If this is undesired, place a
 double quote in front of the command. This will avoid the external
 command lookup.
@@ -3759,7 +3917,8 @@ perform a similar operation by using the /D access specifier:
 .B COPY -/D,P:
 
 will print out the contents of the directory by copying the contents
-of the directory to the printer device.
+of the directory to the printer device, though invalidating RAM contents due
+to the additional buffering COPY performs.
 
 The LOAD command can be emulated by using the no-run specifier when
 you just want to load, but not to run an external command. Thus,
@@ -3788,7 +3947,7 @@ Next, the FMS tries to load and execute the binary file
 This file should contain the bootstrap code for any additional boot-time
 handlers that must be linked into the system. For example, this file could
 load and run the 850 interface box firmware (easiest by simply calling the
-Os vector BOOT850, 0xe48f).
+Os vector BOOT850, $e48f).
 
 .IP "Command execution"
 Last, the FMS runs the traditional
@@ -3803,34 +3962,50 @@ reserved within the XL operating system for parallel port and tape usage are
 likely to be no longer in use. However, these should remain reserved for
 future versions of the Atari++ operating system.
 
-.IP "0x15 FMSTMP"
+.IP "$15 FMSTMP"
 Used by the FMS for various issues.
 
-.IP "0x16 DIRENTRYOFFSET"
+.IP "$16 DIRENTRYOFFSET"
 Used by the FMS to point into the directory buffer for the currently
 processed file.
 
-.IP "0x43 FMSPTR"
-Temporary pointer variables for miscellaneous uses in the FMS.
+.IP "$1a FILECOUNTER"
+In case a wildcard matches several files and the user specified a /1 to /9
+access modifier to select one of these matches, this location records the
+user selection. This location stays at $ff if the FMS shall operate on all
+matches.
 
-.IP "0x45 DISKBUFFER"
+.IP "$1b FREEDIRCODE"
+Keeps the file number times four of the first free directory entry a new
+file could populate.
+
+.IP "$43 FMSPTR"
+Temporary pointer variables for miscellaneous uses in the FMS. This pointer
+typically points to the directory entry of the currently processed file.
+
+.IP "$45 DISKBUFFER"
 Points within the FMS to the VTOC buffer for the currently
 processed disk drive.
 
-.IP "0x47 FILEBUFFER"
+.IP "$47 FILEBUFFER"
 Points within the FMS to the file input/output buffer for the currently
 processed file.
 
-.IP "0x2b8 OVERRUNFLAG"
+.IP "$24e VECNMI"
+The Os jumps thru this vector in case it detects an interrupt on ANTIC's
+NMI-input pin. This pin is routed to the RESET key on the 400 and 800
+machines, and is open on the XL and later machines.
+
+.IP "$2b8 OVERRUNFLAG"
 This flag is set by the E: handler in case the line is nearly full and the
 buzzer should be run.
 
-.IP "0x318 SCREENSTACK"
+.IP "$318 SCREENSTACK"
 This byte is traditionally used by SIO, and so it is by the built-in Os. It
 is, however, also used by the S: and E: handler to keep the stack pointer to
 make error handling easier.
 
-.IP "0x3f5 FMSBOOTFLAG"
+.IP "$3f5 FMSBOOTFLAG"
 Specifies the FMS bootstrap modes and various
 other related issues as listed in the following table:
 .TS
@@ -3843,6 +4018,14 @@ Bit 0	If set, the next reset shall signal the
 	memory contents gets invalidated by the 
 	COPY command.
 
+Bit 4	If set, the FMS places MEMLO at the end
+    	of its globals instead at the end of the
+	FMS buffers. User programs, most notably
+	a CONFIG.SYS file may relocate FMS
+	buffers elsewhere and may then select
+	to set this bit. Never set by the FMS
+	itself.
+
 Bit 6	Is set if the command processor shall 
 	be launched on the next warmstart.
 
@@ -3851,42 +4034,56 @@ Bit 7	Is set if the FMS should be initialized
 	requires the DosInit vector.
 .TE
 
-.IP "0x3f6,0x3f7 DUPVECTOR"
+.IP "$3f6,$3f7 DUPVECTOR"
 DupVector (hi) This address is jumped at instead of the cart run vector
 during a warmstart if bit 6 of the FmsBootFlag is set. A program that jumps
-thru DOSVECTOR (0x0a,0x0b) will set bit 6 of the FMSBOOTFLAG, then cause a
+thru DOSVECTOR ($a,$b) will set bit 6 of the FMSBOOTFLAG, then cause a
 reset which in turn will run the command processor thru this vector.
 .P
 The next addresses are only used if the FMS is initialized. They can be modified
 from the CONFIG.SYS file to change the FMS parameters when booting.
 
-.IP "0x70a FMSDRIVEMASK"
+.IP "$70a FMSDRIVEMASK"
 Contains a bitmask that defines which drives should be addressable. A
 one-bit enables the corresponding disk unit, a zero disables it. Bit #0
 enables/disables drive 1, bit #1 controls drive 2 and so on.  The default
 value is 3, meaning a two-disk system is supported. Each supported drive
 requires 128 bytes additional storage.
 
-.IP "0x709 FMSBUFFERS"
+.IP "$709 FMSBUFFERS"
 Number of file buffers the FMS shall allocate.  This controls how many files
 can be opened at once. The default value is five, allowing to open at most
 five files at once. Each file buffer requires 128 bytes of storage.
 
-.IP "0x779 WRITECMD"
+.IP "$779 WRITECMD"
 The SIO command the FMS shall use for writing sectors. This can be either
-P for writing without or W for writing with verify. It is however suggested 
-to use the file name extenders /V and /O to switch verify on and off 
+$50 ("P") for writing without or $57 ("W") for writing with verify. It is however suggested 
+to use the file name extenders "/V" and "/O" to switch between verify on and off 
 instead.
 
-.IP "Fms state flags"
-Addresses $700-$7ff except the above contain FMS state variables that
+.IP "$70C,$70D DISKBUFFERBASE"
+Points to the first disk buffer used by the FMS. The "CONFIG.SYS" file may
+change this base address to point elsewhere, in which case disk buffers will
+be allocated from this memory address on. If in addition bit 4 of 
+.B FMSBOOTFLAG
+is set, the FMS init routine will neither try to increase MEMLO to point
+behind the FMS buffers, but will keep it at the end of its state flags.
+
+.IP "$712,$713 FILEBUFFERBASE"
+This pair points to the first file data buffer within the disk buffers. It
+cannot be adjusted, but is always allocated by the FMS.
+
+.IP "$700 to $7ff FMS STATE FLAGS"
+Addresses $700-$7ff except those above contain FMS state variables that
 remain undocumented.
 
-.IP "Fms buffers"
+.IP "$800 FMS BUFFERS"
 FMS buffers for drives and file buffers are allocated from $800 up. In the default
 configuration, they extend up to $a7f, leaving RAM from $a80 and up to the
 user. Thus, the memory footprint of the built-in FMS is much better than for
-DOS 2.0S.
+DOS 2.0S. FMS buffers may be relocated by adjusting
+.B DISKBUFFERBASE
+accordingly by a suitable CONFIG.SYS file.
 
 .SH THE BUILT-IN MONITOR
 Atari++ comes with a build-in mini-monitor that can be helpful for debugging
@@ -4059,7 +4256,7 @@ Prints a stack traceback, optionally starting at the given stack address.
 For this option, the monitor will find the locations from which the current
 routine has been called. The locations of the JSR instructions are printed
 on the screen.
-.IP "BRKP=B [expr]; extenders: S,C,D,E,A,L"
+.IP "BRKP=B [expr]; extenders: S,C,D,E,A,L,V,W"
 Controls breakpoints. Once a breakpoint is hit, and the breakpoint is
 enabled, the monitor is re-entered. Breakpoints can be set in either RAM or
 ROM. They do not alter the memory at all but are rather emulated directly in
@@ -4074,6 +4271,22 @@ and
 extenders disable, resp. enable breakpoints that have been set before. A
 disabled breakpoint is temporarely turned off, but remembered, and can be
 turned on later on.
+
+The
+.B V
+and
+.B W
+extenders install watch points. Unlike regular break points, the trapping
+condition is not execution of an instruction at a specific location, but the
+.I access
+of a specific memory address.
+
+BRKP.W installs a watch point, i.e. the monitor is entered as soon as a
+program tries to write to the target address. Reading does not trigger
+it. Watch points can be disabled and removed as all other break points.
+
+BRKP.V installs a read/write watch point that unlike the above, also reacts
+on read accesses to its target address.
 
 The
 .B A
@@ -4294,6 +4507,13 @@ Konrad Kokoszkiewicz for finding and fixing many bugs in the emulation of
 floppy disks. Part of the "speedy" comments were broken or potentially
 mis-interpreted, and floppy sizes weren't detected and supported correctly
 under all circumstances. Thanks, folks!
+
+Ralph "pps" for redesigning the Atari++ home page and hosting the whole
+project. Unfortunately, my employer can no longer host it when I moved.
+
+"Phaeron" for documenting many undocumented chipset and CPU features and for
+answering all my questions. Many of the improvements made in release 1.70
+are due to his work.
 
 .SH REFERENCES
 .IP "DE RE ATARI"

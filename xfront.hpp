@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfront.hpp,v 1.17 2005-09-10 12:55:42 thor Exp $
+ ** $Id: xfront.hpp,v 1.19 2013/12/20 21:14:42 thor Exp $
  **
  ** In this module: Interface definition for a generic X11 frontend
  **********************************************************************************/
@@ -41,7 +41,7 @@ protected:
   Colormap                 colormap;
   //
   // Get and/or build the frame buffer for this class.
-  class X11_DisplayBuffer *FrameBufferOf(bool truecolor = false);
+  class X11_DisplayBuffer *FrameBufferOf(bool truecolor = false,bool video = false);
   //
   // Unload the frame buffer, build a new one. This has to be called
   // in case GTIA changes its mood concerning the truecolor/mapped

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: wavsound.cpp,v 1.29 2006-05-21 15:22:30 thor Exp $
+ ** $Id: wavsound.cpp,v 1.32 2013/06/02 20:41:14 thor Exp $
  **
  ** In this module: Os interface for .wav file output
  **********************************************************************************/
@@ -34,7 +34,8 @@ WavSound::WavSound(class Machine *mach)
   : Sound(mach), FileName(new char[8]), DspName(new char[9]),
     SoundStream(NULL), OssStream(-1),
     FragSize(9), NumFrags(4), 
-    Playback(true), WavStereo(false), WavSixteen(false),
+    Playback(true), EnableAfterReset(true), ForceStereo(false),
+    WavStereo(false), WavSixteen(false),
     Recording(false), HaveMutingValue(true),
     OutputCounter(0)
 {
@@ -271,7 +272,9 @@ bool WavSound::OpenOssStream(void)
   }
   //
   // Set the number of channels for the audio output. We only need mono or stereo.
-  channels = (RightPokey)?1:0;
+  channels = (RightPokey)?1:0; 
+  if (ForceStereo)
+    channels = 1;
   if (ioctl(OssStream,SNDCTL_DSP_STEREO,&channels) < 0) {
     ThrowIo("WavSound::InitializeDsp","Cannot set the audio output to mono");
   }  
@@ -728,12 +731,14 @@ void WavSound::ParseArgs(class ArgParser *args)
   //
   args->DefineTitle("WavSound");
   args->DefineBool("EnableRecording","enable .wav file output",EnableSound);
+  args->DefineBool("RecordAfterReset","enable recording only after a reset",EnableAfterReset);
   args->DefineBool("EnablePlayback","enable Oss audio playback",penable);
   args->DefineBool("EnableConsoleSpeaker","enable the console speaker",
 		   EnableConsoleSpeaker);
   args->DefineLong("ConsoleSpeakerVolume","set volume of the console speaker",
 		   0,64,ConsoleVolume);
   args->DefineFile("OutputFile","set wav output file",FileName,true,true,false);  
+  args->DefineBool("ForceStereo","enforce stereo output for broken ALSA interfaces",ForceStereo);
   args->DefineBool("Stereo","generate .wav stereo output",WavStereo);
   args->DefineBool("SixteenBit","generate .wav in 16 bit resolution",WavSixteen);
   
@@ -759,6 +764,10 @@ void WavSound::ParseArgs(class ArgParser *args)
     Playback = false;
   }
 #endif
+  //
+  if (EnableAfterReset == false) {
+    WarmStart();
+  }
   //printf("parseargs\n");
   //WarmStart();
 }

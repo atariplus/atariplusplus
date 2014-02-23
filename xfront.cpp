@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfront.cpp,v 1.16 2005-09-10 12:55:42 thor Exp $
+ ** $Id: xfront.cpp,v 1.18 2013/12/20 21:14:42 thor Exp $
  **
  ** In this module: Interface definition for a generic X11 frontend
  **********************************************************************************/
@@ -12,6 +12,7 @@
 #include "x11_displaybuffer.hpp"
 #include "x11_mappedbuffer.hpp"
 #include "x11_truecolorbuffer.hpp"
+#include "x11_xvideobuffer.hpp"
 #include "gtia.hpp"
 #include "machine.hpp"
 #include "new.hpp"
@@ -37,12 +38,18 @@ XFront::~XFront(void)
 
 /// XFront::FrameBufferOf
 // Get and/or build the frame buffer for this class.
-class X11_DisplayBuffer *XFront::FrameBufferOf(bool truecolor)
+class X11_DisplayBuffer *XFront::FrameBufferOf(bool truecolor,bool xv)
 {
   if (FrameBuffer == NULL) {
     // Pick the optimal (fastest) possible buffer
     // for our needs.
-    if (truecolor) {
+    if (xv) {
+#ifdef X_USE_XV
+      FrameBuffer = new class X11_XVideoBuffer(machine,this);
+#else
+      FrameBuffer = new class X11_TrueColorBuffer(machine,this);
+#endif
+    } else if (truecolor) {
       FrameBuffer = new class X11_TrueColorBuffer(machine,this);
     } else {
       FrameBuffer = new class X11_MappedBuffer(machine,this);

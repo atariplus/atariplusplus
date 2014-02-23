@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atrimage.cpp,v 1.10 2008-08-25 16:42:57 thor Exp $
+ ** $Id: atrimage.cpp,v 1.12 2013-02-23 18:11:00 thor Exp $
  **
  ** In this module: Disk image class for .atr images.
  **********************************************************************************/
@@ -170,22 +170,24 @@ ULONG ATRImage::SectorCount(void)
 }
 ///
 
-/// ATRImage::ProtectionStatus
-// Return the protection status of the image.
-bool ATRImage::ProtectionStatus(void)
+/// ATRImage::Status
+// Return the status bits of the image.
+UBYTE ATRImage::Status(void)
 {
 #if CHECK_LEVEL > 0
   if (Image == NULL)
     Throw(ObjectDoesntExist,"ATRImage::ProtectionStatus","image is not yet open");
 #endif
-  return Protected;
+  if (Protected)
+    return DiskImage::Protected;
+  return 0;
 }
 ///
 
 /// ATRImage::ReadSector
 // Read a sector from the image into the supplied buffer. The buffer size
 // must fit the above SectorSize. Returns the SIO status indicator.
-UBYTE ATRImage::ReadSector(UWORD sector,UBYTE *buffer)
+UBYTE ATRImage::ReadSector(UWORD sector,UBYTE *buffer,UWORD &)
 {
   ULONG offset,size;
 #if CHECK_LEVEL > 0
@@ -221,7 +223,7 @@ UBYTE ATRImage::ReadSector(UWORD sector,UBYTE *buffer)
 /// ATRImage::WriteSector
 // Write a sector to the image from the supplied buffer. The buffer size
 // must fit the sector size above. Returns also the SIO status indicator.
-UBYTE ATRImage::WriteSector(UWORD sector,const UBYTE *buffer)
+UBYTE ATRImage::WriteSector(UWORD sector,const UBYTE *buffer,UWORD &)
 {
   ULONG size,offset;
   //

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.69 2013-01-13 10:23:48 thor Exp $
+ ** $Id: cpu.hpp,v 1.71 2013-01-17 16:58:39 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -1592,13 +1592,22 @@ public:
   //
   // Generate a maskable interrupt, given a mask that identifies the source of the
   // IRQ.
-  void GenerateIRQ(ULONG devicemask);
+  void GenerateIRQ(ULONG devicemask)
+  {
+    IRQMask  |= devicemask;
+  }
   //
   // Release the IRQ from a given device, identified by this mask.
-  void ReleaseIRQ(ULONG devicemask);
+  void ReleaseIRQ(ULONG devicemask)
+  {
+    IRQMask &= ~devicemask;
+  }
   //
   // Generate a non-maskable interrupt
-  void GenerateNMI(void);
+  void GenerateNMI(void)
+  {
+    NMI = true; // that's all!
+  }
   //
   // Generate a watch point interrupt.
   void GenerateWatchPoint(UBYTE idx)

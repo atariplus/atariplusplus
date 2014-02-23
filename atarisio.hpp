@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisio.hpp,v 1.9 2004-08-29 16:52:13 thor Exp $
+ ** $Id: atarisio.hpp,v 1.10 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: Support for real atari hardware, connected by 
  ** Matthias Reichl's atarisio interface.
@@ -110,20 +110,22 @@ public:
   //
   // Read bytes from the device into the system. Returns the number of
   // bytes read.
-  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &datasize);
+  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
+			   int &datasize,UWORD &delay);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error.
-  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,int &datasize);
+  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
+			    int &datasize,UWORD &delay);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame);
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay);
   //  
   // After a written command frame, either sent or test the checksum and flush the
   // contents of the buffer out. For block transfer, SIO does this for us. Otherwise,
   // we must do it manually.
-  virtual UBYTE FlushBuffer(const UBYTE *CommandFrame);
+  virtual UBYTE FlushBuffer(const UBYTE *CommandFrame,UWORD &delay);
   //
   // Other methods imported by the SerialDevice class:
   //

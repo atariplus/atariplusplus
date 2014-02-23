@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart8k.cpp,v 1.5 2003-10-03 22:54:50 thor Exp $
+ ** $Id: cart8k.cpp,v 1.6 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: The implementation of a plain 8K cart
  **********************************************************************************/

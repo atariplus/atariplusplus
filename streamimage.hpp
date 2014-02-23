@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: streamimage.hpp,v 1.1 2009-08-10 13:08:25 thor Exp $
+ ** $Id: streamimage.hpp,v 1.3 2013-02-23 18:11:01 thor Exp $
  **
  ** In this module: Disk image class for any type of files that need to be put on disk
  **********************************************************************************/
@@ -53,19 +53,19 @@ public:
     return ByteSize >> 7; // 128 byte sectors.
   }
   //
-  // Return the protection status of this image. true if it is protected.
-  virtual bool  ProtectionStatus(void)
+  // Return the disk status of this image. 
+  virtual UBYTE Status(void)
   {
-    return true;
+    return DiskImage::Protected;
   }
   //
   // Read a sector from the image into the supplied buffer. The buffer size
   // must fit the above SectorSize. Returns the SIO status indicator.
-  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer);
+  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer,UWORD &);
   //
   // Write a sector to the image from the supplied buffer. The buffer size
   // must fit the sector size above. Returns also the SIO status indicator.
-  virtual UBYTE WriteSector(UWORD,const UBYTE *)
+  virtual UBYTE WriteSector(UWORD,const UBYTE *,UWORD &)
   {
     // We cannot write to these files. Just return an error.
     return 'E';

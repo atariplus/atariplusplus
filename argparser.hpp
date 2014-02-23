@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: argparser.hpp,v 1.24 2006-05-21 15:22:29 thor Exp $
+ ** $Id: argparser.hpp,v 1.25 2013-03-16 15:08:50 thor Exp $
  **
  ** In this module: Generic argument parser superclass
  **********************************************************************************/

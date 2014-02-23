@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: patchprovider.hpp,v 1.4 2003-02-01 20:32:02 thor Exp $
+ ** $Id: patchprovider.hpp,v 1.5 2013-02-14 15:38:34 thor Exp $
  **
  ** In this module: Interface class that bundles patches into a group
  **********************************************************************************/
@@ -47,9 +47,10 @@ protected:
   //
   ~PatchProvider(void)
   {
-    // Kill all patches here
-    DisposePatches();
   }
+  // 
+  // Get rid of all installed patches now; dispose them all.
+  void DisposePatches(void);
   //
   // Reset all patches. This is called on a warmstart or coldstart.
   void Reset(void);
@@ -62,9 +63,6 @@ public:
   // 
   // Install all patches on the list
   void InstallPatchList(void);
-  //
-  // Get rid of all installed patches now; dispose them all.
-  void DisposePatches(void);
   //
   // Return the patch list to install a patch into
   List<Patch> &PatchList(void)

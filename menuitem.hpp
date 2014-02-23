@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuitem.hpp,v 1.8 2005-09-10 12:55:40 thor Exp $
+ ** $Id: menuitem.hpp,v 1.9 2013-03-16 15:08:52 thor Exp $
  **
  ** In this module: Definition of the base class for menu items, the class
  ** that defines entries in the quick menu.

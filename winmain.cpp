@@ -25,10 +25,10 @@ int WINAPI WinMain (HINSTANCE,HINSTANCE,LPTSTR cmdlinestr,int)
 //
 // Open a console window for stdio emulation and redirect
 // streams into it.
-void OpenConsole()
-{
 static bool isopen = false;
 
+void OpenConsole()
+{
 	if (!isopen) {
 		HANDLE hdl;
 		if (AllocConsole()) {
@@ -41,4 +41,16 @@ static bool isopen = false;
 		}
 	}
 }
-
+//
+// Close a console again when it is no longer needed.
+void CloseConsole()
+{
+	if (isopen) {
+		if (FreeConsole()) {
+			freopen("NUL","w",stdout);
+			freopen("NUL","w",stderr);
+			freopen("NUL","w",stdin);
+			isopen = false;
+		}
+	}
+}

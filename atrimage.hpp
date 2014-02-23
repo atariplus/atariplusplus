@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atrimage.hpp,v 1.4 2003-03-03 21:38:00 thor Exp $
+ ** $Id: atrimage.hpp,v 1.6 2013-02-23 18:11:00 thor Exp $
  **
  ** In this module: Disk image class for .atr images.
  **********************************************************************************/
@@ -79,16 +79,16 @@ public:
   // Return the number of sectors.
   virtual ULONG SectorCount(void);
   //
-  // Return the protection status of this image. true if it is protected.
-  virtual bool ProtectionStatus(void);
+  // Return the disk status.
+  virtual UBYTE Status(void);
   //
   // Read a sector from the image into the supplied buffer. The buffer size
   // must fit the above SectorSize. Returns the SIO status indicator.
-  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer);
+  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer,UWORD &);
   //
   // Write a sector to the image from the supplied buffer. The buffer size
   // must fit the sector size above. Returns also the SIO status indicator.
-  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer);
+  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer,UWORD &);
   //
   // Protect an image on user request
   virtual void ProtectImage(void);  

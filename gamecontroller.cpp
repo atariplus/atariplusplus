@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gamecontroller.cpp,v 1.30 2005-01-29 22:01:23 thor Exp $
+ ** $Id: gamecontroller.cpp,v 1.31 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: Definition of the interface towards game controller inputs
  **                 This is the Atari side of the game controller input.

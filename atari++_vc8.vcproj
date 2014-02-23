@@ -439,6 +439,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\atximage.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\audiobuffer.cpp"
 				>
 			</File>
@@ -1158,6 +1162,10 @@
 			</File>
 			<File
 				RelativePath=".\atrimage.hpp"
+				>
+			</File>
+			<File
+				RelativePath=".\atximage.hpp"
 				>
 			</File>
 			<File

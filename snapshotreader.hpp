@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: snapshotreader.hpp,v 1.8 2006-05-21 15:22:30 thor Exp $
+ ** $Id: snapshotreader.hpp,v 1.9 2013-03-16 15:08:53 thor Exp $
  **
  ** This class implements the snapshot interface for reading a snapshot
  ** back from a file.

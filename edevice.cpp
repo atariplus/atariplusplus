@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: edevice.cpp,v 1.2 2008-09-07 17:18:44 thor Exp $
+ ** $Id: edevice.cpp,v 1.3 2013/11/29 11:27:55 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/
@@ -24,6 +24,17 @@ struct timeval {
   int tv_sec;       /* Seconds.  */
   int tv_usec;      /* Microseconds.  */
 };
+# else
+#  ifdef TIME_WITH_SYS_TIME
+#   include <sys/time.h>
+#   include <time.h>
+#  else
+#   ifdef HAVE_SYS_TIME_H
+#    include <sys/time.h>
+#   else
+#    include <time.h>
+#   endif
+#  endif
 # endif
 #endif
 ///

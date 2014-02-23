@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: streamimage.cpp,v 1.2 2009-08-11 11:52:52 thor Exp $
+ ** $Id: streamimage.cpp,v 1.3 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: Disk image class for any type of files that need to be put on disk
  **********************************************************************************/
@@ -157,7 +157,7 @@ void StreamImage::OpenImage(class ImageStream *image)
 /// StreamImage::ReadSector
 // Read a sector from the image into the supplied buffer. The buffer size
 // must fit the above SectorSize. Returns the SIO status indicator.
-UBYTE StreamImage::ReadSector(UWORD sector,UBYTE *buffer)
+UBYTE StreamImage::ReadSector(UWORD sector,UBYTE *buffer,UWORD &)
 {
   ULONG offset;
 #if CHECK_LEVEL > 0

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: serialstream.cpp,v 1.11 2005-09-10 13:58:34 thor Exp $
+ ** $Id: serialstream.cpp,v 1.13 2013/11/29 12:20:38 thor Exp $
  **
  ** In this module: An interface abstraction for serial ports,
  ** one level above the operating system. This here grands access
@@ -148,7 +148,11 @@ bool SerialStream::Open(const char *name)
 #endif
 	t.c_iflag    &= ~(IGNBRK|IGNPAR|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IUCLC|IXON|IMAXBEL|INPCK);
 	t.c_oflag    &= ~(OPOST|OLCUC|ONLCR|OCRNL|ONOCR|ONLRET|OFILL|OFDEL);
+#ifdef HAS_CRTSCTS_DEFINE
 	t.c_cflag    &= ~(CSIZE|CSTOPB|PARENB|HUPCL|CRTSCTS|CLOCAL);
+#else
+	t.c_cflag    &= ~(CSIZE|CSTOPB|PARENB|HUPCL|CLOCAL);
+#endif
 	t.c_cflag    |=   CREAD|CLOCAL; // do not monitor CarrierDetect
 	// Set to eight data bits
 	t.c_cflag    |= CS8;
@@ -462,12 +466,14 @@ bool SerialStream::SetHardwareHandshake(bool onoff)
 #if defined(UNIX)
     struct termios t; 
     //
-    if (tcgetattr(Stream->fd,&t) == 0) {  
+    if (tcgetattr(Stream->fd,&t) == 0) { 
+#ifdef HAS_CRTSCTS_DEFINE 
       if (onoff) {
 	t.c_cflag |= CRTSCTS;
       } else {
 	t.c_cflag &= ~CRTSCTS;
       }
+#endif
       if (tcsetattr(Stream->fd,TCSANOW,&t) == 0)
 	return true;
     }

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.cpp,v 1.102 2009-08-10 16:48:15 thor Exp $
+ ** $Id: machine.cpp,v 1.105 2014/02/20 19:18:49 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -24,6 +24,7 @@
 #include "mmu.hpp"
 #include "printer.hpp"
 #include "interfacebox.hpp"
+#include "tape.hpp"
 #include "diskdrive.hpp"
 #include "atarisio.hpp"
 #include "sound.hpp"
@@ -90,7 +91,11 @@ Machine::Machine(void)
   fronttype      = Front_SDL;
 #endif 
 #ifdef USE_SOUND
+#if HAVE_ALSA_ASOUNDLIB_H && HAVE_SND_PCM_OPEN && HAS_PROPER_ALSA
+  soundtype      = Sound_Alsa;
+#else
   soundtype      = Sound_HQ;
+#endif
 #elif HAVE_SDL_SDL_H && defined(HAVE_DXSOUND)
   soundtype      = Sound_DirectX;
 #elif HAVE_SDL_SDL_H && HAVE_SDL_OPENAUDIO
@@ -128,6 +133,7 @@ Machine::Machine(void)
   globalargs     = NULL;
   keypadstick    = NULL;
 
+  escCode        = 0;
   quit           = false;
   reset          = false;
   coldstart      = false;
@@ -264,6 +270,7 @@ void Machine::BuildMachine(class ArgParser *args)
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.2",1));
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.3",2));
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.4",3));
+  sio->RegisterDevice(new class Tape(this,"Tape"));
 
   for(i=0;i<4;i++) {
     snprintf(devname,40,"Joystick.%d",i);
@@ -436,10 +443,12 @@ void Machine::Jam(UBYTE opcode)
 void Machine::Escape(UBYTE code)
 {
   if (!patchProviderChain.IsEmpty()) {
-    class AdrSpace *ram = mmu->CPURAM();
-    if (patchProviderChain.First()) {
-      if (patchProviderChain.First()->RunEmulatorTrap(ram,cpu,code))
+    class AdrSpace *ram     = mmu->CPURAM();
+    class PatchProvider *pp = patchProviderChain.First();
+    while(pp) {
+      if (pp->RunEmulatorTrap(ram,cpu,code))
 	return;
+      pp = pp->NextOf();
     }
   }
   //
@@ -452,6 +461,23 @@ void Machine::Escape(UBYTE code)
 	       cpu->PC(),code);
     throw AsyncEvent(AsyncEvent::Ev_EnterMenu);
   }
+}
+///
+
+/// Machine::AlocateEscape
+// Allocate N escape codes, return the next available code.
+UBYTE Machine::AllocateEscape(UBYTE count)
+{
+  UBYTE next;
+
+  if (int(count) + int(escCode) >= 0xff)
+    Throw(OutOfRange,"Machine::AllocateEscape",
+	  "trying to install too many patches, out of machine ESCape codes");
+
+  next     = escCode;
+  escCode += count;
+
+  return next;
 }
 ///
 
@@ -528,6 +554,9 @@ void Machine::ParseConfig(class ArgParser *args)
     };
   static const struct ArgParser::SelectionVector soundvector[] =
     {
+#if HAVE_ALSA_ASOUNDLIB_H && HAVE_SND_PCM_OPEN && HAS_PROPER_ALSA
+      {"Alsa"   , Sound_Alsa },
+#endif
 #ifdef USE_SOUND
       {"HQOss"  , Sound_HQ   },
       {"Oss"    , Sound_Oss  },
@@ -538,9 +567,6 @@ void Machine::ParseConfig(class ArgParser *args)
       {"Wav"    , Sound_Wav  },
 #if HAVE_SDL_SDL_H && HAVE_SDL_INIT && HAVE_SDL_INITSUBSYSTEM && HAVE_SDL_OPENAUDIO
       {"SDL"    , Sound_SDL  },
-#endif
-#if HAVE_ALSA_ASOUNDLIB_H && HAVE_SND_PCM_OPEN && HAS_PROPER_ALSA
-      {"Alsa"   , Sound_Alsa },
 #endif
       {NULL     , 0},
     };
@@ -967,6 +993,7 @@ void Machine::ColdStart(void)
   reset    = false;
   coldstart= false;
   pause    = false;
+  escCode  = 0;
   //   
   SigHandler::RestoreCoreDump();
   // Prep all mapping

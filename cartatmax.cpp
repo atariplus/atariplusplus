@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartatmax.cpp,v 1.1 2006-05-26 18:59:29 thor Exp $
+ ** $Id: cartatmax.cpp,v 1.2 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: The implementation of an ATMax Supercart
  **********************************************************************************/

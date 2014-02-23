@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: wavsound.hpp,v 1.14 2005-09-10 12:55:42 thor Exp $
+ ** $Id: wavsound.hpp,v 1.16 2013/05/31 16:48:19 thor Exp $
  **
  ** In this module: Os interface for .wav file output
  **********************************************************************************/
@@ -51,6 +51,13 @@ class WavSound : public Sound {
   //
   // Sound playback is enabled if this is true
   bool             Playback;
+  //
+  // Enable recording after a reset.
+  bool             EnableAfterReset;
+  //
+  // Force stereo output because mono output is broken on
+  // some devices.
+  bool             ForceStereo;
   //
   // Wav output characteristics
   bool             WavStereo;     // generate WAV in stereo (both samples identically)

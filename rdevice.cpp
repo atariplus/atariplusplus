@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rdevice.cpp,v 1.3 2005-07-30 21:22:43 thor Exp $
+ ** $Id: rdevice.cpp,v 1.4 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: R: emulated device
  **********************************************************************************/
@@ -90,6 +90,8 @@ void RDevice::EnlargeBuffer(int datasize)
 // error code.
 UBYTE RDevice::RunCommand(UBYTE cmd,UBYTE aux1,UBYTE aux2,int &size)
 {
+  UWORD delay = 0;
+  
   if (serial) {
     UBYTE cmdframe[4]; // Build a command frame.
     SIO::CommandType cmdtype;
@@ -114,16 +116,19 @@ UBYTE RDevice::RunCommand(UBYTE cmd,UBYTE aux1,UBYTE aux2,int &size)
       // Do we need a new buffer? If so, enlarge.
       EnlargeBuffer(datasize);
       // Read the bytes into the system.
-      status   = serial->ReadBuffer(cmdframe,buffer,datasize);
+      delay    = 0;
+      status   = serial->ReadBuffer(cmdframe,buffer,datasize,delay);
       size     = datasize;
       break;
     case SIO::WriteCommand:
       // Transfer data from our buffer to the device.
-      status   = serial->WriteBuffer(cmdframe,buffer,size);
+      delay    = 0;
+      status   = serial->WriteBuffer(cmdframe,buffer,size,delay);
       break;
     case SIO::StatusCommand:
       // Just a simple status command, no data phase here.
-      status   = serial->ReadStatus(cmdframe);
+      delay    = 0;
+      status   = serial->ReadStatus(cmdframe,delay);
     }
     //
     // Check for the status, possibly create an error code.

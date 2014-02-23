@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.hpp,v 1.73 2010-12-25 14:04:26 thor Exp $
+ ** $Id: machine.hpp,v 1.75 2013/06/01 15:12:25 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -72,6 +72,7 @@ class Saveable;
 class SDL_Port;
 class Printer;
 class InterfaceBox;
+class Tape;
 class WarningRequester;
 class ErrorRequester;
 class AtariSIOPort;
@@ -172,6 +173,9 @@ class Machine {
   // The warning requester that collects warnings (and other problem cases)
   class WarningRequester *warninglog;
   class ErrorRequester   *errorlog;
+  //
+  // The next free Escape code
+  UBYTE                  escCode;
   //
   // The following is set to true when exiting the emulator.
   bool                   quit;
@@ -451,6 +455,8 @@ public:
   // to execute emulator specific instructions
   void Escape(UBYTE code);
   // 
+  // Allocate N escape codes, return the next available code.
+  UBYTE AllocateEscape(UBYTE count);
   //
   // Machine management functions
   //

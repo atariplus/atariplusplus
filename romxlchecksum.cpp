@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: romxlchecksum.cpp,v 1.7 2003-09-20 11:18:27 thor Exp $
+ ** $Id: romxlchecksum.cpp,v 1.8 2013-03-16 15:08:53 thor Exp $
  **
  ** In this module: Patch the ROM XL checksum to its proper value
  **********************************************************************************/

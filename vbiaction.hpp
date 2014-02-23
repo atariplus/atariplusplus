@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: vbiaction.hpp,v 1.5 2003-05-25 11:09:51 thor Exp $
+ ** $Id: vbiaction.hpp,v 1.6 2013-03-16 15:08:53 thor Exp $
  **
  ** In this module: Interface for frequent operations that have to happen
  **                 each VBI periodically.

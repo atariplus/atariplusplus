@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.88 2013-01-15 11:21:50 thor Exp $
+ ** $Id: monitor.cpp,v 1.90 2013-03-14 20:58:51 Administrator Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -2544,7 +2544,8 @@ void Monitor::BrkP::Apply(char e)
   switch(e) {
   case '?':
     Print("BRKP.S [addr] : set breakpoint at address\n"
-	  "BRKP.W [addr] : set watchpoint at address\n"
+	  "BRKP.W [addr] : set write only watchpoint at address\n"
+	  "BRKP.V [addr] : set read/write watchpoint at address\n"
 	  "BRKP.C [addr] : clear breakpoint at address\n"
 	  "BRKP.D [addr] : disable breakpoint at address\n"
 	  "BRKP.E [addr] : enable breakpoint at address\n"
@@ -2577,6 +2578,7 @@ void Monitor::BrkP::Apply(char e)
     }
     break;  
   case 'W':
+  case 'V':
     if (GetAddress(here)) {
       if (LastArg()) {
 	for(i=0;i<NumBrk;i++) {
@@ -2587,11 +2589,12 @@ void Monitor::BrkP::Apply(char e)
 	}
 	for(i=0;i<NumBrk;i++) {
 	  if (WatchPoints[i].id == -1) {
-	    WatchPoints[i].id = MMU->DebugRAM()->SetWatchPoint(here);
+	    WatchPoints[i].id = MMU->DebugRAM()->SetWatchPoint(here,e == 'V');
 	    if (WatchPoints[i].id >= 0) {
 	      cpu->EnableWatchPoints();
 	      WatchPoints[i].address = here;
 	      WatchPoints[i].enabled = true;
+	      WatchPoints[i].read    = (e == 'V');
 	      Print("Installed watchpoint at address : $%04x\n",here);
 	      return;
 	    }
@@ -2665,7 +2668,7 @@ void Monitor::BrkP::Apply(char e)
 	}	
 	for(i=0;i<NumBrk;i++) {
 	  if (WatchPoints[i].id >= 0 && WatchPoints[i].address == here) {
-	    WatchPoints[i].id = MMU->DebugRAM()->SetWatchPoint(here);
+	    WatchPoints[i].id = MMU->DebugRAM()->SetWatchPoint(here,WatchPoints[i].read);
 	    if (WatchPoints[i].id >= 0) {
 	      cpu->EnableWatchPoints();
 	      WatchPoints[i].address = here;
@@ -2711,7 +2714,8 @@ void Monitor::BrkP::Apply(char e)
       }
       for(i=0;i<NumBrk;i++) {
 	if (WatchPoints[i].id >= 0) {
-	  Print("Watchpoint at $%04x (%s)\n",
+	  Print("Watchpoint(%s) at $%04x (%s)\n",
+		(WatchPoints[i].read)?("read/write"):("write only"),
 		WatchPoints[i].address,
 		(WatchPoints[i].enabled)?("enabled"):("disabled"));
 	}
@@ -3043,6 +3047,12 @@ void Monitor::UnknownESC(UBYTE code)
 	"emulator with the RSET command.\n",
 	code,cpu->PC()-2); // the CPU advanced the PC already
   MainLoop();
+#ifdef MUST_OPEN_CONSOLE
+  if (!fetchtrace) {
+	machine->Display()->SwitchScreen(true);
+	CloseConsole();
+  }
+#endif
 }
 ///
 
@@ -3063,6 +3073,12 @@ void Monitor::Crash(UBYTE code)
 	"emulator with the RSET command.\n",
 	code,cpu->PC());
   MainLoop();
+#ifdef MUST_OPEN_CONSOLE
+  if (!fetchtrace) {
+	machine->Display()->SwitchScreen(true);
+	CloseConsole();
+  }
+#endif
 }
 ///
 
@@ -3083,6 +3099,12 @@ void Monitor::Jam(UBYTE code)
 	"emulator with the RSET command.\n",
 	code,cpu->PC());
   MainLoop();
+#ifdef MUST_OPEN_CONSOLE
+  if (!fetchtrace) {
+	machine->Display()->SwitchScreen(true);
+	CloseConsole();
+  }
+#endif
 }
 ///
 
@@ -3099,6 +3121,12 @@ void Monitor::EnterMonitor(void)
   Step.CloseDisplay();
   Print("\nEntering monitor\n");
   MainLoop();
+#ifdef MUST_OPEN_CONSOLE
+  if (!fetchtrace) {
+	machine->Display()->SwitchScreen(true);
+	CloseConsole();
+  }
+#endif
 }
 ///
 
@@ -3122,6 +3150,12 @@ void Monitor::CapturedBreakPoint(int,ADR pc)
     MainLoop();
   }
   curses = NULL;
+#ifdef MUST_OPEN_CONSOLE
+  if (!fetchtrace) {
+	machine->Display()->SwitchScreen(true);
+	CloseConsole();
+  }
+#endif
 }
 ///
 
@@ -3145,6 +3179,12 @@ void Monitor::CapturedWatchPoint(int,ADR mem)
     MainLoop();
   }
   curses = NULL;
+#ifdef MUST_OPEN_CONSOLE
+  if (!fetchtrace) {
+	machine->Display()->SwitchScreen(true);
+	CloseConsole();
+  }
+#endif
 }
 ///
 
@@ -3192,6 +3232,12 @@ void Monitor::CapturedTrace(ADR)
       MainLoop(false);
     }
     curses = NULL;
+#ifdef MUST_OPEN_CONSOLE
+	if (!fetchtrace) {
+		machine->Display()->SwitchScreen(true);
+		CloseConsole();
+	}
+#endif
   }
 }
 ///

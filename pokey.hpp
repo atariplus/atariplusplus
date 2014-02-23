@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.hpp,v 1.53 2013-01-01 17:36:55 thor Exp $
+ ** $Id: pokey.hpp,v 1.56 2013/06/04 21:12:43 thor Exp $
  **
  ** In this module: Pokey emulation
  **
@@ -216,12 +216,13 @@ class Pokey : public Chip, public Page, public Saveable, private HBIAction, priv
   bool NTSC;               // PAL/NTSC switch, true for NTSC
   bool SIOSound;           // Enable emulation of serial transfer sound
   bool CycleTimers;        // Pokey timers are cycle-precise.
-  bool LongStartBit;       // Enlarge the start bit to 1 1/2 bits.
   //
   // Serial input buffer: Position of the buffer, and number of bytes
-  // in there.
+  // in there, and the rate in 1.79MHz cycles.
   UBYTE *SerInBuffer;
   int    SerInBytes;
+  int    SerInRate;
+  bool   SerInManual;      // set if the serial input was parsed off manually.
   //  
   // Initialize the poly counter for audio usage and the bit-output of
   // the random generator, composed of the uppermost bits of the
@@ -315,8 +316,10 @@ public:
   //
   // Private for SIO:
   // Signal the arrival of a serial byte after
-  // n 15Khz steps steps or after the default delay
-  void SignalSerialBytes(UBYTE *buffer,int num,UWORD delay = 0);
+  // n 15Khz steps steps or after the default delay,
+  // and with a baud rate with the indicated timer constant
+  // measured in the period length in 1.79Mhz clocks.
+  void SignalSerialBytes(UBYTE *buffer,int num,UWORD delay = 0,UWORD cycles = 47);
   //
   // Signal that a command frame has been signaled and that we therefore
   // abort incoming IO traffic. This is a hack to enforce resynchronization

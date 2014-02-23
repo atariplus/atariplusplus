@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menufileitem.hpp,v 1.1 2003-05-11 10:05:55 thor Exp $
+ ** $Id: menufileitem.hpp,v 1.2 2013-03-16 15:08:52 thor Exp $
  **
  ** In this module: A direct descended of the menu item that generates requester
  ** events to open a file requester from a base name.

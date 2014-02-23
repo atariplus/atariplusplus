@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dcmimage.cpp,v 1.6 2003-04-24 21:15:58 thor Exp $
+ ** $Id: dcmimage.cpp,v 1.7 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: Disk image interface towards the dcm format
  **********************************************************************************/
@@ -404,7 +404,7 @@ void DCMImage::OpenImage(class ImageStream *image)
 /// DCMImage::Read
 // Reads data from the image into the buffer from the given
 // byte offset.
-UBYTE DCMImage::ReadSector(UWORD sector,UBYTE *buffer)
+UBYTE DCMImage::ReadSector(UWORD sector,UBYTE *buffer,UWORD &)
 {
   ULONG offset,size;
 #if CHECK_LEVEL > 0
@@ -435,7 +435,7 @@ UBYTE DCMImage::ReadSector(UWORD sector,UBYTE *buffer)
 // must fit the sector size above. Returns also the SIO status indicator.
 // As we cannot write into the compressed image, return always an error
 // here.
-UBYTE DCMImage::WriteSector(UWORD,const UBYTE *)
+UBYTE DCMImage::WriteSector(UWORD,const UBYTE *,UWORD &)
 {
   return 'E';
 }

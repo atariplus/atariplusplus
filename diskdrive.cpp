@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.73 2011-12-28 00:07:47 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.81 2013/05/23 19:12:40 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -20,6 +20,7 @@
 #include "diskimage.hpp"
 #include "xfdimage.hpp"
 #include "atrimage.hpp"
+#include "atximage.hpp"
 #include "binaryimage.hpp"
 #include "streamimage.hpp"
 #include "dcmimage.hpp"
@@ -93,7 +94,7 @@ DiskDrive::DiskDrive(class Machine *mach,const char *name,int id)
   ProtectionStatus = (id == 0)?(UnLoaded):(Off);
   ImageType        = Unknown;
   ImageStream      = NULL;
-  Disk              = NULL;
+  Disk             = NULL;
   ImageName        = NULL;
   ImageToLoad      = NULL;
   DisplayControl   = 0;
@@ -107,6 +108,7 @@ DiskDrive::DiskDrive(class Machine *mach,const char *name,int id)
   // Provide default configuration.
   Emulates815      = true;
   EmulatesSpeedy   = true;
+  LastFDCCommand   = FDC_Reset;
   RunningTest      = 0xff; // none
   LastSector       = 1;
 }
@@ -129,6 +131,7 @@ DiskDrive::~DiskDrive(void)
 /// DiskDrive::ColdStart
 void DiskDrive::ColdStart(void)
 {
+  LastFDCCommand = FDC_Reset;
 }
 ///
 
@@ -420,38 +423,80 @@ UBYTE DiskDrive::DriveStatus(UBYTE *buffer)
   buffer[0] = 0;
   buffer[1] = 0;
 
-  if (ProtectionStatus != UnLoaded) {
-    buffer[0] |= 16;  // drive is active (so we say)
-    buffer[1] |= 128; // drive has been loaded
+  // Construct the FDC status - note that this is active-low.
+  switch(LastFDCCommand) {
+  case FDC_Read:
+  case FDC_ReadTrack:
+    // read track and read sector command always have the
+    // write protection bit clear.
+    buffer[1]   |= DiskImage::Protected | DiskImage::Busy;
+    if (Disk && (ProtectionStatus == ReadOnly || ProtectionStatus == ReadWrite)) {
+      buffer[1] |= ~Disk->Status();
+      buffer[1] |= DiskImage::NotReady;
+    } else {
+      // RNF always clear, no record there.
+      buffer[1] |= DiskImage::NotFound | DiskImage::CRCError; 
+      buffer[1] |= DiskImage::LostData | DiskImage::DRQ;
+    }
+    break;
+  case FDC_Write:
+  case FDC_WriteTrack:
+    // The FDC write protection bit is mirrored from the disk status.
+    buffer[1]   |= DiskImage::Busy; 
+    if (Disk && (ProtectionStatus == ReadOnly || ProtectionStatus == ReadWrite)) {
+      buffer[1] |= ~Disk->Status();
+      buffer[1] |= DiskImage::NotReady;
+    } else {
+      buffer[1] |= DiskImage::NotFound | DiskImage::CRCError;
+      buffer[1] |= DiskImage::LostData | DiskImage::DRQ;
+    }
+    break;
+  case FDC_Seek:
+    // Seek commands, type I. 
+    buffer[1]   |= DiskImage::Busy; 
+    if (Disk && (ProtectionStatus == ReadOnly || ProtectionStatus == ReadWrite)) {
+      // Copy write protection here.
+      buffer[1] |= ~Disk->Status();
+      buffer[1] |= DiskImage::NotReady;
+      buffer[1] &= ~UBYTE(1 << 5); // head loaded, bit 5 has a different meaning.
+    } else {
+      buffer[1] |= DiskImage::CRCError;
+    }
+    buffer[1] |= 1 << 4; // no seek error, bit 4 has a different meaning.
+    buffer[1] &= ~UBYTE(1 << 1); // index pulse detected.
+    if (LastSector <= SectorsPerTrack) {
+      buffer[1] |= 1 << 2; // reached track zero.
+    } else {
+      buffer[1] &= ~UBYTE(1 << 2); // outside of track zero.
+    }
+    break;
+  case FDC_Reset:
+    // I really do not know the state of the FDC status after reset. Just make
+    // it say "all fine here".
+    buffer[1] = 0xff;
+    break;
   }
-
+  
   if (ProtectionStatus == ReadOnly) {
     buffer[0] |= 8;   // drive is read-only
-    buffer[1] |= 64;
   }
 
   switch(DiskStatus) {
   case Single:
-    if (LastSector <= SectorsPerTrack)
-      buffer[1] |= 4; // indicate the track #0 flag
     break;
   case Enhanced:
-    if (LastSector <= SectorsPerTrack)
-      buffer[1] |= 4; // indicate the track #0 flag
     buffer[0]   |= 128;
     break;
   case Double:
   case High:
-    if (LastSector <= SectorsPerTrack)
-      buffer[1] |= 4; // indicate the track #0 flag
     buffer[0]   |= 32;
     break;
   default: // Shut up the compiler
     break;
   }
   
-  buffer[2] = 7; // drive timeout in seconds
-  buffer[3] = 0;
+  buffer[2] = 0xe0; // drive format timeout in seconds
+  buffer[3] = 0;    // unused
 
   return 'C';
 }
@@ -468,6 +513,9 @@ UBYTE DiskDrive::FormatSingle(UBYTE *buffer,UWORD aux)
     if (aux == 0x411) {
       SectorCount = 1040; // This is in fact an enhanced density write
       SectorSize  = 128;
+    } else if (SectorCount == 1040) {
+      // Switch back to SD if it was ED.
+      SectorCount = 720;
     } else {
       // Keep the geometry as defined by the set density command (KMK)
       //SectorSize  = (DiskStatus == Double)?256:128;
@@ -641,6 +689,11 @@ void DiskDrive::OpenDiskFromStream(void)
       Disk = new class ATRImage(machine);
       Disk->OpenImage(ImageStream);
       ImageType   = ATR;
+    } else if (buffer[0] == 'A' && buffer[1] == 'T') {
+      // This is an ATX image.
+      Disk = new class ATXImage(machine);
+      Disk->OpenImage(ImageStream);
+      ImageType   = ATX;
     } else if (buffer[0] == 0xff && buffer[1] == 0xff) {
       // This is a binary load file.
       Disk = new class BinaryImage(machine);
@@ -671,12 +724,14 @@ void DiskDrive::OpenDiskFromStream(void)
       ImageType   = XFD;
     }
     // Check whether this thingy is write-protected.
-    ProtectionStatus = Disk->ProtectionStatus()?(ReadOnly):(ReadWrite);
+    ProtectionStatus = (Disk->Status() & DiskImage::Protected)?(ReadOnly):(ReadWrite);
+    LastFDCCommand   = FDC_Reset;
     //    
     // Fill in sector size and sector count since we need it later
     // for the drive status anyhow.
     {
       const struct DriveLayout *layout = drive_layouts;
+      ULONG bestguess = SectorCount; // Hard disk guess: A single track.
       SectorCount = Disk->SectorCount();
       SectorSize  = Disk->SectorSize(4);
       //
@@ -687,11 +742,15 @@ void DiskDrive::OpenDiskFromStream(void)
 	  SectorsPerTrack = layout->secspertrack;
 	  break; // found a match
 	}
+	if (layout->secsize      == SectorSize && SectorCount          <= seccount) {
+	  bestguess       = layout->secspertrack;
+	  break; // found a near match for an incomplete image.
+	}
 	layout++;
       }
-      // Otherwise, make this a hard disk and assign it to a single track.
+      // Otherwise, use the best guess available.
       if (layout->heads == 0)
-	SectorsPerTrack = SectorCount;
+	SectorsPerTrack = bestguess;
     }
     //
     // Check for the sector size we find here to check the density.
@@ -792,6 +851,7 @@ SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &dat
     if ((datasize = SpeedyBankSize(sector)))
       return SIO::WriteCommand;
     // True hardware sector size: Ask the disk otherwise.
+    LastFDCCommand = FDC_Write;
     // If no disk, leave at zero.
     if (Disk && ProtectionStatus != UnLoaded) {
       datasize = Disk->SectorSize(sector);
@@ -800,14 +860,17 @@ SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &dat
     }
     return SIO::WriteCommand;
   case 0x21:  // format single density
-    datasize    = SectorSize; // Keep as defined by the status command
+    datasize       = SectorSize; // Keep as defined by the status command
     // (DiskStatus == Double)?256:128; // This looks wierd, but seems to be correct!
+    LastFDCCommand = FDC_WriteTrack;
     return SIO::FormatCommand;  
   case 0x22:  // format enhanced density  
-    datasize      = 128;
+    datasize       = 128;
+    LastFDCCommand = FDC_WriteTrack;
     return SIO::FormatCommand;
   case 0x23:  // Start drive test
-    datasize      = 128;
+    datasize       = 128;
+    LastFDCCommand = FDC_Seek;
     return SIO::WriteCommand;
   case 0x24:  // Stop drive test, deliver the results.
     datasize      = 128;
@@ -821,6 +884,7 @@ SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &dat
   case 0x52:  // read
     if ((datasize = SpeedyBankSize(sector)))
       return SIO::ReadCommand;
+    LastFDCCommand = FDC_Read;
     if (Disk && ProtectionStatus != UnLoaded) {
       datasize = Disk->SectorSize(sector);
     } else {
@@ -846,7 +910,8 @@ SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &dat
 // Return 'C' if this worked fine, 'E' on error.
 // Does not alter the size passed in since we work on the full
 // buffer.
-UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,int &size)
+UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
+			     int &size,UWORD &delay)
 {
   UWORD  sector = UWORD(commandframe[2] | (commandframe[3] << 8));
   
@@ -894,10 +959,10 @@ UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,int &
       if (sectorsize == 0) {
 	// Ok, here we are dealing with a true disk sector. Perform the write.
 	if (Disk && ProtectionStatus == ReadWrite) {
-	  LastSector = sector;
-	  sectorsize = Disk->SectorSize(sector);
+	  LastSector  = sector;
+	  sectorsize  = Disk->SectorSize(sector);
 	  if (sectorsize == sz) {
-	    return Disk->WriteSector(sector,buffer);
+	    return Disk->WriteSector(sector,buffer,delay);
 	  }
 	}
 	// Signal an error in all other cases.
@@ -923,7 +988,7 @@ UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,int &
 // byte which is computed for us by the SIO.
 // We do not alter the size passed in since we read the command
 // completely.
-UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &)
+UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &delay)
 {
   UWORD sector = UWORD(commandframe[2] | (commandframe[3] << 8));
   
@@ -945,8 +1010,8 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &)
       if (sectorsize == 0) {
 	// Is not a speedy bank, ask usual floppy
 	if (Disk) {
-	  LastSector = sector;
-	  return Disk->ReadSector(sector,buffer);
+	  LastSector  = sector;
+	  return Disk->ReadSector(sector,buffer,delay);
 	}
 	// Return an error otherwise.
 	return 'E';
@@ -979,6 +1044,7 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &)
 	return 'C';
       case 0x01: // Motor start test
 	buffer[0] = 0x14;
+	buffer[1] = 0x23;
 	return 'C';
       case 0x02: // Head step/settle test.
       case 0x03:
@@ -1002,7 +1068,7 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &)
 /// DiskDrive::ReadStatus
 // Execute a status-only command that does not read or write any data except
 // the data that came over AUX1 and AUX2
-UBYTE DiskDrive::ReadStatus(const UBYTE *commandframe)
+UBYTE DiskDrive::ReadStatus(const UBYTE *commandframe,UWORD &)
 {
   switch(commandframe[1]) {  
   case 0x44: // Set Display control. This is a read command (Yuck!)
@@ -1060,6 +1126,7 @@ void DiskDrive::EjectDisk(void)
     DiskStatus       = None;
     ImageType        = Unknown;
     ProtectionStatus = UnLoaded;
+    LastFDCCommand   = FDC_Reset;
   }
 }
 ///
@@ -1076,14 +1143,15 @@ void DiskDrive::InsertDisk(bool protect)
       Throw(ObjectExists,"DiskDrive::InsertDisk","the inserted disk image name exists already");
 #endif
     // Copy the name over from here.
-    ImageName = new char[strlen(ImageToLoad) + 1];
+    ImageName      = new char[strlen(ImageToLoad) + 1];
+    LastFDCCommand = FDC_Reset;
     strcpy(ImageName,ImageToLoad);
     // Now check whether we should write-protect it.
     if (Disk && protect) {
       Disk->ProtectImage();
       //
       // This should hopefully work now.
-      ProtectionStatus = Disk->ProtectionStatus()?(ReadOnly):(ReadWrite);
+      ProtectionStatus = (Disk->Status() & DiskImage::Protected)?(ReadOnly):(ReadWrite);
     }
   }
 }
@@ -1156,7 +1224,7 @@ void DiskDrive::ParseArgs(class ArgParser *args)
 void DiskDrive::DisplayStatus(class Monitor *mon)
 {
   const char *status;
-
+ 
   switch(ProtectionStatus) {
   case Off:
     status = "Off";
@@ -1177,6 +1245,25 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
   mon->PrintStatus("Diskdrive D%d: status:\n"
 		   "\tDiskStatus       : %s\n",
 		   DriveId,status);
+
+  //
+  // Extract the FDC status.
+  if (ProtectionStatus != Off && Disk) { 
+    UBYTE status = Disk->Status();
+
+    mon->PrintStatus("\tFDC Status       : ");
+
+    if (status & DiskImage::LostData)
+      mon->PrintStatus("lost data ");
+    if (status & DiskImage::CRCError)
+      mon->PrintStatus("CRC error ");
+    if (status & DiskImage::NotFound)
+      mon->PrintStatus("sector missing ");
+    if ((status & (DiskImage::LostData | DiskImage::CRCError |
+		   DiskImage::NotFound | DiskImage::Protected)) == 0)
+      mon->PrintStatus("OK");
+    mon->PrintStatus("\n");
+  }
 
   if (ProtectionStatus == ReadWrite || ProtectionStatus == ReadOnly) {
     const char *disktype,*imagetype;
@@ -1206,6 +1293,9 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
       break;
     case XFD:
       imagetype = "XFD";     // XFD format
+      break;
+    case ATX:
+      imagetype = "ATX";     // ATX format
       break;
     case ATR:
       imagetype = "ATR";     // ATR format

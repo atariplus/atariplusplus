@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuoption.hpp,v 1.4 2005-09-10 12:55:40 thor Exp $
+ ** $Id: menuoption.hpp,v 1.5 2013-03-16 15:08:52 thor Exp $
  **
  ** In this module: Definition of an option within the graphical fronent, i.e.
  ** something that is selectable/adjustable under a topic

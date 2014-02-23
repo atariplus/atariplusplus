@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hbiaction.cpp,v 1.1 2003-05-25 11:09:51 thor Exp $
+ ** $Id: hbiaction.cpp,v 1.2 2013-03-16 15:08:52 thor Exp $
  **
  ** In this module: Interface for frequent operations that have to happen
  **                 each horizontal blank periodically.

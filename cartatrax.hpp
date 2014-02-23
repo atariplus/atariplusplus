@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartatrax.hpp,v 1.4 2006-05-25 17:44:16 thor Exp $
+ ** $Id: cartatrax.hpp,v 1.5 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: The implementation of an ATRAX supercart
  **********************************************************************************/

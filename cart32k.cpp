@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart32k.cpp,v 1.11 2005-09-24 11:51:46 thor Exp $
+ ** $Id: cart32k.cpp,v 1.12 2013-03-16 15:08:50 thor Exp $
  **
  ** In this module: The implementation of a plain 32K cart
  **********************************************************************************/

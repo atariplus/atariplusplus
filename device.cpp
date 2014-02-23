@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: device.cpp,v 1.23 2008-08-25 16:42:57 thor Exp $
+ ** $Id: device.cpp,v 1.24 2013-04-12 18:46:38 thor Exp $
  **
  ** In this module: CIO device interface
  **********************************************************************************/
@@ -42,6 +42,7 @@ void Device::SetResult(class CPU *cpu,UBYTE result)
 // NUL-termination and abortion on invalid characters.
 void Device::ExtractFileName(class AdrSpace *adr,ADR mem,char *buf,int bufsize)
 {
+  bool founddevice = false;
   char *start = buf;
   char c;
   int len;
@@ -53,9 +54,10 @@ void Device::ExtractFileName(class AdrSpace *adr,ADR mem,char *buf,int bufsize)
     c = ValidCharacter(char(adr->ReadByte(mem++)));
     if (c == 0)
       break;
-    if (c == ':') { // Cut-off the device specifier
+    if (c == ':' && !founddevice) { // Cut-off the device specifier
       buf = start;
       len = 0;
+      founddevice = true;
       // We do not check whether we found a ":". We must have, as
       // CIO could not operate otherwise.
       continue;

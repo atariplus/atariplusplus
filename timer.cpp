@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: timer.cpp,v 1.22 2005-09-10 13:58:35 thor Exp $
+ ** $Id: timer.cpp,v 1.23 2013-03-16 15:08:53 thor Exp $
  **
  ** In this module: Support for various timing related issues
  **********************************************************************************/

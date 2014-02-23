@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: patch.hpp,v 1.16 2005-07-10 15:26:00 thor Exp $
+ ** $Id: patch.hpp,v 1.17 2013-02-14 15:38:34 thor Exp $
  **
  ** In this module: Generic administration of patches
  **********************************************************************************/
@@ -65,7 +65,7 @@ public:
   }
   // This is for the maintainer of the patch list: Install all patches
   // in a row. Call it from the first patch at hand.
-  void InstallPatchList(class AdrSpace *adr);
+  void InstallPatchList(class Machine *mach,class AdrSpace *adr);
   //
   // This is for the CPU emulator: Find a patch by an ESC code and
   // dispatch it. Call this for the first patch in a list of

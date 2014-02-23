@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.hpp,v 1.22 2005-09-10 12:55:42 thor Exp $
+ ** $Id: sio.hpp,v 1.24 2013/05/31 22:08:00 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.
@@ -88,6 +88,9 @@ private:
   // Checksum computed so far
   UBYTE               CurrentSum;
   //
+  // Flag whether the tape motor is running (or enabled to be running).
+  bool                MotorEnabled;
+  //
   // The following is true in case we have been warned already.
   bool                HaveWarned;
   //
@@ -162,6 +165,27 @@ public:
   bool ConcurrentRead(UBYTE &data);
   // Output a serial byte thru concurrent mode over the channel.
   void ConcurrentWrite(UBYTE data);
+  //
+  //
+  // The following two functions support the tape-only communications.
+  // This is enabled by Pokey only in case the motor line of PIA is
+  // enabled.
+  //
+  // Enable or disable the state of the tape motor,
+  // thus potentially running or stopping the
+  // motor. The argument is the raw state of the PIA pin, which
+  // is active-low.
+  void SetMotorLine(bool onoff);
+  //
+  // Output a byte from the tape recorder.
+  void TapeWrite(UBYTE data);
+  //
+  // Get the status of the motor. If the returned value is true,
+  // the tape motor may run.
+  bool isMotorEnabled(void) const
+  {
+    return MotorEnabled;
+  }
   //
   // Print the status of the chip over the monitor
   virtual void DisplayStatus(class Monitor *mon);

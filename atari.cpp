@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atari.cpp,v 1.37 2008-05-20 20:38:39 thor Exp $
+ ** $Id: atari.cpp,v 1.38 2014/01/08 13:09:53 thor Exp $
  **
  ** In this module: Main loop of the emulator
  **********************************************************************************/
@@ -291,7 +291,7 @@ void Atari::ParseArgs(class ArgParser *args)
 
   value = NTSC;
   args->DefineTitle("Speed");
-  args->DefineLong("MaxMiss","set maximum number of missed frames",1,16,MaxMiss);
+  args->DefineLong("MaxMiss","set maximum number of missed frames",1,100,MaxMiss);
   args->DefineSelection("VideoMode","set the video mode",videovector,value);
   NTSC = (value)?(true):(false);
   args->DefineBool("UnlockRate","don't lock the refresh rate to the video emulation mode",customref);

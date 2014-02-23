@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dcmimage.hpp,v 1.2 2003-02-03 21:43:20 thor Exp $
+ ** $Id: dcmimage.hpp,v 1.4 2013-02-23 18:11:00 thor Exp $
  **
  ** In this module: Disk image interface towards the dcm format
  **********************************************************************************/
@@ -90,22 +90,22 @@ public:
   // Return the number of sectors.
   virtual ULONG SectorCount(void);
   //
-  // Get a protection status, i.e. wether we may write to the image.
-  // Returns true in case we are protected. Since we cannot write back
-  // to the compressed image without recompression, we currently 
-  // return true here: always protected
-  virtual bool ProtectionStatus(void)
+  // Get the status of the disk image.
+  virtual UBYTE Status(void)
   {
-    return true;
+    // Since we cannot write back
+    // to the compressed image without recompression, we currently 
+    // return true here: always protected
+    return DiskImage::Protected;
   }
   //  
   // Read a sector from the image into the supplied buffer. The buffer size
   // must fit the above SectorSize. Returns the SIO status indicator.
-  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer);
+  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer,UWORD &delay);
   //
   // Write a sector to the image from the supplied buffer. The buffer size
   // must fit the sector size above. Returns also the SIO status indicator.
-  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer);
+  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer,UWORD &delay);
   //
   // Protect an image on user request
   virtual void ProtectImage(void);  

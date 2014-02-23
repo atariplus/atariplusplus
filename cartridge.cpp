@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartridge.cpp,v 1.20 2011-06-24 20:11:17 thor Exp $
+ ** $Id: cartridge.cpp,v 1.21 2013/09/02 15:35:46 thor Exp $
  **
  ** In this module: The superclass individual cart types are derived from
  **********************************************************************************/
@@ -100,10 +100,12 @@ Cartridge::CartTypeId Cartridge::GuessCartType(class Machine *mach,FILE *cart,bo
       case 0x07:
 	withheader = true;
 	carttype   = Cart_BBOB;
+	break;
       case 0x08:
       case 0x16:
 	withheader = true;
 	carttype   = Cart_Will;
+	break;
       case 0x09:
 	withheader = true;
 	carttype   = Cart_32KExp;
@@ -162,6 +164,7 @@ Cartridge::CartTypeId Cartridge::GuessCartType(class Machine *mach,FILE *cart,bo
       case 0x26:
 	withheader = true;
 	carttype   = Cart_Flash;
+	break;
       case 0x27:
       case 0x28:
 	withheader = true;

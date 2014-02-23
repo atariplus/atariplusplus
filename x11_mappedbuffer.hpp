@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_mappedbuffer.hpp,v 1.6 2005-09-20 21:13:02 thor Exp $
+ ** $Id: x11_mappedbuffer.hpp,v 1.8 2014/01/08 19:02:01 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -39,7 +39,9 @@ class X11_MappedBuffer : public X11_DisplayBuffer {
   //
 public:
   // Size of the point/rectangle buffer in entries.
-  static const int RenderBufferSize INIT(16);
+  // Latest revisions of the i830M drivers slow down noticably
+  // with smaller buffer sizes.
+  static const int RenderBufferSize INIT(128);
   static const int ScanBuffNum      INIT(256);
   //
 private:

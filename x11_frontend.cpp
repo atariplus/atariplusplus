@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.78 2013-01-12 11:06:01 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.83 2014/01/09 00:05:46 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -17,6 +17,7 @@
 #include "gamecontroller.hpp"
 #include "exceptions.hpp"
 #include "x11_displaybuffer.hpp"
+#include "x11_xvideobuffer.hpp"
 #include "antic.hpp"
 #include "gtia.hpp"
 #include "stdio.hpp"
@@ -92,10 +93,23 @@ class X11_DisplayBuffer *X11_FrontEnd::GetFrameBuffer(void)
 {
   if (framebuffer == NULL && isinit) { 
     truecolor   = machine->GTIA()->SuggestTrueColor();
-    framebuffer = XFront::FrameBufferOf(truecolor && depth > 8);
-    framebuffer->ConnectToX(display,screen,window,cmap,
-			    LeftEdge,TopEdge,Width,Height,
-			    PixelWidth,PixelHeight,PixMapIndirect);
+    framebuffer = XFront::FrameBufferOf(truecolor && depth > 8,EnableXVideo);
+    try {
+      framebuffer->ConnectToX(display,screen,window,cmap,
+			      LeftEdge,TopEdge,Width,Height,
+			      PixelWidth,PixelHeight,PixMapIndirect);
+    } catch(AtariException &aex) {
+      if (EnableXVideo) {
+	XFront::UnloadFrameBuffer();
+	framebuffer  = NULL;
+	EnableXVideo = false;
+	fixerror     = false;
+	framebuffer  = XFront::FrameBufferOf(truecolor && depth > 8,false);
+	framebuffer->ConnectToX(display,screen,window,cmap,
+				LeftEdge,TopEdge,Width,Height,
+				PixelWidth,PixelHeight,PixMapIndirect);
+      } else throw;
+    }
   }
   return framebuffer;
 }
@@ -356,8 +370,26 @@ void X11_FrontEnd::CreateDisplay(void)
   XSync(display,false);    
   //XSetInputFocus(display,window,RevertToNone,CurrentTime);
   if (truecolor && depth <= 8) {
-    machine->PutWarning("Advanced image processing bypassed since "
+    machine->PutWarning("Advanced true color processing bypassed since "
 			"no true color display is available.");
+  }
+  //
+  // If this is an xvideo frame buffer and we failed, try again. Otherwise,
+  // fail really!
+  if (fixerror) {
+    if (EnableXVideo) {
+      UnloadFrameBuffer();
+      EnableXVideo = false; 
+      // Sync and discard all events on the event queue
+      XSync(display,true);
+      fixerror     = false;
+      //
+      machine->PutWarning("XVideo display not available.");
+    } else {
+      Throw(ObjectDoesntExist,"X11_FrontEnd::CreateDisplay",
+	    "Unable to create an X11 display.\n"
+	    "Sorry, no graphical output available.\n");
+    }
   }
 }
 ///
@@ -567,6 +599,7 @@ void X11_FrontEnd::HandleKeyEvent(XKeyEvent *event)
     }
     break;
   case XK_BackSpace :
+  case XK_Terminate_Server:
     keyboard->HandleSimpleKey(downflag,0x08,shift,control); // backspace
     break;
   case XK_Delete:
@@ -996,6 +1029,7 @@ void X11_FrontEnd::ParseArgs(class ArgParser *args)
   LONG h        = Height;
   LONG format   = Format;
   bool indirect = PixMapIndirect;
+  bool xvideo   = EnableXVideo;
   static const struct ArgParser::SelectionVector Formats[] = {
     {"PNM", ScreenDump::PNM},
     {"BMP", ScreenDump::BMP},
@@ -1015,6 +1049,9 @@ void X11_FrontEnd::ParseArgs(class ArgParser *args)
 #ifdef USE_DPMS
   args->DefineBool("DisableDPMS","disable screen power saving",DisableDPMS);
 #endif
+#ifdef X_USE_XV
+  args->DefineBool("XVideoRendering","render through XVideo extension",EnableXVideo);
+#endif
   args->DefineBool("RenderIndirect","enable rendering thru a pixmap",PixMapIndirect);
   args->DefineString("ScreenBase","file base name for screen dumps",PictureBaseName);
   args->DefineLong("PixelWidth","sets the pixel width multiplier",1,8,PixelWidth);
@@ -1032,6 +1069,15 @@ void X11_FrontEnd::ParseArgs(class ArgParser *args)
   Format = (ScreenDump::GfxFormat)format;
 #ifdef USE_DPMS
   disableDPMS(display,DisableDPMS);
+  if (fixerror && xvideo) {
+    EnableXVideo = false;
+    UnloadFrameBuffer();
+    // Sync and discard all events on the event queue
+    XSync(display,true);
+    fixerror     = false; 
+    args->SignalBigChange(ArgParser::Reparse);
+    machine->PutWarning("XVideo display not available, disabling it.");
+  }
 #endif  
   if (pxwidth   != PixelWidth     ||
       pxheight  != PixelHeight    ||
@@ -1044,7 +1090,7 @@ void X11_FrontEnd::ParseArgs(class ArgParser *args)
     args->SignalBigChange(ArgParser::Reparse);
     CloseDisplay();
   }
-  if (truecolor != machine->GTIA()->SuggestTrueColor() ||
+  if (truecolor != machine->GTIA()->SuggestTrueColor() || xvideo != EnableXVideo   ||
       (colormap && (colormap != machine->GTIA()->ActiveColorMap()))) {
     args->SignalBigChange(ArgParser::Reparse);
     UnloadFrameBuffer();

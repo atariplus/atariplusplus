@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: printer.hpp,v 1.13 2005-09-10 13:58:34 thor Exp $
+ ** $Id: printer.hpp,v 1.14 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: Support for printer output.
  **********************************************************************************/
@@ -91,15 +91,17 @@ public:
   //
   // Read bytes from the device into the system. Returns the number of
   // bytes read.
-  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &datasize);
+  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
+			   int &datasize,UWORD &delay);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error.
-  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,int &datasize);
+  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
+			    int &datasize,UWORD &delay);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame);
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay);
   //
   // Other methods imported by the SerialDevice class:
   //

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.123 2013-01-11 20:47:44 thor Exp $
+ ** $Id: pokey.cpp,v 1.127 2013/06/04 21:12:43 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -136,7 +136,6 @@ Pokey::Pokey(class Machine *mach,int unit)
   NTSC             = false;
   SIOSound         = true;
   CycleTimers      = false;
-  LongStartBit     = false;
   Outcnt           = 0;
   //
   // Initialize serial timing, will be overridden
@@ -145,6 +144,8 @@ Pokey::Pokey(class Machine *mach,int unit)
   SerOut_Delay     = 9 * Base15kHz;
   SerXmtDone_Delay = 9 * Base15kHz;
   SerBitOut_Delay  = Base15kHz;
+  SerInRate        = 0;
+  SerInManual      = false;
   //
   // Initialize pointers to be on the safe side.
   sound            = NULL;
@@ -207,6 +208,8 @@ void Pokey::WarmStart(void)
   SkStat             = 0xf0; // no pending errors
   SkCtrl             = 0x00;
   SerInBytes         = 0x00; // reset serial port
+  SerInRate          = 0;
+  SerInManual        = false;
   //
   //
   // Initialize poly counter registers
@@ -275,6 +278,8 @@ Pokey::~Pokey(void)
   // allocated.
   delete[] PolyCounter9;
   delete[] PolyCounter17;
+  delete[] Random9;
+  delete[] Random17;
   delete[] OutputMapping;
 }
 ///
@@ -821,15 +826,30 @@ void Pokey::GoNSteps(int steps)
     // Check for serial input done.
     if (SerIn_Counter > 0) {
       if ((SerIn_Counter -= steps) <= 0) {  
-	SerIn_Counter = 0;
-	// Check whether SIO delivered any new bytes. If so,
-	// generate an IRQ to deliver them.
-	if (SerInBytes) {
-	  // Serial input just finished. Generate an IRQ.   
-	  GenerateIRQ(0x20);
-	} else if (sio) {
-	  // Ask SIO again.
-	  sio->RequestInput();
+	// If we parsed the line manually, check whether
+	// the stop bit was parsed as well. If so, the data
+	// is here (incorrectly) not passed into the serial shift
+	// register but removed manually, and serial input proceeds.
+	if (SerInManual && SerInRate) {
+	  SerIn_Counter += SerInRate * 20;
+	  SerInManual    = false;
+	  if (SerInBytes > 0) {
+	    SerInBuffer++;
+	    // More serial data available? If so, expect the next byte soon
+	    SerInBytes--;
+	  }
+	} else {
+	  // Automatic mode, receive through pokey.
+	  SerIn_Counter = 0;
+	  // Check whether SIO delivered any new bytes. If so,
+	  // generate an IRQ to deliver them.
+	  if (SerInBytes) {
+	    // Serial input just finished. Generate an IRQ.   
+	    GenerateIRQ(0x20);
+	  } else if (sio) {
+	    // Ask SIO again.
+	    sio->RequestInput();
+	  }
 	}
       }
     }
@@ -1298,19 +1318,21 @@ UBYTE Pokey::SkStatRead(void)
   // This emulates a device that operates at the 19200 baud the
   // SIO chain operates with, and does not recognize any internal
   // clock.
-  if (SerIn_Counter > 0 && SerInBuffer) {
-    const int timerconstant = (0x28 + 7); // This is the pokey timer constant for the 19200 baud control
-    int bitposition   = (SerIn_Counter + (timerconstant >> 1)) / timerconstant; // "half-bits"
+  if (SerIn_Counter > 0 && SerInBuffer && SerInRate > 0) {
+    int bitposition   = (SerIn_Counter + SerInRate - 1) / SerInRate; // "half-bits"
     bool bit          = true; // default level on the serial line is high.
     //
-    if ((LongStartBit && bitposition == 21) || bitposition == 20 || bitposition == 19) { 
+    if (bitposition == 20 || bitposition == 19) { 
       // The start bit. Actually, 1 1/2 start bits. If we assume that the
       // receiver waits 1 1/2 bits to sample at the middle of the bit, this
       // might be ok.
       bit = false;
     } else if (bitposition < 19 && bitposition > 2) {
       bit = ((*SerInBuffer >> (7 - ((bitposition - 3) >> 1))) & 0x01)?true:false;
-    } 
+    } else if (bitposition <= 2) {
+      // We are reading the stop bits. Consider this serial input as "missed".
+      SerInManual = true;
+    }
     //
     // Stop bits are one.
     //
@@ -1430,6 +1452,9 @@ void Pokey::SerOutWrite(UBYTE val)
 	// Hacky. This is used for the concurrent mode.
 	// Transmit the byte thru the concurrent channel
 	sio->ConcurrentWrite(val);
+      } else if (SkCtrl & 0x08) {
+	// Two-tone mode enabled. Ok, write tape data.
+	sio->TapeWrite(val);
       } else {
 	// This is used for the regular SIO mode.
 	sio->WriteByte(val);
@@ -1565,7 +1590,7 @@ UBYTE Pokey::AllPotRead(void)
 // n 15Khz steps steps. Note that we might signal
 // zero bytes here in case we just want pokey to ask
 // back later...
-void Pokey::SignalSerialBytes(UBYTE *data,int num,UWORD delay)
+void Pokey::SignalSerialBytes(UBYTE *data,int num,UWORD delay,UWORD baudrate)
 {
   if (SerIn_Counter > 0 || SerInBytes) {
     // Serial problem of pokey: Serial device miscommunication,
@@ -1576,6 +1601,7 @@ void Pokey::SignalSerialBytes(UBYTE *data,int num,UWORD delay)
   }
   SerInBuffer    = data;
   SerInBytes     = num;
+  SerInRate      = baudrate;
   SerIn_Counter  = delay * Base15kHz + SerIn_Delay;
   //
   //
@@ -1692,7 +1718,6 @@ void Pokey::ParseArgs(class ArgParser *args)
   args->DefineSelection("VideoMode","set POKEY base frequency",palvector,ntsc);
   args->DefineBool("SIOSound","emulate serial transfer sounds",SIOSound);
   args->DefineBool("CyclePrecise","cycle precise pokey timers",cycle);
-  args->DefineBool("LongStartBit","enlarge the start bit to 1 1/2 bits",LongStartBit);
   args->DefineLong("FilterConstant","set high-pass filtering constant",0,1024,DCFilterConstant);
   //
   // Initialize the pokey base clock.

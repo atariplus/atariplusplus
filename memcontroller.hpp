@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: memcontroller.hpp,v 1.6 2006-05-21 15:22:30 thor Exp $
+ ** $Id: memcontroller.hpp,v 1.7 2013-03-16 15:08:52 thor Exp $
  **
  ** In this module: Interface definitions for memory controller.
  **********************************************************************************/

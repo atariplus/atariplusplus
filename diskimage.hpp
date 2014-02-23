@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskimage.hpp,v 1.1 2003-01-26 18:16:21 thor Exp $
+ ** $Id: diskimage.hpp,v 1.3 2013-02-23 18:11:00 thor Exp $
  **
  ** In this module: Abstract base class for disk images
  **********************************************************************************/
@@ -28,6 +28,20 @@ protected:
   class Machine *Machine;
   //
 public:
+  //
+  // Status flags of the drive. This is the hardware status. Bit are
+  // here set to indicate the corresponding condition. Note that the
+  // real hardware returns the inverted status
+  enum {
+    Busy      = 1, // still working
+    DRQ       = 2, // index hole interrupt or data request. Just set this bit.
+    LostData  = 4, // lost data error
+    CRCError  = 8, // sector checksum invalid
+    NotFound  = 32, // record not found: Sector is not there.
+    Protected = 64, // disk is write protected.
+    NotReady  = 128  // if no disk is present.
+  };
+  //
   DiskImage(class Machine *mach);
   virtual ~DiskImage(void);
   //
@@ -36,19 +50,20 @@ public:
   //
   // Return the sector size given the sector offset passed in.
   virtual UWORD SectorSize(UWORD sector) = 0;
+  //
   // Return the number of sectors.
   virtual ULONG SectorCount(void) = 0;
   //
-  // Return the protection status of this image. true if it is protected.
-  virtual bool ProtectionStatus(void) = 0;
+  // Return the drive status, this is a bitmask from the enum above.
+  virtual UBYTE Status(void) = 0;
   //
   // Read a sector from the image into the supplied buffer. The buffer size
   // must fit the above SectorSize. Returns the SIO status indicator.
-  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer) = 0;
+  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer,UWORD &delay) = 0;
   //
   // Write a sector to the image from the supplied buffer. The buffer size
   // must fit the sector size above. Returns also the SIO status indicator.
-  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer) = 0;
+  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer,UWORD &delay) = 0;
   //
   // Protect an image on user request
   virtual void ProtectImage(void) = 0;

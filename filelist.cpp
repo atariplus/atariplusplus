@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filelist.cpp,v 1.15 2008-05-08 13:19:30 thor Exp $
+ ** $Id: filelist.cpp,v 1.16 2013-04-12 18:46:38 thor Exp $
  **
  ** In this module: Definition of a gadget representing a list of files to
  ** choose from, i.e. the basic ingredience for a file requester.
@@ -197,6 +197,12 @@ void FileList::AttachPath(const char *add)
     // "upper directory". If so, then first strip off the file part, and then strip off the
     // last directory level if possible.
     PathGadget->ReadContents(TmpPath);
+    // If the path is "." or "./", this is the current directory. Just erase, and go up
+    // then.
+    if (!strcmp(TmpPath,".") || !strcmp(TmpPath,"./")) {
+      *TmpPath = '\0';
+    }
+    //
     path = PathPart(TmpPath);
     if (path) {
       // We found the path part. Everything behind is a file. Strip it off, including the '/'

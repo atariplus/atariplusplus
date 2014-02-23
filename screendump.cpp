@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: screendump.cpp,v 1.11 2013-01-12 11:06:00 thor Exp $
+ ** $Id: screendump.cpp,v 1.12 2013/12/05 20:37:14 thor Exp $
  **
  ** In this module: Creation of screendumps into a file
  **********************************************************************************/
@@ -465,7 +465,7 @@ void ScreenDump::PNGWarningHandler(png_structp png_ptr,png_const_charp error_msg
   class ScreenDump *that = (class ScreenDump *)png_get_error_ptr(png_ptr);
   //
   // Use the machine PutWarning for that.
-  that->machine->PutWarning((const char *)error_msg);
+  that->machine->PutWarning("%s",(const char *)error_msg);
 }
 #endif
 ///

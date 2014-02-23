@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartflash.hpp,v 1.8 2006-05-25 17:44:16 thor Exp $
+ ** $Id: cartflash.hpp,v 1.9 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: The implementation of a 128K..8MB flash cart
  ** with the friendly permission of Mark Keates

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.hpp,v 1.30 2009-08-10 13:08:25 thor Exp $
+ ** $Id: diskdrive.hpp,v 1.36 2013/05/31 22:08:00 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -13,7 +13,6 @@
 /// Includes
 #include "types.hpp"
 #include "serialdevice.hpp"
-#include "stdio.hpp"
 ///
 
 /// Forward references
@@ -54,18 +53,19 @@ class DiskDrive : public SerialDevice {
     Unknown,              // not available
     XFD,                  // raw disk image
     ATR,                  // raw disk image with header
+    ATX,                  // raw extended disk image
     CMD,                  // emulated command floppy image
     DCM,                  // DCM image
     FILE                  // Any type of source file
   }                      ImageType;
   //
   // Drive number of this drive.
-  int                    DriveId;   // Indicates the drive number: 0..7
+  UBYTE                  DriveId;   // Indicates the drive number: 0..7
   //
   // 
   class ImageStream     *ImageStream; // where to take the data from.
   class DiskImage       *Disk;        // the inserted disk itself.
-  char                  *ImageName; // path of the disk image.
+  char                  *ImageName;   // path of the disk image.
   char                  *ImageToLoad; // image we have to insert.
   UWORD                  SectorSize;
   ULONG                  SectorCount; // drive settings for the Atari 815 standard
@@ -90,6 +90,17 @@ class DiskDrive : public SerialDevice {
   UBYTE                  DisplayControl;
   UBYTE                  SpeedControl;
   //  
+  // The last command issued. The command type defines how the
+  // FDC control byte is read.
+  enum CommandType {
+    FDC_Reset,
+    FDC_Seek,  // all FDC commands that move the head, command type I
+    FDC_Read,  // read sector, command type II
+    FDC_Write, // write sector, command type II
+    FDC_ReadTrack,  // read track, command type III
+    FDC_WriteTrack  // write track, command type III
+  }                      LastFDCCommand;
+  //
   // Keeps user floppy commands for "Happy"s (FIXME: Not yet implmented)
   struct FloppyCmd {
     UBYTE                CmdChar;   // The command character
@@ -181,15 +192,17 @@ public:
   virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize);
   //
   // Read bytes from the device into the system.
-  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &datasize);
+  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
+			   int &datasize,UWORD &delay);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error.
-  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,int &datasize);
+  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
+			    int &datasize,UWORD &delay);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame);
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay);
   //
   // Other methods imported by the SerialDevice class:
   //

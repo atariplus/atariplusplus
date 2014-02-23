@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sighandler.cpp,v 1.9 2004-06-04 22:20:43 thor Exp $
+ ** $Id: sighandler.cpp,v 1.10 2013-03-16 15:08:53 thor Exp $
  **
  ** In this module: SigInt signal handler class
  **********************************************************************************/

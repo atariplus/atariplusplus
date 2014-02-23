@@ -1,5 +1,5 @@
-<!-- Creator     : groff version 1.20.1 -->
-<!-- CreationDate: Tue Jan 15 12:25:24 2013 -->
+<!-- Creator     : groff version 1.21 -->
+<!-- CreationDate: Sun Feb 23 13:47:29 2014 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -32,6 +32,7 @@
 <a href="#THE E: HANDLER">THE E: HANDLER</a><br>
 <a href="#THE R: HANDLER">THE R: HANDLER</a><br>
 <a href="#THE OS ROM EMULATION">THE OS ROM EMULATION</a><br>
+<a href="#THE D: HANDLER">THE D: HANDLER</a><br>
 <a href="#THE BUILT-IN MONITOR">THE BUILT-IN MONITOR</a><br>
 <a href="#FILES">FILES</a><br>
 <a href="#ENVIRONMENT VARIABLES">ENVIRONMENT VARIABLES</a><br>
@@ -1136,7 +1137,7 @@ hard-wired to the upper part of <b>RomA.</b> The following
 table shows the mapping for the lower region:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200341.png" alt="Image grohtml-200341.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185911.png" alt="Image grohtml-185911.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em"><b>OssB</b> is
 also an Oss super-cart except that the cartridge ROM has
@@ -1480,17 +1481,25 @@ booted by writing them as DOS 2.0S files onto disk,
 toghether with a minimal game DOS header that bootstraps the
 <i>.exe</i> format. Note that no full DOS will be available
 for these files, though this emulation is sufficient for
-most <i>.exe</i> based games right away. Last but not least,
-Atari++ also supports <i>.dcm</i> images, which have been
-prepared by the &ldquo;Disk Communicator&rdquo; program and
-are (slightly) compressed. Similar to the <i>.exe</i> files,
-Atari++ cannot re-compress these. Therefore, disk images of
-this type are marked write-protected, making writes to these
-disks fail. All of the above disk image types can be
-compressed by means of the <b>gzip</b> program; Atari++ will
-then uncompress them on demand as soon as the image gets
-loaded. Since it does not re-compress images, these disks
-also always end up write-protected.</p>
+most <i>.exe</i> based games right away. While the above
+formats capture all high-level details of disks, they do not
+include enough information to reproduce the low-level
+behavior of the disk drive. Specifically, copy protected
+disks cannot be represented by them. Atari++ supports for
+that the <i>.atx</i> format, which includes pecularities
+such as disk timing, duplicate sectors or sector defects.
+Again, the emulator cannot create such disk images, but is
+able to read from them. Last but not least, Atari++ also
+supports <i>.dcm</i> images, which have been prepared by the
+&ldquo;Disk Communicator&rdquo; program and are (slightly)
+compressed. Similar to the <i>.exe</i> files, Atari++ cannot
+re-compress these. Therefore, disk images of this type are
+marked write-protected, making writes to these disks fail.
+All of the above disk image types can be compressed by means
+of the <b>gzip</b> program; Atari++ will then uncompress
+them on demand as soon as the image gets loaded. Since it
+does not re-compress images, these disks also always end up
+write-protected.</p>
 
 <p style="margin-left:11%;">-protect.1 bool</p>
 
@@ -1563,7 +1572,7 @@ gadget in the DiskDrive menu. <br>
 <p style="margin-left:22%;">selects the type of the cable
 that has been used to interface a 1050 or 810 drive to the
 PC. Currently, AtariSIO supports two cable types, the
-&ldquo;1050-2-PC&rdquo; and the &ldquo;ProSystem&ldquo;
+&ldquo;1050-2-PC&rdquo; and the &ldquo;ProSystem&rdquo;
 layout.</p>
 
 <p style="margin-left:11%;">-enableatarisio bool</p>
@@ -1605,6 +1614,88 @@ to the Atari SIO specifications, this delay shall be between
 that due to the load of the host system some fine tuning of
 this parameter might be required to get a stable SIO
 communication.</p>
+
+<p style="margin-left:11%; margin-top: 1em"><b>TAPE
+Options</b> <br>
+In addition to disk drives, Atari++ also supports an archaic
+medium for data storage, namely the 410 and 1010 tape
+drives. They store binary data in frequency-modulated form,
+a high tone for a one called &ldquo;mark&rdquo; , and a
+somewhat lower tone for a zero also called
+&ldquo;space&rdquo;. While the emulator only supports the
+already decoded form as <i>.cas</i> files, two external
+programs &ldquo;wav2cas&rdquo; and &ldquo;cas2wav&rdquo;
+allow you to convert a frequency converted audio file to a
+binary tape representation the emulator can read, and back.
+The option <br>
+-image filename</p>
+
+<p style="margin-left:22%;">defines the <i>.cas</i> file
+that simulates the tape that is inserted into the tape
+drive. They must be in the cas&rdquo; file format to be
+recognized by the emulator. Such files can either be read,
+or written to. In the latter case, their contents is
+overwritten; neither the emulator nor the physical hardware
+supports appending or modifying data on tape once it has
+been written.</p>
+
+<p style="margin-left:11%;">-play bool</p>
+
+<p style="margin-left:22%;">This option presses the
+simulated &ldquo;play&rdquo; button of the tape drive and
+hence allows the motor to spin if enabled by the main
+system. This option does not make much sense as a command
+line option but is best used within the emulator. Once the
+Atari operating system beeps once, requesting you to start
+the tape, enter the menu and start the tape by the button of
+the same name in the <b>Tape</b> menu, then return to the
+emulation to start reading data from the tape.</p>
+
+<p style="margin-left:11%;">-record bool</p>
+
+<p style="margin-left:22%;">For recording data on tape, the
+Atari operating system beeps twice, requesting you to press
+both the &ldquo;play&rdquo; and &ldquo;record&rdquo;
+buttons. The same must be done in the emulator: Go to the
+menu, into the <b>Tape</b> menu, enable the
+&ldquo;play&rdquo; option there, but <i>also</i> select the
+&ldquo;record&rdquo; button below. The corresponding command
+line option is as given above, but also makes little sense
+as stand-alone option.</p>
+
+<p style="margin-left:11%;">-eject bool</p>
+
+<p style="margin-left:22%;">presses the simulated
+eject&rdquo; button of the tape drive, removing the
+recording from the drive. This unloads the image and
+completes it on disk. It is most useful as a button of the
+same name in the <b>Tape</b> menu as well.</p>
+
+<p style="margin-left:22%; margin-top: 1em">The following
+additional options are also recognized by the tape
+subsystem:</p>
+
+<p style="margin-left:11%;">-videomode PAL|NTSC</p>
+
+<p style="margin-left:22%;">defines the video mode the
+system operates in, and by that the timing of the tape. This
+should be, and on the command line only can be, set
+identical to the video mode of the host system.</p>
+
+<p style="margin-left:11%;">-motoroffeofgap 20..10000</p>
+
+<p style="margin-left:22%;">controls when the emulator
+considers a stopping tape as the end of the recording.
+Unlike the real machine, where the tape is entirely
+controlled by the user, the emulator has to make some
+guessing as to when a recording should be considered as
+completed, and no additional data is following. It currently
+does this whenever the motor stops longer than the indicated
+time, in milliseconds. The value defaults to 3000, i.e.
+three seconds. Once the motor halts longer than this, the
+simulated tape is removed from the tape recorder and no
+further data is expected. Enlarge this value if a tape file
+is created by a relatively slow BASIC program.</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>ATARISIO
 Options</b> <br>
@@ -1962,7 +2053,7 @@ keyboard, or the following special names. Note that names
 containing spaces need to be quoted on the command line:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200342.png" alt="Image grohtml-200342.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185912.png" alt="Image grohtml-185912.png"></p>
 
 
 <p style="margin-left:11%; margin-top: 1em"><b>ANALOGJOYSTICK
@@ -2611,6 +2702,27 @@ server to perform the refresh and to notify the client about
 it, adding the turn-around times and the net transfer
 overhead to the display refresh time. It is therefore rarely
 a good idea to enable this option.</p>
+
+<p style="margin-left:11%;">-disableDPMS</p>
+
+<p style="margin-left:22%;">disables the display management
+power signal extension and thus prevents the monitor blanker
+or screen safer of the operating system to jump in while
+playing with the emulator. It is usually a good idea to
+enable this option.</p>
+
+<p style="margin-left:11%;">-xvideorendering bool</p>
+
+<p style="margin-left:22%;">will use the
+&ldquo;XVideo&rdquo; extension of the X11 system to render
+graphics on the screen. Unlike the default rendering mode
+which builts the image from lots of colored rectangles, this
+render mode writes the raw display data into a shared memory
+region which is then scaled and pushed to the screen
+directly with the video overlay mechanism of the graphics
+card, if available. Depending on the graphics hardware, this
+option may provide better performance on lower end hardware
+if it is available.</p>
 
 <p style="margin-left:11%;">-renderindirect bool</p>
 
@@ -3475,7 +3587,7 @@ CMD 3: OPEN</p>
 values are:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200343.png" alt="Image grohtml-200343.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185913.png" alt="Image grohtml-185913.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">This follows
 closely the DOS 2.0S conventions with the addition that mode
@@ -3668,7 +3780,7 @@ following standard ANSI control characters will be
 recognized and translated accordingly:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200344.png" alt="Image grohtml-200344.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185914.png" alt="Image grohtml-185914.png"></p>
 
 <p style="margin-left:11%; margin-top: 1em">Cursor movement
 and other advanced sequences are left alone, they are output
@@ -3685,7 +3797,7 @@ emulator. Instead, only the line-buffering of the console is
 available, i.e. the emulator will not be able to see your
 input unless you press <b>RETURN.</b> This also holds for
 the keyboard device, for which a patch is provided along
-with this patch. Specifically, if software running in the
+with this option. Specifically, if software running in the
 emulator requires you to press a key, you need to terminate
 this input by <b>RETURN</b> to make it accessible to the
 emulator.</p>
@@ -3784,7 +3896,7 @@ are filled with useful information. Location $2ea contains
 the error flags of the serial transfer as follows:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200345.png" alt="Image grohtml-200345.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185915.png" alt="Image grohtml-185915.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">The difference
 between bit 6 and bit 4 is that bit 6 gets set if the
@@ -3797,7 +3909,7 @@ catched successfully.</p>
 contains the state of the handshake lines in block mode:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200346.png" alt="Image grohtml-200346.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185916.png" alt="Image grohtml-185916.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">The history
 bits mirror the state of the lines that has been returned by
@@ -3827,7 +3939,7 @@ the data line TxD can be selected, too. The bits in Aux1 are
 interpreted as follows:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200347.png" alt="Image grohtml-200347.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185917.png" alt="Image grohtml-185917.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">Currently, the
 emulator does not support direct state changes on TxD,
@@ -3851,7 +3963,7 @@ five data bits are sent. Bits 3 to 0 define the baud rate
 according to this table:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200348.png" alt="Image grohtml-200348.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185918.png" alt="Image grohtml-185918.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">Note that
 values 14 and 15 generate the same rate.</p>
@@ -3863,7 +3975,7 @@ not set, an error is generated. For the emulator, monitoring
 of CTS also enables hardware handshake.</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-200349.png" alt="Image grohtml-200349.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-185919.png" alt="Image grohtml-185919.png"></p>
 
 <p style="margin-left:11%;">CMD 38: SETPARITY</p>
 
@@ -3874,7 +3986,7 @@ selects input and output parity. The bits in Aux1 have the
 following meaning:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2003410.png" alt="Image grohtml-2003410.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-1859110.png" alt="Image grohtml-1859110.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">If the
 character translation is set to 0, EOL is translated to CR
@@ -3973,7 +4085,8 @@ and many other programs operate properly, except that the
 re-implementation is usually a bit and sometimes
 considerably faster. You might also consider the <b>MathPack
 patch</b> option that evaluates the mathematical operations
-on the host CPU.</p>
+on the host CPU and improves the speed beyond what is
+achievable with the 6502 implementation.</p>
 
 <p style="margin-left:11%;">The C: Tape handler</p>
 
@@ -3991,6 +4104,11 @@ mark are no longer available.</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>INTERRUPT
 HANDLING</b> <br>
+The Os NMI handler also checks the ANTIC Reset NMI signal
+and, if detected, jumps indirectly through the vector in
+location $24e. This vector points to the warmstart Os
+vector. Unknown NMI sources are ignored, unlike the original
+Os which handles them as VBIs. <br>
 VBI Handler</p>
 
 <p style="margin-left:22%;">The built-in Os vertical
@@ -4015,18 +4133,32 @@ Parallel port call-ins</p>
 <p style="margin-left:22%;">have been replaced by
 dummies.</p>
 
-<p style="margin-left:11%;">0xe48f: BOOT850</p>
+<p style="margin-left:11%;">$e48f: BOOT850</p>
 
 <p style="margin-left:22%;">This is a new kernel-call in
 that bootstraps the 850 interface handler thru SIO. It
 should be typically used by a minimal HANDLERS.SYS file that
 contains nothing but a RUN-vector to this call-in.</p>
 
-<p style="margin-left:11%;">0xe45c: SETIRQVECTOR</p>
+<p style="margin-left:11%;">$e45c: SETIRQVECTOR</p>
 
 <p style="margin-left:22%;">The SetIRQVector call-in can
 now also savely install IRQs as well without requiring the
 caller to set the interrupt bit of the CPU.</p>
+
+<p style="margin-left:11%;">$e492: RUNDUP</p>
+
+<p style="margin-left:22%;">This vector launches the DUP
+keyboard command processor. The DUP vector at $a,$b points
+to this address by default. The built-in DUP can be replaced
+by a custom DUP by changing the reset-resident vector at
+$3f6.</p>
+
+<p style="margin-left:11%;">$e498: FMSINIT</p>
+
+<p style="margin-left:22%;">This vector initializes the
+built-in FMS. The Os reset initializes the ROM-based FMS
+thru this vector if no bootable disk is found.</p>
 
 
 <p style="margin-left:11%; margin-top: 1em"><b>RESET/Bootstrap</b>
@@ -4151,11 +4283,11 @@ handler to patch it over.</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>THE K:
 KEYBOARD HANDLER</b> <br>
-should work mostly like its equivalent in the Atari 800XL
-ROM except that it does not check for Atari 1200XL function
-keys. Extended editor keyboard functions are provided to the
-best knowledge of the author, though. The K: handler
-respects now the BREAK key correctly.</p>
+works like its equivalent in the Atari 800XL ROM except that
+it does not check for Atari 1200XL function keys. Extended
+editor keyboard functions are provided to the best knowledge
+of the author, though. The K: handler respects now the BREAK
+key correctly.</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>THE E:
 EDITOR</b> <br>
@@ -4179,8 +4311,7 @@ properly.</p>
 <p style="margin-left:11%;">Editor Scrolling</p>
 
 <p style="margin-left:22%;">on line insertion or delection
-does no longer erraneously try to overwrite the ROM
-area.</p>
+does no longer overwrite memory above MEMTOP.</p>
 
 <p style="margin-left:11%; margin-top: 1em"><b>THE S:
 SCREEN HANDLER</b> <br>
@@ -4192,15 +4323,19 @@ Screen GET/PUT</p>
 <p style="margin-left:22%;">The S: handler no longer tries
 to scroll, neither does it respect editor margins. If the
 put or get commands reach the end of the screen, an
-out-of-bounds error (error 141) is generated.</p>
+out-of-bounds error (error 141) is generated. The only
+control codes the screen handler handles separately are $7d,
+which clears the screen, and $9b, which implements a line
+feed, though dos not scroll.</p>
 
 <p style="margin-left:11%;">Open Command</p>
 
 <p style="margin-left:22%;">The S: open provides more
 graphic modes than the original. If 64 is added to the
 graphics mode, then a text window is generated even for the
-graphic modes 9, 10 and 11. Smooth scrolling works flawlessy
-even in these text windows.</p>
+graphic modes 9, 10 and 11. Unlike in the original Os,
+smooth scrolling works correctly in text windows, even in
+text windows of the GTIA modes 9 to 11.</p>
 
 <p style="margin-left:11%;">DMA/Player-Missile</p>
 
@@ -4272,9 +4407,9 @@ provided.</p>
 number in &quot;fr0&quot; ($d4 to $d9) into ATASCII in the
 output buffer at $580 and following. &quot;fr0&quot; is
 destroyed on completion. The end of the string is indicated
-by having the last character have its MSB set, the final
-string is pointed to by &quot;inbuff&quot; ($F3,$F4) on
-exit. Unlike the ROM implementation, this routine is more
+by setting the MSB of the last character, the final string
+is pointed to by &quot;inbuff&quot; ($F3,$F4) on exit.
+Unlike the ROM implementation, this routine is more
 streamlined and does not overwrite bytes in front of the
 output buffer, the output will always start at, and not
 sometimes in front of $580. If called at FASC+3, the user
@@ -4553,20 +4688,28 @@ used by BASIC, here the value of Pi divided by four correct
 to ten decimal places. It is used by the ATN function in the
 BASIC rom.</p>
 
-<p style="margin-left:11%; margin-top: 1em"><b>THE D:
-HANDLER</b> <br>
-This handler is provided by the now built-in FMS that is
-used if disk-bootstrap was unsuccessful or aborted by the
-user, see also above. The FMS in ROM space is basically a
-reworked and bugfixed version of Dos 2.XL/XA of the same
-author that was streamlined to fit into the low memory Os
-area 0xc002 to 0xcbff. It therefore provides 963 free
-sectors on a standard enhanced density disk while retaining
-Dos 2.0S compatibility. It can read Dos 2.5 disks, but it is
-not write-compatible to Dos 2.5. This route was choosen
-basically because the author had the Dos 2.XL sources
-available for obvious reasons, unlike the Dos 2.5 sources.
-The following documents the FMS command set: <br>
+<h2>THE D: HANDLER
+<a name="THE D: HANDLER"></a>
+</h2>
+
+
+<p style="margin-left:11%; margin-top: 1em">This handler is
+provided by the now built-in FMS that is used if
+disk-bootstrap was unsuccessful or aborted by the user, see
+also above. The FMS in ROM space is basically a reworked and
+bugfixed version of Dos 2.XL/XA of the same author that was
+streamlined to fit into the low memory Os area 0xc002 to
+0xcbff. It therefore provides 963 free sectors on a standard
+enhanced density disk while retaining Dos 2.0S
+compatibility. In specific, the VTOC layout is
+identical.</p>
+
+<p style="margin-left:11%; margin-top: 1em">It can read Dos
+2.5 disks, but it is not write-compatible to Dos 2.5. This
+route was choosen basically because the author had the Dos
+2.XL sources available for obvious reasons, unlike the Dos
+2.5 sources. The following documents the FMS command set:
+<br>
 CMD 3:OPEN</p>
 
 <p style="margin-left:22%;">Opens a file. Details depend on
@@ -4574,7 +4717,7 @@ AUX1 and AUX2. For AUX1 = 0, the following modes are
 used:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2003411.png" alt="Image grohtml-2003411.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-1859111.png" alt="Image grohtml-1859111.png"></p>
 
 <p style="margin-left:22%; margin-top: 1em">Note that mode
 9 does not waste a sector, unlike the Dos 2.0S
@@ -4590,15 +4733,16 @@ disk title should it be provided.</p>
 things change dramatically. This mode provides full random
 access to the raw disk without any file management
 functions; thus, this mode allows &ldquo;raw&rdquo; access
-to disks. File names do not matter here, and sectors are
-always 128 bytes long. The disk is understood as one big
-sequential file starting at sector one and extending to its
-last sector. Access to sectors is provided by means of the
-POINT/NOTE commands. The following open modes are available
-for AUX1 = 128:</p>
+to disks. File names do not matter here as long as they are
+syntactically correct, and sectors are always 128 bytes
+long. The disk is understood as one big sequential file
+starting at sector one and extending to its last sector.
+Access to sectors is provided by means of the POINT/NOTE
+commands. The following open modes are available for AUX1 =
+128:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2003412.png" alt="Image grohtml-2003412.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-1859112.png" alt="Image grohtml-1859112.png"></p>
 
 <p style="margin-left:11%;">CMD 5: GET RECORD</p>
 
@@ -4634,18 +4778,41 @@ is &rdquo;raw&ldquo;.</p>
 
 <p style="margin-left:11%;">CMD 13: STATUS</p>
 
-<p style="margin-left:22%;">Checks the given filespec for
-validity, tests wether the given disk is available and
-readable, and whether the file can be written to. Otherwise,
-apropriate error conditions are generated.</p>
+<p style="margin-left:22%;">This command works a little bit
+different than under DOS 2.0S and DOS 2.5 where it only
+checks the validity of a file specification and the
+availability of a drive. Since BASIC never supplies this
+information to <b>STATUS</b> , this command was actually
+unuseful in BASIC and never worked as intended.</p>
+
+<p style="margin-left:22%; margin-top: 1em">Instead, if the
+channel is already open, <b>STATUS</b> returns the status of
+the last CIO operation on this specific channel, which
+allows now BASIC to check, for example, whether the next
+<b>GET</b> command will return an EOF by testing against the
+error code 3.</p>
+
+<p style="margin-left:22%; margin-top: 1em">If the channel
+is still closed, works as it did for DOS 2.0S and DOS 2.5:
+It checks the given filespec for validity, tests wether the
+given disk is available and readable, and whether the file
+can be written to. Otherwise, appropriate error conditions
+are generated. If used from BASIC, STATUS should then be
+rather replaced by a <b>XIO 13</b> command which supplies a
+file name.</p>
 
 <p style="margin-left:11%;">CMD 32: RENAME</p>
 
 <p style="margin-left:22%;">Renames files. Requires the old
 filespec, then a comma, and the new target file name. This
-command may cause several identically named files, see below
-for file name specifications how to resolve this
-problem.</p>
+command may cause several identically named files. Such
+files can be resolved by using the <b>/1</b> through
+<b>/9</b> file specification modifier defined below.
+Alternatively, this command and the next four, namely
+DELETE, FIND, LOCK and UNLOCK, take a non-zero <b>aux2</b>
+value which then specifies which of the specific matches to
+a wildcard is to be renamed, deleted, found, locked or
+unlocked.</p>
 
 <p style="margin-left:11%;">CMD 33: DELETE</p>
 
@@ -4655,13 +4822,9 @@ the disk.</p>
 <p style="margin-left:11%;">CMD 34: FIND</p>
 
 <p style="margin-left:22%;">Resolves a wild card filespec
-and returns a full file name in the input buffer. If several
-files match the wildcard, the value of the AUX2 selects the
-number of the file that is to be resolved. This command is
-used by the command line interpreter (&ldquo;DUP&rdquo;) to
-resolve wild-cards. This command is here to maintain Dos 3
-compatibility, the author suggests to use CMD 40
-instead.</p>
+and returns a full file name in the input buffer. This
+command is used by the command line interpreter
+(&ldquo;DUP&rdquo;) to resolve wild-cards.</p>
 
 <p style="margin-left:11%;">CMD 35: LOCK</p>
 
@@ -4684,9 +4847,25 @@ AUX3,AUX4 (sector) and AUX5 (byte), similar to Dos 2.0S. If
 an invalid write position is specified here, then the disk
 might get corrupted. Only file pointers obtained by a
 previous NOTE onto the same file should be passed in as
-arguments here. This command is also used for absolute
-positioning within the disk if the corresponding stream is
-opened for raw mode, i.e. with AUX2 = 128.</p>
+arguments here.</p>
+
+<p style="margin-left:22%; margin-top: 1em">Unlike under
+DOS 2.0S and DOS 2.5, <b>POINT</b> also works for files
+opened in <i>write-only</i> mode, i.e. mode 8, and can there
+be used to re-position the file pointer to some place in
+front of the EOF, overwriting data that has already been
+written. Similarly, <b>POINT</b> is very helpful to append
+to files in the update/append mode 13 when the former EOF
+position has been recorded by a <b>NOTE</b> , which then
+works much faster than having the file opened in
+<i>append</i> mode. The latter has to find the EOF manually,
+the former will place the file pointer directly at the
+EOF.</p>
+
+<p style="margin-left:22%; margin-top: 1em">The
+<b>POINT</b> command is also used for absolute positioning
+within the disk if the corresponding stream is opened for
+raw mode, i.e. with AUX2 = 128.</p>
 
 <p style="margin-left:11%;">CMD 38: NOTE</p>
 
@@ -4707,8 +4886,7 @@ video on each directory listing.</p>
 <p style="margin-left:11%;">CMD 40: FIND</p>
 
 <p style="margin-left:22%;">Similar to CMD 34 to maintain
-Dos 2.XL compatibility. This is the suggested FIND
-command.</p>
+Dos 2.XL compatibility.</p>
 
 <p style="margin-left:11%;">CMD 41: BINARY LOAD</p>
 
@@ -4718,7 +4896,8 @@ whether the loaded file shall be initialized or run. If set
 to 192, the file is initialized and run, 128 means
 &ldquo;init only&rdquo;, 64 just runs, but does not
 initialize the file, and 0 neither runs nor initializes the
-file.</p>
+file. Note that Atari specified CMD 41 (and not CMD 40) for
+the binary load command.</p>
 
 <p style="margin-left:11%;">CMD 42: FORMAT</p>
 
@@ -4923,6 +5102,11 @@ sector #0, the disk structure is damaged.</p>
 <p style="margin-left:22%;">The specified open mode is
 invalid.</p>
 
+<p style="margin-left:11%;">Error 178, NotADosDisk</p>
+
+<p style="margin-left:22%;">The structure of the inserted
+disk is not compatible to Dos 2.++.</p>
+
 <p style="margin-left:11%; margin-top: 1em"><b>THE COMMAND
 LINE PROCESSOR (DUP)</b> <br>
 The built-in FMS also provides a disk utility package (a
@@ -4937,13 +5121,13 @@ entered is just a device specification, i.e. a one- or
 two-letter string terminated by a colon, then the active
 device is changed. Otherwise, the command line tries to
 locate the command as file on disk, as a binary, and then
-runs it. It does <b>NOT</b> append a file extender, as for
-example &ldquo;.COM&rdquo;. The file name is loaded and
-executed as entered.</p>
+runs it. It does <b>NOT</b> append a file extender, unlike
+OS/A+ which would always append &ldquo;.COM&rdquo;. The file
+name is loaded and executed exactly as entered.</p>
 
 <p style="margin-left:11%; margin-top: 1em">The full
 command line including the command and its arguments is
-placed in a 128 byte buffer at 0x580 where the executed
+placed in a 128 byte buffer at $580 where the executed
 binary may find it, and may parse it itself if required. The
 command line does not provide functions to parse this
 buffer.</p>
@@ -4951,7 +5135,8 @@ buffer.</p>
 <p style="margin-left:11%; margin-top: 1em"><b>NOTE</b>
 This is not the way how Dos OS/A+ executes external
 commands. There was unfortunately not enough ROM space
-available to implement this interface.</p>
+available to implement command line parsing service
+functions as OS/A+.</p>
 
 <p style="margin-left:11%; margin-top: 1em">If the command
 starts with a double quote, or is not found on disk, then
@@ -5012,8 +5197,8 @@ again, the opposite of the above.</p>
 
 
 <p>Runs the cartridge should there be one inserted. If no
-cart is available, the command processor will be entered
-again.</p> </td></tr>
+cart is available, and neither any reset resident program is
+found, the command processor will be entered again.</p></td></tr>
 </table>
 
 <p style="margin-left:11%;">FORMAT [title]</p>
@@ -5036,7 +5221,7 @@ to be a quick-format.</p>
 
 <p style="margin-left:22%;">Runs a machine code program at
 the specified address. If no address has been given, the
-previously loaded command will be run again.</p>
+previously loaded command will be run, or run again.</p>
 
 <p style="margin-left:11%;">SAVE
 filespec,from,to,[[,init],run]</p>
@@ -5067,19 +5252,37 @@ to be read in one go, or if more than one file is to be
 copied.</p>
 
 <p style="margin-left:22%; margin-top: 1em"><b>COPY</b>
-will invalidate the user RAM contents; therefore, a BASIC
-program that has been loaded into RAM will be lost after a
-COPY command if BASIC is re-entered. Similar restrictions
-arise for other cartridges (e.g. Mac/65 will loose the
-current assembly source code). <b>COPY</b> does not try to
-notify you about this fact. Due to ROM size limitations,
-there is neither a MEM.SAV file to protect you against this
-memory loss.</p>
+tries to avoid using user RAM contents whenever possible.
+Application memory that is reserved correctly by setting the
+Os vector APPMEMHI will be preserved, and BASIC source code
+will be spared. However, not all applications adjust
+APPMEMHI correctly, Mac/65 is such an example.</p>
+
+<table width="100%" border="0" rules="none" frame="void"
+       cellspacing="0" cellpadding="0">
+<tr valign="top" align="left">
+<td width="11%"></td>
+<td width="4%">
+
+
+<p>NEW</p></td>
+<td width="7%"></td>
+<td width="78%">
+
+
+<p>will erase user memory and will make this memory
+available for the <b>COPY</b> command, i.e. you will require
+to swap disks less often. The <b>NEW</b> command is also
+necessary to inform some cartridges or application programs
+that its memory has been overwritten after performing a copy
+operation. This is necessary if the corresponding program
+does not set APPMEMHI correctly.</p></td></tr>
+</table>
 
 <p style="margin-left:11%; margin-top: 1em"><b>FMS HINTS
 AND TWEAKS</b> <br>
 Sometimes an external command has the same name as an
-internal one. In that case, the external command is prefered
+internal one. In this case, the external command is prefered
 to the internal one and is loaded, bypassing the internal
 one. If this is undesired, place a double quote in front of
 the command. This will avoid the external command
@@ -5096,7 +5299,8 @@ specifier:</p>
 
 <p style="margin-left:11%; margin-top: 1em">will print out
 the contents of the directory by copying the contents of the
-directory to the printer device.</p>
+directory to the printer device, though invalidating RAM
+contents due to the additional buffering COPY performs.</p>
 
 <p style="margin-left:11%; margin-top: 1em">The LOAD
 command can be emulated by using the no-run specifier when
@@ -5127,7 +5331,7 @@ should contain the bootstrap code for any additional
 boot-time handlers that must be linked into the system. For
 example, this file could load and run the 850 interface box
 firmware (easiest by simply calling the Os vector BOOT850,
-0xe48f).</p>
+$e48f).</p>
 
 <p style="margin-left:11%;">Command execution</p>
 
@@ -5145,68 +5349,90 @@ XL operating system for parallel port and tape usage are
 likely to be no longer in use. However, these should remain
 reserved for future versions of the Atari++ operating
 system. <br>
-0x15 FMSTMP</p>
+$15 FMSTMP</p>
 
 <p style="margin-left:22%;">Used by the FMS for various
 issues.</p>
 
-<p style="margin-left:11%;">0x16 DIRENTRYOFFSET</p>
+<p style="margin-left:11%;">$16 DIRENTRYOFFSET</p>
 
 <p style="margin-left:22%;">Used by the FMS to point into
 the directory buffer for the currently processed file.</p>
 
-<p style="margin-left:11%;">0x43 FMSPTR</p>
+<p style="margin-left:11%;">$1a FILECOUNTER</p>
+
+<p style="margin-left:22%;">In case a wildcard matches
+several files and the user specified a /1 to /9 access
+modifier to select one of these matches, this location
+records the user selection. This location stays at $ff if
+the FMS shall operate on all matches.</p>
+
+<p style="margin-left:11%;">$1b FREEDIRCODE</p>
+
+<p style="margin-left:22%;">Keeps the file number times
+four of the first free directory entry a new file could
+populate.</p>
+
+<p style="margin-left:11%;">$43 FMSPTR</p>
 
 <p style="margin-left:22%;">Temporary pointer variables for
-miscellaneous uses in the FMS.</p>
+miscellaneous uses in the FMS. This pointer typically points
+to the directory entry of the currently processed file.</p>
 
-<p style="margin-left:11%;">0x45 DISKBUFFER</p>
+<p style="margin-left:11%;">$45 DISKBUFFER</p>
 
 <p style="margin-left:22%;">Points within the FMS to the
 VTOC buffer for the currently processed disk drive.</p>
 
-<p style="margin-left:11%;">0x47 FILEBUFFER</p>
+<p style="margin-left:11%;">$47 FILEBUFFER</p>
 
 <p style="margin-left:22%;">Points within the FMS to the
 file input/output buffer for the currently processed
 file.</p>
 
-<p style="margin-left:11%;">0x2b8 OVERRUNFLAG</p>
+<p style="margin-left:11%;">$24e VECNMI</p>
+
+<p style="margin-left:22%;">The Os jumps thru this vector
+in case it detects an interrupt on ANTIC&rsquo;s NMI-input
+pin. This pin is routed to the RESET key on the 400 and 800
+machines, and is open on the XL and later machines.</p>
+
+<p style="margin-left:11%;">$2b8 OVERRUNFLAG</p>
 
 <p style="margin-left:22%;">This flag is set by the E:
 handler in case the line is nearly full and the buzzer
 should be run.</p>
 
-<p style="margin-left:11%;">0x318 SCREENSTACK</p>
+<p style="margin-left:11%;">$318 SCREENSTACK</p>
 
 <p style="margin-left:22%;">This byte is traditionally used
 by SIO, and so it is by the built-in Os. It is, however,
 also used by the S: and E: handler to keep the stack pointer
 to make error handling easier.</p>
 
-<p style="margin-left:11%;">0x3f5 FMSBOOTFLAG</p>
+<p style="margin-left:11%;">$3f5 FMSBOOTFLAG</p>
 
 <p style="margin-left:22%;">Specifies the FMS bootstrap
 modes and various other related issues as listed in the
 following table:</p>
 
 
-<p align="center" style="margin-top: 1em"><img src="grohtml-2003413.png" alt="Image grohtml-2003413.png"></p>
+<p align="center" style="margin-top: 1em"><img src="grohtml-1859113.png" alt="Image grohtml-1859113.png"></p>
 
-<p style="margin-left:11%;">0x3f6,0x3f7 DUPVECTOR</p>
+<p style="margin-left:11%;">$3f6,$3f7 DUPVECTOR</p>
 
 <p style="margin-left:22%;">DupVector (hi) This address is
 jumped at instead of the cart run vector during a warmstart
 if bit 6 of the FmsBootFlag is set. A program that jumps
-thru DOSVECTOR (0x0a,0x0b) will set bit 6 of the
-FMSBOOTFLAG, then cause a reset which in turn will run the
-command processor thru this vector.</p>
+thru DOSVECTOR ($a,$b) will set bit 6 of the FMSBOOTFLAG,
+then cause a reset which in turn will run the command
+processor thru this vector.</p>
 
 <p style="margin-left:11%; margin-top: 1em">The next
 addresses are only used if the FMS is initialized. They can
 be modified from the CONFIG.SYS file to change the FMS
 parameters when booting. <br>
-0x70a FMSDRIVEMASK</p>
+$70a FMSDRIVEMASK</p>
 
 <p style="margin-left:22%;">Contains a bitmask that defines
 which drives should be addressable. A one-bit enables the
@@ -5216,7 +5442,7 @@ The default value is 3, meaning a two-disk system is
 supported. Each supported drive requires 128 bytes
 additional storage.</p>
 
-<p style="margin-left:11%;">0x709 FMSBUFFERS</p>
+<p style="margin-left:11%;">$709 FMSBUFFERS</p>
 
 <p style="margin-left:22%;">Number of file buffers the FMS
 shall allocate. This controls how many files can be opened
@@ -5224,27 +5450,48 @@ at once. The default value is five, allowing to open at most
 five files at once. Each file buffer requires 128 bytes of
 storage.</p>
 
-<p style="margin-left:11%;">0x779 WRITECMD</p>
+<p style="margin-left:11%;">$779 WRITECMD</p>
 
 <p style="margin-left:22%;">The SIO command the FMS shall
-use for writing sectors. This can be either P for writing
-without or W for writing with verify. It is however
-suggested to use the file name extenders /V and /O to switch
-verify on and off instead.</p>
+use for writing sectors. This can be either $50
+(&quot;P&quot;) for writing without or $57 (&quot;W&quot;)
+for writing with verify. It is however suggested to use the
+file name extenders &quot;/V&quot; and &quot;/O&quot; to
+switch between verify on and off instead.</p>
 
-<p style="margin-left:11%;">Fms state flags</p>
+<p style="margin-left:11%;">$70C,$70D DISKBUFFERBASE</p>
 
-<p style="margin-left:22%;">Addresses $700-$7ff except the
-above contain FMS state variables that remain
+<p style="margin-left:22%;">Points to the first disk buffer
+used by the FMS. The &quot;CONFIG.SYS&quot; file may change
+this base address to point elsewhere, in which case disk
+buffers will be allocated from this memory address on. If in
+addition bit 4 of <b>FMSBOOTFLAG</b> is set, the FMS init
+routine will neither try to increase MEMLO to point behind
+the FMS buffers, but will keep it at the end of its state
+flags.</p>
+
+<p style="margin-left:11%;">$712,$713 FILEBUFFERBASE</p>
+
+<p style="margin-left:22%;">This pair points to the first
+file data buffer within the disk buffers. It cannot be
+adjusted, but is always allocated by the FMS.</p>
+
+<p style="margin-left:11%;">$700 to $7ff FMS STATE
+FLAGS</p>
+
+<p style="margin-left:22%;">Addresses $700-$7ff except
+those above contain FMS state variables that remain
 undocumented.</p>
 
-<p style="margin-left:11%;">Fms buffers</p>
+<p style="margin-left:11%;">$800 FMS BUFFERS</p>
 
 <p style="margin-left:22%;">FMS buffers for drives and file
 buffers are allocated from $800 up. In the default
 configuration, they extend up to $a7f, leaving RAM from $a80
 and up to the user. Thus, the memory footprint of the
-built-in FMS is much better than for DOS 2.0S.</p>
+built-in FMS is much better than for DOS 2.0S. FMS buffers
+may be relocated by adjusting <b>DISKBUFFERBASE</b>
+accordingly by a suitable CONFIG.SYS file.</p>
 
 <h2>THE BUILT-IN MONITOR
 <a name="THE BUILT-IN MONITOR"></a>
@@ -5452,7 +5699,7 @@ current routine has been called. The locations of the JSR
 instructions are printed on the screen.</p>
 
 <p style="margin-left:11%;">BRKP=B [expr]; extenders:
-S,C,D,E,A,L</p>
+S,C,D,E,A,L,V,W</p>
 
 <p style="margin-left:22%;">Controls breakpoints. Once a
 breakpoint is hit, and the breakpoint is enabled, the
@@ -5467,6 +5714,22 @@ argument. BRKP.C removes it again. The <b>D</b> and <b>E</b>
 extenders disable, resp. enable breakpoints that have been
 set before. A disabled breakpoint is temporarely turned off,
 but remembered, and can be turned on later on.</p>
+
+<p style="margin-left:22%; margin-top: 1em">The <b>V</b>
+and <b>W</b> extenders install watch points. Unlike regular
+break points, the trapping condition is not execution of an
+instruction at a specific location, but the <i>access</i> of
+a specific memory address.</p>
+
+<p style="margin-left:22%; margin-top: 1em">BRKP.W installs
+a watch point, i.e. the monitor is entered as soon as a
+program tries to write to the target address. Reading does
+not trigger it. Watch points can be disabled and removed as
+all other break points.</p>
+
+<p style="margin-left:22%; margin-top: 1em">BRKP.V installs
+a read/write watch point that unlike the above, also reacts
+on read accesses to its target address.</p>
 
 <p style="margin-left:22%; margin-top: 1em">The <b>A</b>
 extender removes all breakpoints at once and the <b>L</b>
@@ -5742,6 +6005,17 @@ emulation of floppy disks. Part of the &quot;speedy&quot;
 comments were broken or potentially mis-interpreted, and
 floppy sizes weren&rsquo;t detected and supported correctly
 under all circumstances. Thanks, folks!</p>
+
+<p style="margin-left:11%; margin-top: 1em">Ralph
+&quot;pps&quot; for redesigning the Atari++ home page and
+hosting the whole project. Unfortunately, my employer can no
+longer host it when I moved.</p>
+
+
+<p style="margin-left:11%; margin-top: 1em">&quot;Phaeron&quot;
+for documenting many undocumented chipset and CPU features
+and for answering all my questions. Many of the improvements
+made in release 1.70 are due to his work.</p>
 
 <h2>REFERENCES
 <a name="REFERENCES"></a>

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.hpp,v 1.39 2011-06-25 22:13:45 thor Exp $
+ ** $Id: monitor.hpp,v 1.40 2013-02-14 16:09:16 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -400,6 +400,7 @@ class Monitor {
       ADR address;
       int id;      // its Id, as returned from the CPU interface, -1 for free
       bool enabled;
+      bool read;   // if true, the watchpoint reacts on read also
       //
       BreakPoint(void)
 	: address(0), id(-1), enabled(true)

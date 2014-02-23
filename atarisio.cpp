@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisio.cpp,v 1.22 2005-09-10 12:55:39 thor Exp $
+ ** $Id: atarisio.cpp,v 1.23 2013-02-05 02:07:11 thor Exp $
  **
  ** In this module: Support for real atari hardware, connected by 
  ** Matthias Reichl's atarisio interface.
@@ -226,7 +226,7 @@ UBYTE AtariSIO::WriteStatusBlock(const UBYTE *cmdframe,const UBYTE *buffer,int s
 // Prepare the indicated command. On read, read the buffer. On
 // write, just check whether the target is write-able. Returns
 // the size of the buffer (= one sector). On error, return 0.
-UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len)
+UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWORD &)
 { 
   class AtariSIOPort *port = machine->SioPort();
   UWORD sector = UWORD(commandframe[2] | (commandframe[3] << 8));
@@ -362,7 +362,7 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len)
 /// AtariSIO::WriteBuffer
 // Write the indicated data buffer out to the target device.
 // Return 'C' if this worked fine, 'E' on error.
-UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size)
+UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,UWORD &)
 {      
   class AtariSIOPort *port = machine->SioPort();
   // Check whether we are performing direct (user space) I/O. If so, then
@@ -452,7 +452,7 @@ UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size)
 // After a written command frame, either sent or test the checksum and flush the
 // contents of the buffer out. For block transfer, SIO does this for us. Otherwise,
 // we must do it manually.
-UBYTE AtariSIO::FlushBuffer(const UBYTE *commandframe)
+UBYTE AtariSIO::FlushBuffer(const UBYTE *commandframe,UWORD &)
 {
   class AtariSIOPort *port = machine->SioPort();
   
@@ -507,7 +507,7 @@ UBYTE AtariSIO::FlushBuffer(const UBYTE *commandframe)
 /// AtariSIO::ReadStatus
 // Execute a status-only command that does not read or write any data except
 // the data that came over AUX1 and AUX2
-UBYTE AtariSIO::ReadStatus(const UBYTE *)
+UBYTE AtariSIO::ReadStatus(const UBYTE *,UWORD &)
 { 
   class AtariSIOPort *port = machine->SioPort();
   // Check whether we are direct-IO here. If so, then we have to

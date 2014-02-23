@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: stdio.cpp,v 1.3 2005-09-10 13:11:47 thor Exp $
+ ** $Id: stdio.cpp,v 1.4 2013-03-16 15:08:53 thor Exp $
  **
  ** In this module: Os compatibility layer for stdio management.
  ** This file takes definitions from "types.h" build by autoconf/configure

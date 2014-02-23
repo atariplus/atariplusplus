@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: casstream.hpp,v 1.1 2009-08-10 13:08:25 thor Exp $
+ ** $Id: casstream.hpp,v 1.2 2013/05/31 22:08:00 thor Exp $
  **
  ** In this module: Disk image class for .cas (tape) archives.
  **********************************************************************************/
@@ -27,28 +27,6 @@ class Machine;
 // regular dos'es to load the tape image.
 class CASStream : public ImageStream {
   // 
-  // The following structure reads data from a CAS file.
-  struct CASFile {
-    // The image stream to read from.
-    FILE               *src;
-    //
-    // The offset into the data buffer above.
-    UBYTE              inbuf;
-    //
-    // The number of bytes in the input buffer.
-    UBYTE              bytecnt;
-    //
-    // The buffer of the data blocks of the CAS image.
-    UBYTE              buffer[128+2+1+1];
-    //
-    // Read from the image, throw on EOF.
-    UBYTE Get(void);
-    //
-    CASFile(FILE *is)
-      : src(is), inbuf(0), bytecnt(0)
-    { }
-  };
-  //
   // The file pointer by which this is open.
   FILE  *File;
   //

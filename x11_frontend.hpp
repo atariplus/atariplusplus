@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.hpp,v 1.40 2013-01-12 11:06:01 thor Exp $
+ ** $Id: x11_frontend.hpp,v 1.41 2013/12/20 21:14:42 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -71,11 +71,12 @@ class X11_FrontEnd : public XFront {
   // dimensions of the drawing area of the window
   int             emuwidth,emuheight;
   //
-  // Dimensions of the frame buffer
+  // Dimensions of the frame buffer and other prefs
   LONG            LeftEdge,TopEdge;
   LONG            Width,Height;
   LONG            PixelWidth,PixelHeight;
   bool            PixMapIndirect;
+  bool            EnableXVideo;
   //  
   // Atoms for communication with the window manager
   Atom            WMDeleteWindowAtom;

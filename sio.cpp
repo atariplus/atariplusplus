@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.cpp,v 1.55 2005-09-20 21:13:02 thor Exp $
+ ** $Id: sio.cpp,v 1.61 2013/06/01 19:50:10 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.
@@ -31,6 +31,7 @@ SIO::SIO(class Machine *mach)
   Write_Done_Delay  = 50;
   Read_Done_Delay   = 50;
   Format_Done_Delay = 400;
+  MotorEnabled      = false;
   HaveWarned        = false;
   ActiveDevice      = NULL;
 }
@@ -119,6 +120,8 @@ void SIO::ColdStart(void)
   //
   // Reset the state machine
   SIOState = NoFrame;
+  //
+  WarmStart();
 }
 ///
 
@@ -128,14 +131,18 @@ void SIO::WarmStart(void)
 {
   // Reset the state machine
   SIOState          = NoFrame;
+  MotorEnabled      = false;
   HaveWarned        = false;
   ActiveDevice      = NULL;
 }
 ///
 
 /// SIO::WriteByte
+// Transmit a byte from pokey to the serial device.
 void SIO::WriteByte(UBYTE byte)
 {
+  UWORD delay;
+
   // Check which state we are in
   switch(SIOState) {
   case CmdFrame: 
@@ -165,7 +172,7 @@ void SIO::WriteByte(UBYTE byte)
 	      // Reset the checksum now, and the index into the data frame.
 	      CurrentSum   = 0;
 	      DataFrameIdx = 0;
-	      // If the devicer is turned on, ensure that we
+	      // If the device is turned on, ensure that we
 	      // generate an answer back message. This must be
 	      // 'A' if the command got acknowledged.
 	      // For direct IO transmissions, we pre-generate the
@@ -208,6 +215,8 @@ void SIO::WriteByte(UBYTE byte)
     break;
   case WriteFrame: 
     // Feed our input data buffer (write to device)
+    // Actually, the delay is never needed here.
+    delay = UWORD(Write_Done_Delay);
     // First case is the case that we expected the bytes and hence
     // run a block transfer where we first buffer the bytes
     // and write them in one go.
@@ -226,7 +235,7 @@ void SIO::WriteByte(UBYTE byte)
 	    // The checksum is just fine. Now check whether
 	    // the serial device writes the buffer fine.
 	    // We do not include the checksum. 
-	    result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len);
+	    result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len,delay);
 	    if (result) {
 	      // Switch to the flush frame to collect the final result
 	      // after writing the data out. 
@@ -262,7 +271,7 @@ void SIO::WriteByte(UBYTE byte)
       CurrentSum += byte;
       len         = DataFrameIdx;
       // Check whether the device can write this (and the remaining buffer) out.
-      result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len);
+      result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len,delay);
       // Remove the written bytes from the buffer.
       if (len > 0) {
 	if (len < DataFrameIdx)
@@ -315,6 +324,7 @@ void SIO::WriteByte(UBYTE byte)
 void SIO::RequestInput(void)
 {
   UBYTE result;
+  UWORD delay;
   int bytes;
   int sum;
   
@@ -331,7 +341,12 @@ void SIO::RequestInput(void)
       // we get something, then signal the result.    
       bytes         = DataFrameLength; // Size of the expected data buffer.
       ExpectedBytes = DataFrameLength;
-      result        = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes);
+      if (CmdType == FormatCommand) {
+	delay       = UWORD(Format_Done_Delay);
+      } else {
+	delay       = UWORD(Read_Done_Delay);
+      }
+      result        = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes,delay);
       // Check whether we already got any bytes in return.
       if (bytes) {
 	// Yes, we did. Integrate them into our data frame buffer, 
@@ -361,8 +376,7 @@ void SIO::RequestInput(void)
 	// the current command already completed with this go, or whether
 	// we need to come back
 	StatusFrame[1]   = result;
-	pokey->SignalSerialBytes(StatusFrame,1,(CmdType == FormatCommand)?
-				 UWORD(Format_Done_Delay):UWORD(Read_Done_Delay));
+	pokey->SignalSerialBytes(StatusFrame,1,delay);
       } else if (result) {
 	// All done, error or completed: We got a non-zero status from the
 	// device.
@@ -371,8 +385,7 @@ void SIO::RequestInput(void)
 	// Here we just got a result code and no
 	// data bytes at all. Abort the frame.
 	SIOState                  = NoFrame;
-	pokey->SignalSerialBytes(StatusFrame,1,(CmdType == FormatCommand)?
-				 UWORD(Format_Done_Delay):UWORD(Read_Done_Delay));
+	pokey->SignalSerialBytes(StatusFrame,1,delay);
       } else {
 	// Otherwise, ask pokey to wait a bit longer and call back later.
 	pokey->SignalSerialBytes(NULL,0);
@@ -398,11 +411,12 @@ void SIO::RequestInput(void)
     case StatusCommand:
       // This is similar to read except that zero bytes are transfered
       // and the result is immediate.
-      result         = ActiveDevice->ReadStatus(CommandFrame);
+      delay          = UWORD(Write_Done_Delay);
+      result         = ActiveDevice->ReadStatus(CommandFrame,delay);
       if (result) {
 	StatusFrame[0] = result;
 	StatusFrame[1] = 'C';
-	pokey->SignalSerialBytes(StatusFrame,(result == 'A')?2:1,UWORD(Write_Done_Delay));      
+	pokey->SignalSerialBytes(StatusFrame,(result == 'A')?2:1,delay);
 	// We are done with the handling
 	SIOState       = NoFrame;
       } else {
@@ -430,6 +444,9 @@ void SIO::RequestInput(void)
     // check whether we have anything in our buffer. If so,
     // checksum and transmit this part. Otherwise, read new
     // data into this buffer.
+    //
+    // No additional delay from the floppy
+    delay          = 0;
     if (DataFrameIdx == 0) {
       // Here we have vacant space in this buffer. Refill it
       // before we continue unless we are already completed.
@@ -438,7 +455,7 @@ void SIO::RequestInput(void)
 	// The initial read completed, do not try to read again.
 	result       = StatusFrame[1];
       } else {
-	result       = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes);
+	result       = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes,delay);
 	// If we collected any bytes, add up the checksum.
 	sum          = ChkSum(DataFrame,bytes);
 	sum         += CurrentSum;
@@ -458,7 +475,7 @@ void SIO::RequestInput(void)
       ExpectedBytes -= bytes;
     }
     // Transmit now the bytes in this buffer.
-    pokey->SignalSerialBytes(DataFrame,DataFrameIdx);
+    pokey->SignalSerialBytes(DataFrame,DataFrameIdx,delay);
     // Now we have zero data available in the buffer, need to
     // refill on the next go.
     DataFrameIdx = 0;
@@ -467,7 +484,7 @@ void SIO::RequestInput(void)
     // A write command returned, we are now expected to deliver
     // the result code.
     // Check whether flushing out the buffer was succesful. 
-    result = ActiveDevice->FlushBuffer(CommandFrame);
+    result = ActiveDevice->FlushBuffer(CommandFrame,delay);
     if (result) {
       // Got a result. Test whether it is valid or not. If not,
       // insert this as immediate result and return. 
@@ -585,7 +602,8 @@ bool SIO::WaitForSerialDevice(class Timer *time,ULONG &timecount)
 // Bypass the serial overhead for the SIO patch and issues the
 // command directly. It returns a status
 // indicator similar to the ROM SIO call.
-UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD size,UWORD aux,UBYTE timeoutsecs)
+UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
+			 UWORD size,UWORD aux,UBYTE timeoutsecs)
 {
   class AdrSpace *ram;
   class SerialDevice *ser;
@@ -596,6 +614,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
   ULONG timecount;     // counts 10ms intervalls
   int bytes,transfer,count,retrycnt;
   UBYTE error;
+  UWORD delay = 0; // No need to delay here.
   
   // Retry several times before giving up
   retrycnt  = 15;
@@ -603,7 +622,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
     // First set the error code: Device does not exist.
     error       = 0x8a;	
     // Initialize the timeout. If we wait longer than this, then we
-    // reqtry the command. timeoutsecs is approximately in seconds
+    // retry the command. timeoutsecs is approximately in seconds
     // for the Atari, here precisely in seconds. We delay 10ms at
     // once, then run thru a display/sound VBI
     timeout.StartTimer(0,10*1000);   
@@ -658,7 +677,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	count  = 0;
 	do {
 	  transfer = bytes;
-	  result   = ser->ReadBuffer(cmdframe,buffer,transfer);
+	  result   = ser->ReadBuffer(cmdframe,buffer,transfer,delay);
 	  bytes   -= transfer;
 	  buffer  += transfer;
 	  count   += transfer;
@@ -692,7 +711,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	  // safety reasons.
 	  if ((count = size)) { 
 	    do {
-	      ram->WriteByte(mem++,*buffer++);
+	      ram->WriteByte(UWORD(mem++),*buffer++);
 	    } while(--count);
 	  }
 	}
@@ -717,7 +736,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	  ram    = machine->MMU()->CPURAM();
 	  if (bytes) {
 	    do {
-	      *buffer = UBYTE(ram->ReadByte(mem++));
+	      *buffer = UBYTE(ram->ReadByte(UWORD(mem++)));
 	      buffer++;
 	    } while(--bytes);
 	  }
@@ -728,7 +747,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	  // Now write the buffer back to the device until all
 	  // data has been written or a problem has been
 	  // reported.
-	  result = ser->WriteBuffer(cmdframe,DataFrame,DataFrameLength);
+	  result = ser->WriteBuffer(cmdframe,DataFrame,DataFrameLength,delay);
 	  count  = DataFrameLength;
 	} else {
 	  UBYTE dat;
@@ -740,8 +759,8 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	  count  = 0;
 	  do {
 	    transfer = 1; // single bytes at once.
-	    dat      = UBYTE(ram->ReadByte(mem));
-	    result   = ser->WriteBuffer(cmdframe,&dat,transfer);
+	    dat      = UBYTE(ram->ReadByte(UWORD(mem)));
+	    result   = ser->WriteBuffer(cmdframe,&dat,transfer,delay);
 	    count   += transfer;
 	    mem     += transfer;	  
 	    if (transfer == 0) {	  
@@ -767,7 +786,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	// Now flush the contents. This may also take a while.
 	if (result == 'A' || result == 'C') {
 	  do {
-	    result = ser->FlushBuffer(cmdframe);
+	    result = ser->FlushBuffer(cmdframe,delay);
 	    if (timeout.EventIsOver()) {	      
 	      // Test whether we timed out. 
 	      // If so, generate a timeout error.
@@ -792,7 +811,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,UWORD siz
 	// This is similar to read except that zero bytes are transfered
 	// and the result is immediate. AtariSIO doesn't support this
 	// currently, so we don't care much
-	switch (ser->ReadStatus(cmdframe)) {
+	switch (ser->ReadStatus(cmdframe,delay)) {
 	case 0x00:
 	  return 0x8b; // device did not sync
 	case 'E':
@@ -851,11 +870,51 @@ void SIO::ConcurrentWrite(UBYTE data)
   // If one is found, deliver it. Otherwise, warn that there
   // is a concurrent put without a dedicated receiver.
   for(dev = Devices.First();dev;dev = dev->NextOf()) {
-    if (dev->ConcurrentWrite(data))
+    if (dev->ConcurrentWrite(data)) {
+      HaveWarned = false;
       return;
+    }
   }
   //
-  machine->PutWarning("Unrequested concurrent write of byte $%02x.\n",data);
+  if (!HaveWarned) {
+    machine->PutWarning("Unrequested concurrent write of byte $%02x.\n",data);
+    HaveWarned = true;
+  }
+}
+///
+
+/// SIO::TapeWrite
+// Output a byte from the tape recorder.
+void SIO::TapeWrite(UBYTE data)
+{
+  class SerialDevice *dev;
+  //
+  // Ask all serial devices whether there is one that takes
+  // FM-coded (two-tone) data.
+  if (MotorEnabled) {
+    for(dev = Devices.First();dev;dev = dev->NextOf()) {
+      if (dev->TapeWrite(data)) {
+	HaveWarned = false;
+	return;
+      }
+    }
+  }
+  //
+  if (!HaveWarned) {
+    machine->PutWarning("Unrequested two-tone data write of byte $%02x.\n",data);
+    HaveWarned = true;
+  }
+}
+///
+
+/// SIO::SetMotorLine
+// Enable or disable the state of the tape motor,
+// thus potentially running or stopping the
+// motor.
+void SIO::SetMotorLine(bool onoff)
+{
+  // If onoff is false, the motor is running.
+  MotorEnabled = !onoff;
 }
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hdevice.cpp,v 1.44 2009-05-16 20:00:28 thor Exp $
+ ** $Id: hdevice.cpp,v 1.50 2013-05-05 20:43:39 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/
@@ -134,8 +134,10 @@ void HDevice::BinaryLoadCallbackPatch::RunPatch(class AdrSpace *,class CPU *,UBY
       // Check whether we already have a run address.
       // If not, then keep this initial address as
       // run address for OS/A+ compatibility.
+      /* BAD idea, not Atari compatible
       BaseSpace->WriteByte(0x2e0,Start & 0xff); // lo
       BaseSpace->WriteByte(0x2e1,Start >> 8  ); // hi
+      */
       // Fine. Keep it.
       State = ReadEnd;
       ReadBlock(0x240,0x02);
@@ -178,19 +180,18 @@ void HDevice::BinaryLoadCallbackPatch::RunPatch(class AdrSpace *,class CPU *,UBY
       break;
     } else if (ErrorCode == 0x03) {
       UWORD init;
+      UWORD run;
       // We are at the EOF. That's fine and no
       // error.
       ErrorCode = 0x01;      
-      // At the end, call us again to close up.
-      State     = Run;
-      PushReturn(0xe47a);
       // Keep the channel
       // open, and jump thru the run address
-      // should we have been asked for.
-      if (RunMask & 0x40) {
+      // should we have been asked for. 
+      run = BaseSpace->ReadWord(0x2e0);
+      if (run && (RunMask & 0x40)) {
 	// Read it from memory for maximum
 	// compatibility.
-	PushReturn(BaseSpace->ReadWord(0x2e0));
+	PushReturn(run);
       }
       //
       // Call the init vector first if we have one.
@@ -199,6 +200,9 @@ void HDevice::BinaryLoadCallbackPatch::RunPatch(class AdrSpace *,class CPU *,UBY
 	// Call it.
 	PushReturn(init);
       }
+      //
+      // But even before that, close the channel.
+      CloseChannel();
       break;
     }
     // Otherwise, close the channel and return.
@@ -353,11 +357,31 @@ void HDevice::BinaryLoadCallbackPatch::LaunchBinaryLoad(class AdrSpace *adr,UBYT
 // Check whether a file name matches a pattern
 bool HDevice::HandlerChannel::MatchPattern(const char *filename,char *pattern)
 {
+  const char *ch = filename;
+  bool havedot   = false;
+  //
   // If the file name contains a '.', we never match. Hidden files
   // are never shown here.
   if (*filename == '.')
     return false;
   //
+  // If the filename contains something that is not printable, do not
+  // match either.
+  while(*ch) {
+    if (*ch <= 0x20 || 
+	(*ch >= 0x21 && *ch <= 0x40 && *ch != '.' && !(*ch >= '0' && *ch <= '9')) ||
+	(*ch >= 0x5b && *ch <= 0x60) || (*ch >= 0x7b)) {
+      if (havedot == false || *ch != ' ') {
+	return false;
+      }
+    }
+    if (*ch == '.') {
+      if (havedot)
+	return false;
+      havedot = true;
+    }
+    ch++;
+  }
   // If the pattern contains a '-', we always match. (Thor-Dos)
   // We do not check trailing characters here.
   if (*pattern == '-')
@@ -631,6 +655,11 @@ UBYTE HDevice::HandlerChannel::ToDirEntry(void)
 void HDevice::FilterAux1(char *name,UBYTE &aux1)
 {
   char *modifier;
+  //
+  // Check whether there is a comma in the name, remove it.
+  modifier = strchr(name,',');
+  if (modifier) // cut off.
+    *modifier = 0;
   //
   // Scan the file name/pattern for the "/" modifier indicator.
   modifier = strchr(name,'/');

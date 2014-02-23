@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: saveable.cpp,v 1.3 2003-02-01 20:32:02 thor Exp $
+ ** $Id: saveable.cpp,v 1.4 2013-03-16 15:08:53 thor Exp $
  **
  ** This class defines the interface for reading and writing snapshots of 
  ** configurations.

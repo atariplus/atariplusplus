@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: patch.cpp,v 1.9 2005-07-10 15:26:00 thor Exp $
+ ** $Id: patch.cpp,v 1.10 2013-02-14 15:38:34 thor Exp $
  **
  ** In this module: Generic administration of patches
  **********************************************************************************/
@@ -31,23 +31,15 @@ void Patch::InsertESC(class AdrSpace *adr,ADR mem,UBYTE code)
 /// Patch::InstallPatchList
 // This is for the maintainer of the patch list: Install all patches
 // in a row. Call it from the first patch at hand.
-void Patch::InstallPatchList(class AdrSpace *adr)
+void Patch::InstallPatchList(class Machine *mach,class AdrSpace *adr)
 {   
-  UBYTE esc         = 0;
-  class Patch *ptch = this;
-  // Install the complete patch list by traversing the patch queue.
-  // Further assign the esc code slots here.
-  do {
-    if (ptch->NumPatches) {
-      ptch->MinCode = esc;
-      ptch->MaxCode = UBYTE(esc + ptch->NumPatches - 1);
-    } else {
-      ptch->MinCode = ptch->MaxCode = 0xff;
-    }
-    esc          +=       ptch->NumPatches;
-    ptch->InstallPatch(adr,ptch->MinCode);
-    ptch = ptch->NextOf();
-  } while (ptch);
+  if (NumPatches) {
+    MinCode = mach->AllocateEscape(NumPatches);
+    MaxCode = UBYTE(MinCode + NumPatches - 1);
+  } else {
+    MinCode = MaxCode = 0xff;
+  }
+  InstallPatch(adr,MinCode);
 }
 ///
 
@@ -57,15 +49,10 @@ void Patch::InstallPatchList(class AdrSpace *adr)
 // patches. Returns true in case the patch could have been dispatched.
 bool Patch::RunEmulatorTrap(class AdrSpace *adr,class CPU *cpu,UBYTE code)
 {
-  class Patch *ptch = this;
-  do {
-    if (ptch->NumPatches && code >= ptch->MinCode && code <= ptch->MaxCode) {
-      ptch->RunPatch(adr,cpu,UBYTE(code - ptch->MinCode));
-      return true;
-    }
-    // Try the next.
-    ptch = ptch->NextOf();
-  } while(ptch);
+  if (NumPatches && code >= MinCode && code <= MaxCode) {
+    RunPatch(adr,cpu,UBYTE(code - MinCode));
+    return true;
+  }
   //
   // Could not be dispatched.
   return false;

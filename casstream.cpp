@@ -2,99 +2,16 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: casstream.cpp,v 1.2 2009-08-10 14:42:17 thor Exp $
+ ** $Id: casstream.cpp,v 1.4 2013/06/01 15:12:24 thor Exp $
  **
  ** In this module: Disk image class for .cas (tape) archives.
  **********************************************************************************/
 
 /// Includes
 #include "casstream.hpp"
+#include "casfile.hpp"
 #include "exceptions.hpp"
 #include "stdio.hpp"
-///
-
-/// CASStream::CASFile::Get
-// Read a byte from the image, throw on EOF.
-UBYTE CASStream::CASFile::Get(void)
-{
-  // Check whether there is still data in the buffer.
-  do {
-    if (inbuf < bytecnt) {
-      return buffer[inbuf++];
-    } else {
-      UBYTE chunk[8];
-      ULONG size;
-      // Otherwise, read the next chunk from the CAS file.
-      if (fread(chunk,1,8,src) != 8) {
-	if (errno)
-	  ThrowIo("CASStream::CASFile::Get","error when reading from CAS file");
-	else
-	  Throw(OutOfRange,"CASStream::CASFile::Get","unexpected EOF when reading from CAS file");
-      }
-      //
-      // Get the size of this chunk.
-      size = chunk[4] | (chunk[5] << 8);
-      //
-      // We only care about data chunks here.
-      if (chunk[0] == 'd' && chunk[1] == 'a' && chunk[2] == 't' && chunk[3] == 'a') {
-	UBYTE i,chksum = 0;
-	if (size != sizeof(buffer))
-	  Throw(InvalidParameter,"CASStream::CASFile::Get","CAS buffer segment size invalid");
-	if (fread(buffer,1,size,src) != size) {
-	  if (errno)
-	    ThrowIo("CASStream::CASFile::Get","error when reading from CAS file");
-	  else
-	    Throw(OutOfRange,"CASStream::CASFile::Get","unexpected EOF when reading from CAS file");
-	}	
-	// Initialize the input buffer pointer and the size of the buffer.
-	inbuf = 3;
-	// Skip the buffer header.
-	if (buffer[0] != 0x55 && buffer[1] != 0x55)
-	  Throw(InvalidParameter,"CASStream::CASFile::Get","invalid CAS chunk, sync marker missing");
-	switch(buffer[2]) {
-	case 0xfc: // A full chunk
-	  bytecnt = 128 + 3;
-	  break;
-	case 0xfa: // A partial chunk.
-	  bytecnt = buffer[3+127] + 3;
-	  if (bytecnt >= 128 + 3)
-	    Throw(InvalidParameter,"CASStream::CASFile::Get","invalid CAS length indicator");
-	  break;
-	case 0xfe: // An EOF chunk.
-	  bytecnt = 0;
-	  break;
-	default:
-	  Throw(InvalidParameter,"CASStream::CASFile::Get","invalid CAS chunk type");
-	}
-	// Compute the checksum.
-	for(i = 0,chksum = 0;i < size - 1;i++) {
-	  if (buffer[i] + int(chksum) >= 256) {
-	    chksum += buffer[i] + 1; // also add the carry;
-	  } else {
-	    chksum += buffer[i];
-	  }
-	}
-	if (chksum != buffer[size - 1])
-	  Throw(InvalidParameter,"CASStream::CASFile::Get","CAS chunk checksum is invalid");
-	//
-	// Everything is now initialized. Just throw on EOF now.
-	if (buffer[2] == 0xfe)
-	  throw 0;
-      } else {
-	// Skip the data.
-	while(size) {
-	  if (fgetc(src) < 0) {
-	    if (errno)
-	      ThrowIo("CASStream::CASFile::Get","error when reading from CAS file");
-	    else
-	      Throw(OutOfRange,"CASStream::CASFile::Get","unexpected EOF when reading from CAS file");
-	  }
-	  size--;
-	}
-      }
-    }
-  } while(true);
-}
 ///
 
 /// CASStream::CASStream
@@ -132,7 +49,7 @@ void CASStream::OpenImage(const char *filename)
   // First pass: Compute the size of the archive.
   size = 0;
   try {
-    struct CASFile cas(File);
+    class CASFile cas(File);
     do {
       cas.Get();
       size++;
@@ -141,9 +58,12 @@ void CASStream::OpenImage(const char *filename)
     // Just the EOF.
   }
   //
+  // Round up to the next multiple of 128 to allow this to be loaded
+  // as an XFD image.
+  Size   = (size + 127) & (~127);
   // Now allocate the buffer.
-  Buffer = new UBYTE[size];
-  Size   = size;
+  Buffer = new UBYTE[Size];
+  memset(Buffer,0,Size);
   //
   // Now start over.
   if (fseek(File,0,SEEK_SET) < 0) {
@@ -151,7 +71,7 @@ void CASStream::OpenImage(const char *filename)
   }
   //
   try {
-    struct CASFile cas(File);
+    class CASFile cas(File);
     UBYTE *target = Buffer;
     do {
       *target++ = cas.Get();
@@ -159,6 +79,12 @@ void CASStream::OpenImage(const char *filename)
   } catch(int) {
     // EOF
   } 
+  //
+  // Replicate the last data as if it was loaded from the
+  // tape buffer.
+  if ((size & 127) && (size > 128)) {
+    memcpy(Buffer + size,Buffer + size - 128,Size - size);
+  }
 }
 ///
 

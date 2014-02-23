@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartsdx.cpp,v 1.12 2006-05-25 17:44:16 thor Exp $
+ ** $Id: cartsdx.cpp,v 1.13 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: The implementation of an SDX Supercart
  **********************************************************************************/

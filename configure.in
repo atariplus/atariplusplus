@@ -2,13 +2,13 @@
 #**
 #** Atari++ emulator (c) 2002-2011 THOR-Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.117 2013-01-14 13:31:46 thor Exp $
+#** $Id: configure.in,v 1.122 2014/02/23 12:32:59 thor Exp $
 #**
 #** In this module: autoconf script for atari++
 #**********************************************************************************/
 #
 # Process this file with autoconf to produce a configure script.
-AC_INIT(atari++,1.71,thor@math.tu-berlin.de)
+AC_INIT(atari++,1.73,thor@math.tu-berlin.de)
 AC_CONFIG_SRCDIR([types.hpp])
 AC_CONFIG_HEADER([types.h])
 #AC_PREFIX_DEFAULT([/usr])
@@ -218,6 +218,22 @@ if test ${ac_arg_X11} = yes; then
  AC_SEARCH_LIBS([DPMSQueryExtension],[Xext])
  AC_CHECK_FUNCS([DPMSInfo DPMSDisable DPMSEnable])
 fi
+#
+if test ${ac_arg_X11} = yes; then
+ CFLAGS="$CFLAGS $X_CFLAGS"
+ LDFLAGS="$X_LIBS $X_PRE_LIBS $X_EXTRA_LIBS"
+ AC_SEARCH_LIBS([XOpenDisplay],[X11])
+ AC_CHECK_HEADERS([X11/extensions/Xvlib.h],AC_DEFINE(HAS_XVLIB_H,[1],[Define to 1 if the X11 Xvlib.h extension header is available]),[],[
+#include<X11/X.h>
+#include<X11/Xlib.h>
+])
+ AC_SEARCH_LIBS([XvQueryExtension],[Xv])
+ AC_CHECK_FUNCS([XvQueryExtension XvQueryAdaptors XvListImageFormats XvShmPutImage])
+ AC_CHECK_HEADERS([sys/ipc.h],AC_DEFINE(HAS_SYS_IPC_H,[1],[Define to 1 if the sys/ipc.h header is available]),[],[])
+ AC_CHECK_HEADERS([sys/shm.h],AC_DEFINE(HAS_SYS_SHM_H,[1],[Define to 1 if the sys/shm.h header is available]),[],[])
+ AC_CHECK_FUNCS([shmat shmctl shmdt])
+fi
+#
 if test ${ac_arg_ZLIB} = yes; then
  AC_SEARCH_LIBS([gzopen],[z])
 fi
@@ -235,11 +251,14 @@ fi
 if test ${ac_arg_SDL} = yes; then   
  ac_save_CFLAGS=$CFLAGS
  ac_save_LDFLAGS=$LDFLAGS
+ ac_save_LIBS=$LIBS
  CFLAGS="$CFLAGS $SDL_CFLAGS"
  LDFLAGS="$LDFLAGS $SDL_LDFLAGS"
+ AC_SEARCH_LIBS([SDL_Init],[SDL])
  AC_CHECK_FUNCS([SDL_Init SDL_InitSubSystem SDL_OpenAudio SDL_SetVideoMode SDL_JoystickOpen])
  CFLAGS=$ac_save_CFLAGS
  LDFLAGS=$ac_save_LDFLAGS
+ LIBS=$ac_save_LIBS
 fi
 if test ${ac_arg_ZLIB} = yes; then
  AC_CHECK_FUNCS([gzopen])
@@ -492,6 +511,10 @@ AC_MSG_RESULT($ac_ofdel_present)
 AC_MSG_CHECKING([for termios XCASE availibility])
 AC_TRY_COMPILE([#include <termios.h>],[int a = XCASE;],[ac_xcase_present='yes';AC_DEFINE(HAS_XCASE_DEFINE,[1],[Define to 1 if XCASE is a valid termios flag])],[ac_xcase_present='no'])
 AC_MSG_RESULT($ac_xcase_present)
+#
+AC_MSG_CHECKING([for termios CRTSCTS availibility])
+AC_TRY_COMPILE([#include <termios.h>],[int a = CRTSCTS;],[ac_crtscts_present='yes';AC_DEFINE(HAS_CRTSCTS_DEFINE,[1],[Define to 1 if CRTSCTS is a valid termios flag])],[ac_crtscts_present='no'])
+AC_MSG_RESULT($ac_crtscts_present)
 #
 
 #

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.cpp,v 1.48 2010-11-06 16:43:25 thor Exp $
+ ** $Id: osrom.cpp,v 1.49 2013-02-14 15:38:34 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/
@@ -61,6 +61,8 @@ OsROM::OsROM(class Machine *mach)
 /// OsROM::~OsROM
 OsROM::~OsROM(void)
 {
+  PatchProvider::DisposePatches();
+  
   delete[] osapath;
   delete[] osbpath;
   delete[] os1200path;

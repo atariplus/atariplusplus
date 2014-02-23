@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: serialdevice.hpp,v 1.14 2003-08-02 15:40:14 thor Exp $
+ ** $Id: serialdevice.hpp,v 1.16 2013/05/31 22:08:00 thor Exp $
  **
  ** In this module: Interface specifications for serial devices.
  ** All serial devices (printer, disks, ...) must be derived from
@@ -68,24 +68,28 @@ public:
   // after the read operation, and installs the number of bytes really written
   // into the data size if it differs from the requested amount of bytes.
   // SIO will call back in case only a part of the buffer has been transmitted.
-  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &datasize) = 0;
+  // Delay is the number of 15kHz cycles (lines) the command requires for completion.
+  virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
+			   int &datasize,UWORD &delay) = 0;
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error. 
-  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,int &datasize) = 0;
+  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
+			    int &datasize,UWORD &delay) = 0;
   //
   // After a written command frame, either sent or test the checksum and flush the
   // contents of the buffer out. For block transfer, SIO does this for us. Otherwise,
   // we must do it manually.
-  virtual UBYTE FlushBuffer(const UBYTE *)
+  virtual UBYTE FlushBuffer(const UBYTE *,UWORD &)
   {
     // Default is to rely on the SIO checksumming, send an acknolwedge
     return 'A';
   }
+  //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2. This returns the command status of the
   // device.
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame) = 0;
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay) = 0;
   //
   // Rather exotic concurrent read/write commands. These methods are used for
   // the 850 interface box to send/receive bytes when bypassing the SIO. In these
@@ -105,6 +109,14 @@ public:
   virtual bool ConcurrentWrite(UBYTE)
   {
     // The default serial device does not support concurrent mode.
+    return false;
+  }
+  //
+  // Check whether this device accepts two-tone coded data (only the tape does)
+  // Returns true if the device does, returns false otherwise.
+  virtual bool TapeWrite(UBYTE)
+  {
+    // The default serial device does not.
     return false;
   }
 };

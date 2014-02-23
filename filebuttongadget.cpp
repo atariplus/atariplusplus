@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filebuttongadget.cpp,v 1.2 2005-09-10 12:55:40 thor Exp $
+ ** $Id: filebuttongadget.cpp,v 1.3 2013-03-16 15:08:51 thor Exp $
  **
  ** In this module: Definition of a graphical button gadget 
  ** that brings up a file requester

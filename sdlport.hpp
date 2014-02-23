@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlport.hpp,v 1.4 2003-02-15 13:23:58 thor Exp $
+ ** $Id: sdlport.hpp,v 1.5 2013-03-16 15:08:53 thor Exp $
  **
  ** In this mdoule: The hosting port for all SDL type front-ends
  ** This keeps care about using the various SDL features

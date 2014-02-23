@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: interfacebox.cpp,v 1.27 2009-05-03 20:58:28 thor Exp $
+ ** $Id: interfacebox.cpp,v 1.29 2013/12/05 20:37:14 thor Exp $
  **
  ** In this module: Emulation of the 850 interface box.
  **********************************************************************************/
@@ -268,7 +268,7 @@ void InterfaceBox::SignalDeviceError(const char *msg)
     SerialStream = NULL;
     DevError = true;
   }
-  machine->PutWarning(msg);
+  machine->PutWarning("%s",msg);
 }
 ///
 
@@ -807,7 +807,7 @@ SIO::CommandType InterfaceBox::CheckCommandFrame(const UBYTE *CommandFrame,int &
 /// InterfaceBox::ReadBuffer
 // Read bytes from the device into the system. Returns the number of
 // bytes read.
-UBYTE InterfaceBox::ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &)
+UBYTE InterfaceBox::ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &,UWORD &)
 {
   switch(CommandFrame[1]) {  
   case 'S': // Return 850 status
@@ -832,7 +832,8 @@ UBYTE InterfaceBox::ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &)
 /// InterfaceBox::WriteBuffer
 // Write the indicated data buffer out to the target device.
 // Return 'C' if this worked fine, 'E' on error.
-UBYTE InterfaceBox::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,int &size)
+UBYTE InterfaceBox::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
+				int &size,UWORD &)
 {
   int aux;
   
@@ -860,7 +861,7 @@ UBYTE InterfaceBox::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,in
 /// InterfaceBox::ReadStatus
 // Execute a status-only command that does not read or write any data except
 // the data that came over AUX1 and AUX2
-UBYTE InterfaceBox::ReadStatus(const UBYTE *commandframe)
+UBYTE InterfaceBox::ReadStatus(const UBYTE *commandframe,UWORD &)
 {
   switch(commandframe[1]) {
   case 'B': // Set baud rate

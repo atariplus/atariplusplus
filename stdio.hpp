@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: stdio.hpp,v 1.5 2004-01-02 13:59:37 thor Exp $
+ ** $Id: stdio.hpp,v 1.6 2013-03-14 20:58:51 Administrator Exp $
  **
  ** In this module: Os compatibility layer for stdio management.
  ** This file takes definitions from "types.h" build by autoconf/configure
@@ -42,6 +42,7 @@ int vsnprintf(char *str, size_t size, const char *format,va_list ap);
 /// Explicit console opener for win32
 #if MUST_OPEN_CONSOLE
 extern void OpenConsole();
+extern void CloseConsole();
 #endif
 ///
 

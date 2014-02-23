@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: audiobuffer.hpp,v 1.6 2005-09-10 13:58:32 thor Exp $
+ ** $Id: audiobuffer.hpp,v 1.7 2013-03-16 15:08:50 thor Exp $
  **
  ** In this module: Audio buffer abstraction class provided to collect pokey
  ** output.

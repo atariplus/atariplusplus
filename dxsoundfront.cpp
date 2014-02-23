@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dxsoundfront.cpp,v 1.7 2011-04-26 17:15:26 thor Exp $
+ ** $Id: dxsoundfront.cpp,v 1.8 2014/02/23 10:41:08 Administrator Exp $
  **
  ** In this module: wrapper class for the DirectX sound interface
  **********************************************************************************/
@@ -11,6 +11,7 @@
 #include "dxsoundfront.hpp"
 #ifdef HAVE_DXSOUND
 #define _WIN32_WINNT 0x0500
+#define DIRECTSOUND_VERSION 0x0800
 #include <stdio.h>
 #include <Dsound.h>
 #include <dsound.h>
@@ -36,10 +37,10 @@ struct DXWrapper {
   //
 #ifdef HAVE_DXSOUND
   // Handle to the sound device
-  IDirectSound8 *device;
+  struct IDirectSound8 *device;
   //
   // Handle to the sound buffer.
-  IDirectSoundBuffer *buffer;
+  struct IDirectSoundBuffer *buffer;
   //
   // Pointer to an event structure that is
   // used to wait for buffer notifications.

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfdimage.hpp,v 1.1 2003-01-26 18:16:21 thor Exp $
+ ** $Id: xfdimage.hpp,v 1.3 2013-02-23 18:11:01 thor Exp $
  **
  ** In this module: Disk image class for .xfd images.
  **********************************************************************************/
@@ -52,16 +52,16 @@ public:
   // Return the number of sectors.
   virtual ULONG SectorCount(void);
   //
-  // Return the protection status of this image. true if it is protected.
-  virtual bool ProtectionStatus(void);
+  // Return the status of this image.
+  virtual UBYTE Status(void);
   //
   // Read a sector from the image into the supplied buffer. The buffer size
   // must fit the above SectorSize. Returns the SIO status indicator.
-  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer);
+  virtual UBYTE ReadSector(UWORD sector,UBYTE *buffer,UWORD &);
   //
   // Write a sector to the image from the supplied buffer. The buffer size
   // must fit the sector size above. Returns also the SIO status indicator.
-  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer);
+  virtual UBYTE WriteSector(UWORD sector,const UBYTE *buffer,UWORD &);
   //  
   // Protect an image on user request
   virtual void ProtectImage(void);

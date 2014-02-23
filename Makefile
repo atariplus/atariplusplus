@@ -4,7 +4,7 @@
 ## builds the makefiles with small 'm' which are then searched first
 ## for the real program.
 ##
-## $Id: Makefile,v 1.52 2006-05-21 15:22:29 thor Exp $
+## $Id: Makefile,v 1.53 2014/01/07 12:21:11 thor Exp $
 ##
 ###################################################################################
 
@@ -27,6 +27,7 @@ configure:	configure.in types.h.in
 
 types.h.in:	configure.in
 	autoheader
+	touch types.h.in
 
 types.h:	types.h.in configure.in configure
 	./configure

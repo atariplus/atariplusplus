@@ -18,6 +18,9 @@
 /* Define to 1 if const_cast<> works */
 #undef HAS_CONST_CAST
 
+/* Define to 1 if CRTSCTS is a valid termios flag */
+#undef HAS_CRTSCTS_DEFINE
+
 /* Define to 1 if the X11 dpms.h extension header is available */
 #undef HAS_DPMS_H
 
@@ -64,11 +67,20 @@
 /* Define to 1 if struct timeval is available */
 #undef HAS_STRUCT_TIMEVAL
 
+/* Define to 1 if the sys/ipc.h header is available */
+#undef HAS_SYS_IPC_H
+
+/* Define to 1 if the sys/shm.h header is available */
+#undef HAS_SYS_SHM_H
+
 /* Define to 1 if casting in template arguments work */
 #undef HAS_TEMPLATE_CASTS
 
 /* Define to 1 if XCASE is a valid termios flag */
 #undef HAS_XCASE_DEFINE
+
+/* Define to 1 if the X11 Xvlib.h extension header is available */
+#undef HAS_XVLIB_H
 
 /* Define to 1 if the __null keyword is available */
 #undef HAS__NULL_TYPE
@@ -258,6 +270,15 @@
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
 
+/* Define to 1 if you have the `shmat' function. */
+#undef HAVE_SHMAT
+
+/* Define to 1 if you have the `shmctl' function. */
+#undef HAVE_SHMCTL
+
+/* Define to 1 if you have the `shmdt' function. */
+#undef HAVE_SHMDT
+
 /* Define to 1 if you have the <signal.h> header file. */
 #undef HAVE_SIGNAL_H
 
@@ -320,9 +341,15 @@
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
 
+/* Define to 1 if you have the <sys/ipc.h> header file. */
+#undef HAVE_SYS_IPC_H
+
 /* Define to 1 if you have the <sys/ndir.h> header file, and it defines `DIR'.
    */
 #undef HAVE_SYS_NDIR_H
+
+/* Define to 1 if you have the <sys/shm.h> header file. */
+#undef HAVE_SYS_SHM_H
 
 /* Define to 1 if you have the <sys/soundcard.h> header file. */
 #undef HAVE_SYS_SOUNDCARD_H
@@ -401,6 +428,21 @@
 
 /* Define to 1 if you have the <X11/extensions/Xext.h> header file. */
 #undef HAVE_X11_EXTENSIONS_XEXT_H
+
+/* Define to 1 if you have the <X11/extensions/Xvlib.h> header file. */
+#undef HAVE_X11_EXTENSIONS_XVLIB_H
+
+/* Define to 1 if you have the `XvListImageFormats' function. */
+#undef HAVE_XVLISTIMAGEFORMATS
+
+/* Define to 1 if you have the `XvQueryAdaptors' function. */
+#undef HAVE_XVQUERYADAPTORS
+
+/* Define to 1 if you have the `XvQueryExtension' function. */
+#undef HAVE_XVQUERYEXTENSION
+
+/* Define to 1 if you have the `XvShmPutImage' function. */
+#undef HAVE_XVSHMPUTIMAGE
 
 /* Define to 1 if you have the <zlib.h> header file. */
 #undef HAVE_ZLIB_H

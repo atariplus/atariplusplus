@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_mappedbuffer.cpp,v 1.9 2008-05-22 13:03:54 thor Exp $
+ ** $Id: x11_mappedbuffer.cpp,v 1.10 2014/01/08 20:07:10 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -112,15 +112,16 @@ void X11_MappedBuffer::ScanBlock::AddPixel(int x,int y,int w, int h)
   //
   // Check whether we have any entries. If so, it might be that
   // it is enough to enlarge the previous rectangle
-  if (entries) {
+  if (entries > 0) {
     int test = entries - 1;
-    XRectangle *last = rectangles+test;
+    XRectangle *last = rectangles + test;
     // Check whether this connects fine to the last rectangle.
     if (last->x + last->width == x && last->y == y && last->height == h) {
       // Yup, connects fine to it. Just enlarge me horizontally
       last->width += w;
       return;
     }
+    //
     // Now test whether we have pixels one row above
     while(test >= 0) {
       int lastend = last->y + last->height;
@@ -129,7 +130,6 @@ void X11_MappedBuffer::ScanBlock::AddPixel(int x,int y,int w, int h)
 	last->height += h;
 	return;
       }
-      if (lastend < y) break; // cannot match anymore, these are sorted
       last--;
       test--;
     }

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: stringgadget.cpp,v 1.7 2009-08-10 20:19:06 thor Exp $
+ ** $Id: stringgadget.cpp,v 1.8 2013-01-30 22:09:54 thor Exp $
  **
  ** In this module: Definition of a string-entry gadget
  **********************************************************************************/
@@ -203,7 +203,14 @@ bool StringGadget::HandleKey(struct Event &ev)
       return true;
     case 0x08: // rub-out alias delete
       // delete the character under the cursor, then scroll back
-      if (Size > 0 && Cursor < Size) {
+      if (ev.Shift) {
+	// Erase all of the buffer.
+	*Buffer = 0;
+	Size    = 0;
+	Cursor  = 0;
+	BufPos  = 0;
+	Refresh();
+      } else if (Size > 0 && Cursor < Size) {
 	memmove(Buffer+Cursor,Buffer+Cursor+1,Size-Cursor);
 	Size--;
 	Refresh();

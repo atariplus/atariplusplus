@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuactionitem.hpp,v 1.1 2003-05-04 10:39:28 thor Exp $
+ ** $Id: menuactionitem.hpp,v 1.2 2013-03-16 15:08:52 thor Exp $
  **
  ** In this module: A direct descended of the menu item that generates high-
  ** level events that request specific activity from the supervisor.

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfdimage.cpp,v 1.3 2003-10-05 21:14:31 thor Exp $
+ ** $Id: xfdimage.cpp,v 1.5 2013-02-23 18:11:01 thor Exp $
  **
  ** In this module: Disk image class for .xfd images.
  **********************************************************************************/
@@ -97,22 +97,24 @@ ULONG XFDImage::SectorCount(void)
 }
 ///
 
-/// XFDImage::ProtectionStatus
-// Return the protection status of the image.
-bool XFDImage::ProtectionStatus(void)
+/// XFDImage::Status
+// Return the status of the image.
+UBYTE XFDImage::Status(void)
 {
 #if CHECK_LEVEL > 0
   if (Image == NULL)
     Throw(ObjectDoesntExist,"XFDImage::ProtectionStatus","image is not yet open");
 #endif
-  return Protected;
+  if (Protected)
+    return DiskImage::Protected;
+  return 0;
 }
 ///
 
 /// XFDImage::ReadSector
 // Read a sector from the image into the supplied buffer. The buffer size
 // must fit the above SectorSize. Returns the SIO status indicator.
-UBYTE XFDImage::ReadSector(UWORD sector,UBYTE *buffer)
+UBYTE XFDImage::ReadSector(UWORD sector,UBYTE *buffer,UWORD &)
 {
 #if CHECK_LEVEL > 0
   if (Image == NULL)
@@ -130,7 +132,7 @@ UBYTE XFDImage::ReadSector(UWORD sector,UBYTE *buffer)
 /// XFDImage::WriteSector
 // Write a sector to the image from the supplied buffer. The buffer size
 // must fit the sector size above. Returns also the SIO status indicator.
-UBYTE XFDImage::WriteSector(UWORD sector,const UBYTE *buffer)
+UBYTE XFDImage::WriteSector(UWORD sector,const UBYTE *buffer,UWORD &)
 {
 #if CHECK_LEVEL > 0
   if (Image == NULL)
