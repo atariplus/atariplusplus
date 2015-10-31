@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdl_frontend.cpp,v 1.93 2013-01-12 11:06:00 thor Exp $
+ ** $Id: sdl_frontend.cpp,v 1.94 2015/05/21 18:52:42 thor Exp $
  **
  ** In this module: A frontend using the sdl library
  **

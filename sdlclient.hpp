@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlclient.hpp,v 1.6 2013-03-16 15:08:53 thor Exp $
+ ** $Id: sdlclient.hpp,v 1.7 2015/05/21 18:52:42 thor Exp $
  **
  ** In this module: A class using SDL must be derived from this
  ** class to register and get SDL support from various SDL subsystems

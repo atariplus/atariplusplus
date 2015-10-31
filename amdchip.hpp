@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: amdchip.hpp,v 1.4 2013-03-16 15:08:50 thor Exp $
+ ** $Id: amdchip.hpp,v 1.5 2015/05/21 18:52:35 thor Exp $
  **
  ** In this module: Emulation of AMD FlashROM chips by Mark Keates
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboard.cpp,v 1.35 2008-05-22 10:02:05 thor Exp $
+ ** $Id: keyboard.cpp,v 1.36 2015/05/21 18:52:40 thor Exp $
  **
  ** In this module: Definition of the interface towards keyboard input
  **********************************************************************************/

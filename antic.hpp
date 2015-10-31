@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.hpp,v 1.68 2013-01-14 12:54:10 thor Exp $
+ ** $Id: antic.hpp,v 1.69 2015/05/21 18:30:57 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -140,7 +140,7 @@ public:
   struct CharacterGenerator {
     // Character generator: Orientation in vertical direction: +1 or -1
     class AdrSpace *Ram;          // where to fetch characters from
-    bool            UpsideDown;   // if true, then characters are displayed upside down
+    UBYTE           UpsideDown;   // if 7 then characters are displayed upside down, otherwise 0
     int             InvertMask;   // if code & this is non-null, then it gets inverted
     int             BlankMask;    // if code & this is non-null, then it gets blanked out
     ADR             CharBase;     // Character base

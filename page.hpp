@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: page.hpp,v 1.15 2012-12-31 14:34:59 thor Exp $
+ ** $Id: page.hpp,v 1.17 2015/10/25 09:11:23 thor Exp $
  **
  ** In this module: Definition of an abstract page, keeping 256 in common
  **********************************************************************************/
@@ -91,6 +91,16 @@ public:
   virtual void PatchByte(ADR,UBYTE)
   {
     Throw(NotImplemented,"Page::PatchByte","internal error");
+  }
+  //
+  // Return an indicator whether this is an I/O area or not.
+  // This is used by the monitor to check whether reads are harmless
+  virtual bool isIOSpace(ADR) const
+  {
+    if (memory) {
+      return false;
+    }
+    return true;
   }
 };
 ///

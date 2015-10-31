@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: curses_frontend.hpp,v 1.6 2008-05-25 18:17:30 thor Exp $
+ ** $Id: curses_frontend.hpp,v 1.7 2015/05/21 18:52:38 thor Exp $
  **
  ** In this module: A frontend using the curses library for text output
  **********************************************************************************/

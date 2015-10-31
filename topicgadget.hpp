@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: topicgadget.hpp,v 1.5 2008-03-22 23:05:20 thor Exp $
+ ** $Id: topicgadget.hpp,v 1.6 2015/05/21 18:52:43 thor Exp $
  **
  ** In this module: Definition of a meta-gadget that holds all items of
  ** one topic, i.e. one "configurable" element.

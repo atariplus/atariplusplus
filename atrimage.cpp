@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atrimage.cpp,v 1.12 2013-02-23 18:11:00 thor Exp $
+ ** $Id: atrimage.cpp,v 1.14 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image class for .atr images.
  **********************************************************************************/
@@ -33,6 +33,13 @@ ATRImage::ATRImage(class Machine *mach)
 
 /// ATRImage::~ATRImage
 ATRImage::~ATRImage(void)
+{
+}
+///
+
+/// ATRImage::Reset
+// Reset the image after turning the drive off and on again.
+void ATRImage::Reset(void)
 {
 }
 ///

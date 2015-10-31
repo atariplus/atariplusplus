@@ -2,7 +2,7 @@
 ##
 ## Intel icc Makefile.in for the Atari++ emulator
 ##
-## $Id: makefile.icc.in,v 1.5 2003/02/01 20:32:02 thor Exp $
+## $Id: makefile.icc.in,v 1.6 2015/05/21 18:52:40 thor Exp $
 ##
 ##
 ###################################################################################

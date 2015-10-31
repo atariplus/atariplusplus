@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.127 2013/06/04 21:12:43 thor Exp $
+ ** $Id: pokey.cpp,v 1.138 2015/11/07 18:53:12 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -24,6 +24,7 @@
 #include "monitor.hpp"
 #include "gamecontroller.hpp"
 #include "pokey.hpp"
+#include "tape.hpp"
 #include "cpu.hpp"
 #include "snapshot.hpp"
 #include "time.hpp"
@@ -60,11 +61,12 @@ const UBYTE Pokey::PolyCounter5[Poly5Size] =
 // Pokey constructor
 Pokey::Pokey(class Machine *mach,int unit)
   : Chip(mach,(unit)?"ExtraPokey":"Pokey"), Saveable(mach,(unit)?"ExtraPokey":"Pokey"), 
-    HBIAction(mach), CycleAction(mach), IRQSource(mach),
+    VBIAction(mach), HBIAction(mach), CycleAction(mach), IRQSource(mach),
     Outcnt(0), 
     PolyCounter9(new UBYTE[Poly9Size]), PolyCounter17(new UBYTE[Poly17Size]),
     Random9(new UBYTE[Poly9Size]), Random17(new UBYTE[Poly17Size]),
-    SampleCnt(0), OutputMapping(new BYTE[256]), Unit(unit)
+    SampleCnt(0), OutputMapping(new BYTE[256]), Unit(unit), 
+    SAPOutput(NULL), SongName(NULL), AuthorName(NULL), EnableSAP(false)
 {
   int n;
   //
@@ -142,6 +144,8 @@ Pokey::Pokey(class Machine *mach,int unit)
   // by SkCtrl writes
   SerIn_Delay      = 9 * Base15kHz;
   SerOut_Delay     = 9 * Base15kHz;
+  SerIn_Clock      = 9 * Base15kHz;
+  SerOut_Clock     = 9 * Base15kHz;
   SerXmtDone_Delay = 9 * Base15kHz;
   SerBitOut_Delay  = Base15kHz;
   SerInRate        = 0;
@@ -268,6 +272,16 @@ void Pokey::ColdStart(void)
 // Destructor of the pokey class
 Pokey::~Pokey(void)
 {
+  
+  // Shut down the SAP output in case it is
+  // still running.
+  if (SAPOutput) {
+    fclose(SAPOutput);
+  }
+
+  delete[] SongName;
+  delete[] AuthorName;
+
   // If the cycle-precise timers were active, remove it here.
   if (CycleTimers) {
     Node<CycleAction>::Remove();
@@ -344,7 +358,7 @@ void Pokey::UpdateSound(UBYTE mask)
 
 	if (AudioCtrl & Mhz17Flag[n]) {
 	  ch->DivNMax    = ch->AudioF + 7; // clock by 1.79Mhz
-	  ch->DivFullMax = 255        + 7; // full wraparound required.
+	  ch->DivFullMax = 255        + 1; // full wraparound required. FIX: No wraparound full reset required.
 	} else {
 	  ch->DivNMax    = (ch->AudioF + 1) * TimeBase;
 	  ch->DivFullMax = (255        + 1) * TimeBase;
@@ -374,6 +388,11 @@ void Pokey::UpdateSound(UBYTE mask)
 	// is also on. Note that we checked the filtered channel in a previous
 	// loop.
 	ch->ChannelOn   = ch[-2].ChannelOn;
+      } else if (AudioCtrl & LinkHiFlag[n]) {
+	// Also unmute if this is the high-part of a linked filter pair because
+	// the frequency of the high-filter now impacts the maximum cycle count
+	// of the low filter.
+	ch->ChannelOn   = ch[-1].ChannelOn;
       } else {
 	// Otherwise, disable the channel unless we have reason not to.
 	// We also clear the hi-flop of the filtered channel here to reset
@@ -385,7 +404,9 @@ void Pokey::UpdateSound(UBYTE mask)
       // VolOnly is turned off and the volume is larger than zero.
       // Unless the channel has volonly set or has a divisor which is too
       // low. 1.79MHz / 22kHz = 81.
-      audc = ch->AudioC;
+      audc       = ch->AudioC;
+      ch->AudioV = audc & 0x0f; // volume
+      ch->AudioP = audc >> 5;   // polycounter
       if ((audc & 0x0f) && (audc & 0x10) == 0) {
 	audc &= 0xe0;
 	if (audc != 0xa0 && audc != 0xe0) {
@@ -451,6 +472,7 @@ void Pokey::UpdateSound(UBYTE mask)
     if (mask & 0x0c) {
       // Input is driven by channel 3 (or 2 and 3)
       SerIn_Delay      = 20 * Ch[3].DivNMax;
+      SerIn_Clock      = UWORD((Ch[3].DivNMax < 0xffff)?(Ch[3].DivNMax):(0xffff));
     }
   }
   // Check the output clock mode. This is controlled
@@ -465,6 +487,7 @@ void Pokey::UpdateSound(UBYTE mask)
     // Output clocked by channel 3 (or 2 and 3)
     if (mask & 0x0c) {
       SerOut_Delay     = Ch[3].DivNMax;
+      SerOut_Clock     = UWORD((Ch[3].DivNMax < 0xffff)?(Ch[3].DivNMax):(0xffff));
       SerBitOut_Delay  = 2  * SerOut_Delay;
       SerXmtDone_Delay = 20 * SerOut_Delay;
       SerOut_Delay     = (SerOut_Delay > 10)?(SerOut_Delay - 10):(1);
@@ -520,10 +543,12 @@ void Pokey::UpdateSound(UBYTE mask)
 	    Ch[2].ChannelOn = true;
 	  if (Ch[3].AudioC & 0x0f) {
 	    Ch[3].ChannelOn = true;
-	    // FIXME: Ugly hack to get the sound 
-	    // approximately right.
-	    // See above for how it really works.
-	    Ch[3].DivNMax  *= 21;
+	    if (SerInRate < 500) {
+	      // FIXME: Ugly hack to get the sound 
+	      // approximately right.
+	      // See above for how it really works.
+	      Ch[3].DivNMax  *= 21;
+	    }
 	  }
 	} else {
 	  // Transfer blocked, stop it.
@@ -555,6 +580,46 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
   ULONG SampleMax    = (Frequency17Mhz << 8) / dspsamplerate;
   LONG  offset       = delta;
   
+  if (SIOSound) {
+    // Check whether the tape is running and some data comes actually in.
+    // If so, misuse the audio channels to re-generate the sound that would
+    // normally come from the tape.
+    if (AudioCtrl == 0x28) {
+      bool bit   = true;
+      //
+      if (SkCtrl & 0x10) {
+	if (SerIn_Counter > 0 && SerInBuffer && SerInRate > 0) {
+	  int bitposition   = (SerIn_Counter + SerInRate - 1) / SerInRate; // "half-bits"
+	  //
+	  if (bitposition == 20 || bitposition == 19) { 
+	    // The start bit. Actually, 1 1/2 start bits. If we assume that the
+	    // receiver waits 1 1/2 bits to sample at the middle of the bit, this
+	    // might be ok.
+	    bit   = false;
+	  } else if (bitposition < 19 && bitposition > 2) {
+	    bit   = ((*SerInBuffer >> (7 - ((bitposition - 3) >> 1))) & 0x01)?true:false;
+	  }
+	}
+	Ch[3].AudioV = Ch[3].AudioC & 0x0f;
+	if (bit)
+	  Ch[3].AudioV = (Ch[3].AudioV * 3) >> 2;
+      }
+      if (sio->isMotorEnabled()) {
+	class Tape *tape = machine->Tape();
+	if (tape && tape->isPlaying() && tape->isRecording() == false) {
+	  // Misuse channel 3 to generate the sound. It is actually the serial counter.
+	  Ch[2].ChannelOn = true;
+	  Ch[2].AudioV    = 0x08;
+	  Ch[2].AudioP    = 5;
+	  if (bit) {
+	    Ch[2].DivNMax   = (0x05 + 1) * Base64kHz;
+	  } else {
+	    Ch[2].DivNMax   = (0x07 + 1) * Base64kHz;
+	  }
+	}
+      }
+    }
+  }
 
   if ((SkCtrl & 0x03) == 0) {
     // Sound completely disabled.
@@ -607,7 +672,7 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
 	  mask = 0x00;
 	}
       }
-      current += mask & c->AudioC;
+      current += mask & c->AudioV;
     }
     //
     // Now generate the output:
@@ -672,7 +737,7 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
       // Now check the AudioControl for which polycounter we should
       // use for updating. All this information is encoded in the polypointer
       // array indexed by the audc >> 5.
-      audc = c->AudioC >> 5;
+      audc = c->AudioP;
       // Check for the first gate. This is the polycounter #5 or no polycounter
       // at all.
       if (**PolyPointerFirst[audc]) {
@@ -996,6 +1061,53 @@ void Pokey::Step(void)
 }
 ///
 
+/// Pokey::VBI
+// VBI activity: This is only used here for dumping POKEY registers to generate
+// SAP files if this feature is enabled.
+void Pokey::VBI(class Timer *,bool,bool pause)
+{
+  if (pause == false && EnableSAP) {
+    // Check whether it makes sense to open up the SAP output.
+    if (SAPOutput == NULL && SongName && *SongName) {
+      bool enable = false;
+      int channel;
+      for(channel = 0;channel < 4;channel++) {
+	struct Channel *ch = Ch + channel;
+	if ((ch->AudioC & 0x0f) && (ch->AudioC & 0x10) == 0x00)
+	  enable = true;
+      }
+      if (enable) {
+	char filename[256];
+	snprintf(filename,sizeof(filename),"%s.sap",SongName);
+	SAPOutput = fopen(filename,"wb");
+	if (SAPOutput == NULL) {
+	  ThrowIo("Pokey::ParseArgs","unable to create the SAP output file");
+	} else {
+	  fprintf(SAPOutput,"SAP\r\n"
+		  "AUTHOR \"%s\"\r\n"
+		  "NAME \"%s\"\r\n"
+		  "TYPE R\r\n"
+		  "FASTPLAY %d\r\n"
+		  "\r\n",
+		  (AuthorName && *AuthorName)?AuthorName:("<?>"),
+		  SongName,
+		  NTSC?262:312);
+	}
+      }
+    }
+    if (SAPOutput) {
+      int channel;
+      for(channel = 0;channel < 4;channel++) {
+	struct Channel *ch = Ch + channel;
+	putc(ch->AudioF,SAPOutput);
+	putc(ch->AudioC,SAPOutput);
+      }
+      putc(AudioCtrl,SAPOutput);
+    }
+  }
+}
+///
+
 /// Pokey::HBI
 // Signal Pokey that a new scanline just
 // begun. This is not related to any real effect. 
@@ -1224,7 +1336,27 @@ UBYTE Pokey::SerInRead(void)
 	// No else here, this is not redundant. The above might
 	// have caused a side effect!
 	if (SerInBytes > 0) {
-	  UBYTE byte = *SerInBuffer++;
+	  UBYTE byte;
+	  // Check whether the baud rate from the external source fits
+	  // the expectations. If not, read in something garbled.
+	  byte = *SerInBuffer++;
+	  if (SerInRate != SerialReceiveSpeed()) {
+	    // Ok, does not agree. Actually, for the tape the serial speed will
+	    // almost never agree. So check whether the speed varies "too much",
+	    // i.e. more than one bit in a byte, and fail then.
+	    int bitrate  = SerialReceiveSpeed();
+	    int recrate  = 20 * SerInRate;
+	    int byterate = 20 * bitrate;
+	    int delta    = recrate - byterate;
+	    if (delta < -bitrate || delta > bitrate) {
+	      // Difference is too large, fail
+	      do {
+		byte ^= UBYTE(rand() >> 8);
+	      } while(byte == 'A' || byte == 'C');
+	      // Just make sure that we don't generate a SIO 'ok' on error...
+	    }
+	  } 
+	  //
 	  // More serial data available? If so, expect the next byte soon
 	  SerInBytes--;
 	  // Check whether the input buffer is empty. If so, check whether
@@ -1655,6 +1787,23 @@ void Pokey::UpdateAudioMapping(void)
 }
 ///
 
+
+/// Pokey::SerialTransmitSpeed
+// Return the serial output speed as cycles of the 1.79Mhz clock.
+UWORD Pokey::SerialTransmitSpeed(void) const
+{
+  return SerOut_Clock;
+}
+///
+
+/// Pokey::SerialReceiveSpeed
+// Return the serial input speed as cycles of the 1.79Mhz clock.
+UWORD Pokey::SerialReceiveSpeed(void) const
+{ 
+  return SerIn_Clock;
+}
+///
+
 /// Pokey::DisplayStatus
 // Print the status of the chip over the monitor
 void Pokey::DisplayStatus(class Monitor *mon)
@@ -1690,7 +1839,7 @@ void Pokey::DisplayStatus(class Monitor *mon)
 		   int((Ch[3].DivNIRQ > 0)?(Ch[3].DivNIRQ):(0)),
 		   int(Ch[0].DivNMax),int(Ch[1].DivNMax),int(Ch[2].DivNMax),int(Ch[3].DivNMax),
 		   AudioCtrl,SkStat   ,SkCtrl,KBCodeRead(),
-		    IRQStat  ,IRQEnable,
+		   IRQStatRead()      ,IRQEnable,
 		   SerIn_Delay,SerOut_Delay,SerXmtDone_Delay,
 		   SerIn_Counter,SerOut_Counter,SerXmtDone_Counter,SerInBytes,
 		   serin[0],serin[1]
@@ -1708,7 +1857,8 @@ void Pokey::ParseArgs(class ArgParser *args)
       {NULL           ,0}
     };
   LONG ntsc;
-  bool cycle = CycleTimers;
+  bool cycle        = CycleTimers;
+  bool saprecording = EnableSAP;
   //
   //
   ntsc = LONG(NTSC);
@@ -1719,6 +1869,28 @@ void Pokey::ParseArgs(class ArgParser *args)
   args->DefineBool("SIOSound","emulate serial transfer sounds",SIOSound);
   args->DefineBool("CyclePrecise","cycle precise pokey timers",cycle);
   args->DefineLong("FilterConstant","set high-pass filtering constant",0,1024,DCFilterConstant);
+  args->DefineBool("RecordAsSAP","record pokey output in a SAP file",saprecording);
+  //
+  // Potentially re-run the output.
+  if (saprecording != EnableSAP)
+    args->SignalBigChange(ArgParser::Reparse);
+  //
+  // Collect additional information in case SAP recording is enabled.
+  if (saprecording) {
+    args->DefineString("SAPName","name of the SAP song to record",SongName);
+    args->DefineString("SAPAuthor","author of the SAP song to record",AuthorName);
+  }
+  //
+  // Enable SAP.
+  if (saprecording) {
+    EnableSAP = true;
+  } else {
+    EnableSAP = false;
+    if (SAPOutput) {
+      fclose(SAPOutput);
+      SAPOutput = NULL;
+    }
+  }
   //
   // Initialize the pokey base clock.
   Frequency17Mhz     = (NTSC)?(1789773):(1773447); 

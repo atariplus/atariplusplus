@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_displaybuffer.hpp,v 1.34 2013-01-12 11:06:00 thor Exp $
+ ** $Id: x11_displaybuffer.hpp,v 1.35 2015/05/21 18:52:44 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/

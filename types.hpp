@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: types.hpp,v 1.16 2013-03-16 15:08:53 thor Exp $
+ ** $Id: types.hpp,v 1.17 2015/05/21 18:52:43 thor Exp $
  **
  ** In this module: Thor's pecularities, my type definitions
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hdevice.hpp,v 1.18 2013-03-16 15:08:52 thor Exp $
+ ** $Id: hdevice.hpp,v 1.20 2015/09/25 18:50:31 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/
@@ -112,6 +112,9 @@ class HDevice : public Device {
     // The address space we load/write data into. This
     // is of course (or should be) the CPU address space.
     class AdrSpace *BaseSpace;
+    //
+    // The machine, used here to generate a warning if necessary.
+    class Machine  *machine;
     //
     // The IOCB channel (*16) we are using for the binary
     // load interface.

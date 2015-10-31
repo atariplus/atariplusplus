@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: patch.hpp,v 1.17 2013-02-14 15:38:34 thor Exp $
+ ** $Id: patch.hpp,v 1.18 2015/05/21 18:52:41 thor Exp $
  **
  ** In this module: Generic administration of patches
  **********************************************************************************/

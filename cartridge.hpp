@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartridge.hpp,v 1.18 2011-06-24 20:11:17 thor Exp $
+ ** $Id: cartridge.hpp,v 1.19 2015/05/21 18:52:37 thor Exp $
  **
  ** In this module: The superclass individual cart types are derived from
  **********************************************************************************/

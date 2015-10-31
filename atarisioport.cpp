@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisioport.cpp,v 1.17 2010-02-28 10:48:49 thor Exp $
+ ** $Id: atarisioport.cpp,v 1.19 2015/08/15 14:52:35 thor Exp $
  **
  ** In this module: This is the controlling unit for Matthias Reichl's
  ** atarisio interface. This class keeps the file handle for AtariSIO.
@@ -218,19 +218,16 @@ void AtariSIOPort::TransmitCommandFrame(const UBYTE *cmdframe)
       OpenChannel();
     }
     if (SerialStream && SerialStream->isOpen()) {
-      // The command frame is five bytes LONG, plus a fifth for the 
-      // checksum we need to compute here.
       UBYTE frame[5];
+      // The command frame is four bytes LONG, plus a fifth for the 
+      // checksum we need to compute here.
       // Dispose all the I/O
       Flush();
       // Set the CMD line
       SetCommandLine(true);
       // Delay for approximately 900us
       SerialTime.StartTimer(0,CmdToDataDelay);
-      // Ok, be a bit nasty. The kernel doesn't allow us to wait for
-      // less than 10ms savely, thus busy wait. Urgl!  
-      while(SerialTime.EventIsOver() == false){};
-      //
+//
       // The command frame is five bytes LONG, plus a fifth for the 
       // checksum we need to compute here.
       for(i = 0,sum = 0;i < 4;i++) {
@@ -240,7 +237,10 @@ void AtariSIOPort::TransmitCommandFrame(const UBYTE *cmdframe)
 	}
       }
       // Include the checksum.
-      frame[i] = sum;
+      frame[i] = sum; 
+      // Ok, be a bit nasty. The kernel doesn't allow us to wait for
+      // less than 10ms savely, thus busy wait. Urgl!  
+      while(SerialTime.EventIsOver() == false){};
       // Start now the serial timer for the command line
       // transfer. We then later wait until the command is
       // over. This includes the time for the bytes to be

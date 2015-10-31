@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuboolitem.hpp,v 1.5 2013-03-16 15:08:52 thor Exp $
+ ** $Id: menuboolitem.hpp,v 1.6 2015/05/21 18:52:40 thor Exp $
  **
  ** 
  ** In this module: Definition of the menu item class that is toggleable

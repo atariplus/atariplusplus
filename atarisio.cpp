@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisio.cpp,v 1.23 2013-02-05 02:07:11 thor Exp $
+ ** $Id: atarisio.cpp,v 1.26 2015/08/15 14:52:35 thor Exp $
  **
  ** In this module: Support for real atari hardware, connected by 
  ** Matthias Reichl's atarisio interface.
@@ -27,7 +27,11 @@ AtariSIO::AtariSIO(class Machine *mach,const char *name,int id)
     WriteProtected(false), EnableSIO(false),
     TimeOut(7), FormatTimeOut(60),
     DataFrame(new UBYTE[256])
-{ }
+{ 
+  Response = 0;
+  ExpectCmdHandshake  = false;
+  ExpectDataHandshake = false;
+}
 ///
 
 /// AtariSIO::~AtariSIO
@@ -44,14 +48,14 @@ AtariSIO::~AtariSIO(void)
 // Unfortunately, we cannot communicate directly with the
 // diskdrive here already. It also knows what the command
 // frame type should be, but SIO needs to know in advance.
-SIO::CommandType AtariSIO::CheckCommandFrame(const UBYTE *commandframe,int &datasize)
+SIO::CommandType AtariSIO::CheckCommandFrame(const UBYTE *commandframe,int &datasize,UWORD speed)
 {  
   class AtariSIOPort *port = machine->SioPort();
   UWORD            sector  = UWORD(commandframe[2] | (commandframe[3] << 8));
   SIO::CommandType type;
   
-  // If we are turned off, signal this.
-  if (EnableSIO == false)
+  // If we are turned off, signal this. We currently do not emulate speedies.
+  if (EnableSIO == false || speed != SIO::Baud19200)
     return SIO::Off;
   //
   // We just check the command here: Get the command type
@@ -77,26 +81,43 @@ SIO::CommandType AtariSIO::CheckCommandFrame(const UBYTE *commandframe,int &data
   case 0x51:  // write back cache (extended)
     type     = SIO::StatusCommand;
     break;
+  case 0xd0:
+  case 0xd7:  // XF551 fast write
+  case 0x70:
+  case 0x77:  // Warp Speed fast write
   case 0x50:  // write w/o verify
   case 0x57:  // write with verify 
     // Should we test for write protection?
     datasize = (DoubleDensity && sector > 3)?256:128;
     type     = SIO::WriteCommand;
-    break;
+    break; 
+  case 0xa1:
+  case 0xa2:
   case 0x21:  // format single density
   case 0x22:  // format enhanced density
     // Should we test for write-protection?
     datasize = DoubleDensity?256:128;
     type     = SIO::FormatCommand;
     break;
+  case 0x23:  // Start drive test: 1050 only. Maybe the diags are supported by other drive types as well?
+    datasize = 128;
+    type     = SIO::WriteCommand;
+    break;
+  case 0x24:
+    datasize = 128;
+    type     = SIO::ReadCommand;
+    break;
+  case 0xd2:  // doubler fast read
+  case 0x72:  // Warp fast read
   case 0x52:  // read
-  case 0x55:  // happy fast read?
     // FIXME: Should we read the sector from the
     // device first to check whether we should answer
     // this by ReadCommand or InvalidCommand?
     datasize = (DoubleDensity && sector > 3)?256:128;
     type     = SIO::ReadCommand;
     break;
+  case 0xd3:
+  case 0x73:
   case 0x53:  // Read Status
     datasize = 4;
     type     = SIO::ReadCommand;
@@ -111,7 +132,7 @@ SIO::CommandType AtariSIO::CheckCommandFrame(const UBYTE *commandframe,int &data
   if (type != SIO::InvalidCommand && port->DirectMode()) {
     // This will pull CMD, transmit the bytes and starts
     // the timing for the SIO transmission. This also automatically
-    // attaches a checksum and transmits it aLONG with the command
+    // attaches a checksum and transmits it along with the command
     // frame.
     port->TransmitCommandFrame(commandframe);
     // Note the size of the data frame in bytes in case we expect one.      
@@ -219,24 +240,22 @@ UBYTE AtariSIO::WriteStatusBlock(const UBYTE *cmdframe,const UBYTE *buffer,int s
 }
 ///
 
-/// AtariSIO::ReadBuffer
-// Fill a buffer by a read command, return the amount of
-// data read back (in bytes), not counting the checksum
-// byte which is computed for us by the SIO.
-// Prepare the indicated command. On read, read the buffer. On
-// write, just check whether the target is write-able. Returns
-// the size of the buffer (= one sector). On error, return 0.
-UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWORD &)
-{ 
+/// AtariSIO::AcknowledgeCommandFrame
+// Acknowledge the command frame. This is called as soon the SIO implementation
+// in the host system tries to receive the acknowledge function from the
+// client. Will return 'A' in case the command frame is accepted. Note that this
+// is only called if CheckCommandFrame indicates already a valid command.
+UBYTE AtariSIO::AcknowledgeCommandFrame(const UBYTE *,UWORD &,UWORD &speed)
+{
   class AtariSIOPort *port = machine->SioPort();
-  UWORD sector = UWORD(commandframe[2] | (commandframe[3] << 8));
-  UWORD sectorsize;
-  
 
+  speed = SIO::Baud19200;
+  //
+  // Operating in direct mode. Read the acknowledge data from the
+  // serial device itself.
   if (port->DirectMode()) {
     UBYTE data;
-    len = 0; // default return: No data available.
-    // User space I/O. First test whether we need to receive an outstanding
+    // User space I/O. First test whether we need to receive a still missing
     // status frame from the device in reaction to the command frame.
     // If so, expect it here and check for correctness.
     if (ExpectCmdHandshake) {
@@ -251,12 +270,13 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
 	// that we got the handshake now, one way or another.
 	ExpectCmdHandshake = false;
 	// We now wait for the data handshake that has to arrive
-	// after the command got acklowedged.
+	// after the command got acklowedged. 
 	switch(data) {
 	case 'A':
 	case 'C': // The Atari Os SIO also accepts 'C' here.
 	  // Acknowledged. Expect a data frame now.
 	  ExpectDataHandshake = true;
+	  return data;
 	  break;
 	default:
 	  // Error. Signal the error up to the calling chain and abort
@@ -264,7 +284,51 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
 	  return data;
 	}
       }
+    } else {
+      machine->PutWarning("AtariSIO communication is out of sync.\n"
+			  "The emulator requested a command acknowledge, though\n"
+			  "AtariSIO did not expect to deliver one.");
+      // Signal a NAK.
+      return 'N';
     }
+  } else {
+    // This is the kernel-based AtariSIO communication. At this time, acknowledge the command even
+    // though we possibly do not even know whether we can... *sigh*
+    return 'A';
+  }
+}
+///
+
+/// AtariSIO::ReadBuffer
+// Fill a buffer by a read command, return the amount of
+// data read back (in bytes), not counting the checksum
+// byte which is computed for us by the SIO.
+// Prepare the indicated command. On read, read the buffer. On
+// write, just check whether the target is write-able. Returns
+// the size of the buffer (= one sector). On error, return 0.
+UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWORD &,UWORD &speed)
+{ 
+  class AtariSIOPort *port = machine->SioPort();
+  UWORD sector = UWORD(commandframe[2] | (commandframe[3] << 8));
+  UWORD sectorsize;
+
+  speed = SIO::Baud19200;
+
+  if (port->DirectMode()) {
+    UBYTE data;
+    len = 0; // default return: No data available.
+    // User space I/O. First test whether we need to receive a still missing
+    // status frame from the device in reaction to the command frame.
+    // If so, expect it here and check for correctness.
+    if (ExpectCmdHandshake) {
+      machine->PutWarning("AtariSIO communication is out of sync.\n"
+			  "The emulator requested a data acknowledge, though\n"
+			  "AtariSIO did not receive a command.");
+      // Signal a NAK.
+      return 'N';
+    }
+    //
+    // This is now the data handshake.
     if (ExpectDataHandshake) {
       // Check whether we already have a handshake returned from the
       // external device.
@@ -273,16 +337,14 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
 	// a bit longer.
 	return 0;
       }
+      //
       // One way or another, the data handshake is here.
       ExpectDataHandshake = false;
       // Check for the kind of result. Might be an error, or something
-      // like it.
-      if (data != 'A' && data != 'C') {
-	// Neither completed nor done.
-	return data;
-      }
-      // Otherwise, run into the following to get the data frame
-      // from the port byte by byte.
+      // like it. Interestingly, Atari devices expect to send the
+      // data frame, even a dummy data frame, if an error is signalled.
+      // Thus, we cannot simply exit here.
+      Response = data;
     }
     // Try to read data from the port. If nothing's on, return
     // SIO that Pokey shall wait a bit longer.
@@ -321,7 +383,7 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
       AdaptDensity(DataFrame);
       break;
     }
-    return 'C'; // Command completed.
+    return Response; // Command completed, or maybe not.
   } else {
     // Kernel I/O
     switch (commandframe[1]) {
@@ -334,7 +396,8 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
       len = 12;
       return ReadStatusBlock(commandframe,buffer);
     case 0x52: // Read (read command)  
-    case 0x55: // happy fast read?
+    case 0xd2:
+    case 0x72:
       // This depends on the density setting and on the
       // sector. The first three sectors of a HD disk are
       // still 128 bytes.
@@ -342,11 +405,15 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
       len = sectorsize;
       return External(false,commandframe,buffer,sectorsize);
     case 0x53: // Status (read command)
+    case 0xd3:
+    case 0x73:
       // The status is four bytes LONG if it exists.
       len = 4;
       return External(false,commandframe,buffer,4);
     case 0x21: // single density format
     case 0x22: // double density format
+    case 0xa1:
+    case 0xa2:
       sectorsize = DoubleDensity?256:128;
       len = sectorsize;
       return External(false,commandframe,buffer,sectorsize);
@@ -362,7 +429,7 @@ UBYTE AtariSIO::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &len,UWOR
 /// AtariSIO::WriteBuffer
 // Write the indicated data buffer out to the target device.
 // Return 'C' if this worked fine, 'E' on error.
-UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,UWORD &)
+UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,UWORD &,UWORD)
 {      
   class AtariSIOPort *port = machine->SioPort();
   // Check whether we are performing direct (user space) I/O. If so, then
@@ -373,31 +440,14 @@ UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,
     size = 0; // Default return: No data written.
     // User space I/O. First test whether we still need to read the
     // command frame handshaking.
-    if (ExpectCmdHandshake) {
-      // Try to read the status from outside. This might return zero
-      // if the byte did not yet arrive.
-      if (port->ReadDirectByte(data) == 0) {
-	// Return with a result = 0 and a data frame length of zero to
-	// indicate that no data is (yet) available.
-	return 0;
-      } else {
-	// Otherwise, check whether the command is acceptable. Note
-	// that we got the handshake now, one way or another.
-	ExpectCmdHandshake = false;
-	// We now wait for the data handshake that has to arrive
-	// after the command got acklowedged.
-	switch(data) {
-	case 'C':
-	case 'A':
-	  // Acknowledged. 
-	  break;
-	default:
-	  // Error. Signal the error up to the calling chain and abort
-	  // the command.
-	  return data;
-	}
-      }
+    if (ExpectCmdHandshake) { 
+      machine->PutWarning("AtariSIO communication is out of sync.\n"
+			  "The emulator requested a data acknowledge, though\n"
+			  "AtariSIO did not receive a command.");
+      // Signal a NAK.
+      return 'N';
     }
+    //
     // Now transmit the data frame contents byte by byte.
     while (inputsize && DataFrameSize) {
       // There is still a dataframe to transmit. Do so now.
@@ -419,11 +469,13 @@ UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,
 	// byte.
 	port->WriteDirectByte(ChkSum);
 	// We are completed. The real data
-	// status is generated/read by the Flush method
+	// status is generated/read by the Flush method.
+	// The real device acknowledge is checked in the Flush
+	// method.
 	return 'A';
       }
     }
-    // No status return
+    // No status return. Come back when done to write the next byte.
     return 0;
   } else { 
     UBYTE *buf;
@@ -436,6 +488,10 @@ UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,
       // This is a separate function call since we need to adjust the double
       // density byte as well.
       return WriteStatusBlock(cmdframe,buffer,size);
+    case 0x70:
+    case 0x77:
+    case 0xd0:
+    case 0xd7:
     case 0x50: 
     case 0x57: // Write with and without verify
       // We check here special sector counts for the Speedy CPU RAM
@@ -452,14 +508,19 @@ UBYTE AtariSIO::WriteBuffer(const UBYTE *cmdframe,const UBYTE *buffer,int &size,
 // After a written command frame, either sent or test the checksum and flush the
 // contents of the buffer out. For block transfer, SIO does this for us. Otherwise,
 // we must do it manually.
-UBYTE AtariSIO::FlushBuffer(const UBYTE *commandframe,UWORD &)
+UBYTE AtariSIO::FlushBuffer(const UBYTE *commandframe,UWORD &,UWORD &speed)
 {
   class AtariSIOPort *port = machine->SioPort();
+  
+  speed = SIO::Baud19200;
   
   if (port->DirectMode()) {
     UBYTE data;
     // If we just performed a write command, expect the device to answer
     // back with a data frame status and a command status.
+    // Problem is that we already acknowledged the data even though the 
+    // device did not. Thus, first attempt to receive the device response
+    // for the data frame.
     if (CmdType == SIO::WriteCommand) {
       if (ExpectDataHandshake) {
 	// Run the final command handshake acknowledge, then terminate the
@@ -474,66 +535,72 @@ UBYTE AtariSIO::FlushBuffer(const UBYTE *commandframe,UWORD &)
 	      AdaptDensity(DataFrame);
 	      break;
 	    }
+	    //
+	    // Keep the data frame response so we can fixup the
+	    // final device response if necessary.
+	    Response = data;
 	  }
-	  return 'A'; // This completes the transmission
+	  // Note that this does not fix the transmission. It only signals that the device
+	  // accepted the data. Thus, signal a "please come back here later" to fetch
+	  // the final response code.
+	  ExpectDataHandshake = false;
 	}
+	//
+	// In either case, request the caller to come back to receive the final data
+	// write phase response.
+	return 0;
       } else {
-	// Read the data handshake acknlowedge. This is sent by the device
-	// as soon as all data has been received, though the operation might
-	// not yet be performed.
+	// Read the final data response. This is sent by the device as soon as the operation
+	// is completed.
 	if (port->ReadDirectByte(data)) {
-	  // If this is an error, deliver it immediately and
-	  // do not expect any further data.
-	  if (data != 'C' && data != 'A') {
-	    return data;
+	  // If this is a "completed", but the data was not accepted, change the final response.
+	  if (data == 'C' || data == 'A') {
+	    if (Response != 'A' && Response != 'C')
+	      data = Response;
 	  }
-	  // Otherwise, expect the data handshake as well.
-	  ExpectDataHandshake = true;
+	  //
+	  // Ok, done with it.
+	  return data;
 	}
+	//
+	// Come back later.
+	return 0;
       }
-      // Otherwise, instruct the caller to wait longer.
-      return 0;
     }
     machine->PutWarning("Unexpected data frame flush on command frame %02x %02x %02x %02x\n",
 			commandframe[0],commandframe[1],commandframe[2],commandframe[3]);
-    return 'N';
+    return 'E';
   }
   // All has been handled by the kernel already. Sent the same result as
   // all other block devices.
-  return 'A';
+  return 'C';
 }
 ///
 
 /// AtariSIO::ReadStatus
 // Execute a status-only command that does not read or write any data except
 // the data that came over AUX1 and AUX2
-UBYTE AtariSIO::ReadStatus(const UBYTE *,UWORD &)
+UBYTE AtariSIO::ReadStatus(const UBYTE *,UWORD &,UWORD &speed)
 { 
   class AtariSIOPort *port = machine->SioPort();
   // Check whether we are direct-IO here. If so, then we have to
   // wait at least for the command handshake to return.
+  speed = SIO::Baud19200;
   // Check whether we are performing direct (user space) I/O. If so, then
   // run it here directly.
   if (port->DirectMode()) {
     UBYTE data;
     // User space I/O. First test whether we still need to read the
-    // command frame handshaking.
+    // command frame handshaking. This should not happen since
+    // AcknowledgeCommandFrame() should have been called.
     if (ExpectCmdHandshake) {
-      // Try to read the status from outside. This might return zero
-      // if the byte did not yet arrive.
-      if (port->ReadDirectByte(data)) {
-	// Data handshake is done now.
-	ExpectCmdHandshake  = false;
-	// Check whether the command is acceptable. Note
-	// that we got the handshake now, one way or another.
-	if (data != 'A') {
-	  // Command not acknolwedged. Fail over.
-	  return data;
-	}
-	// Otherwise, expect a data handshake
-	ExpectDataHandshake = true;
-      }
+      machine->PutWarning("AtariSIO communication is out of sync.\n"
+			  "The emulator requested a data acknowledge, though\n"
+			  "AtariSIO did not receive a command.");
+      // Signal a NAK.
+      return 'N';
     }
+    //
     // Now check whether still have to wait for
     // the data handshake
     if (ExpectDataHandshake) {
@@ -571,10 +638,16 @@ char AtariSIO::External(bool writetodevice,const UBYTE *commandframe,UBYTE *buff
   //
   if (EnableSIO) {
     // Analyze the timeout for the command now.
-    if (command == 0x20 || command == 0x21 || command == 0x22) {
+    switch(command) {
+    case 0x21:
+    case 0x22:
+    case 0xa1:
+    case 0xa2:
       // Various format commands. These take the longer timeout
       timeout   = FormatTimeOut;
-    } else {
+      break;
+    default:
+      // Regular commands.
       timeout   = TimeOut;
     }
     return port->External(writetodevice,commandframe,buffer,size,timeout);
@@ -600,6 +673,7 @@ void AtariSIO::WarmStart(void)
   // Reset the status of the DirectIO state machine.
   ExpectCmdHandshake  = false;
   ExpectDataHandshake = false;
+  Response            = 0;
 }
 ///
 
@@ -619,7 +693,7 @@ void AtariSIO::ParseArgs(class ArgParser *args)
   char enableoption[32],protectoption[32];
   char timeoutoption[32];
   char formatoption[32];
-  LONG timeout = TimeOut;
+  LONG timeout  = TimeOut;
   LONG formtime = FormatTimeOut;
   
   // generate the appropriate options now

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atarisioport.hpp,v 1.13 2010-02-28 10:48:49 thor Exp $
+ ** $Id: atarisioport.hpp,v 1.14 2015/05/21 18:52:35 thor Exp $
  **
  ** In this module: This is the controlling unit for Matthias Reichl's
  ** atarisio interface. This class keeps the file handle for AtariSIO.

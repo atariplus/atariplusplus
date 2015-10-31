@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: warningrequester.cpp,v 1.10 2008-05-08 13:22:29 thor Exp $
+ ** $Id: warningrequester.cpp,v 1.11 2015/05/21 18:52:44 thor Exp $
  **
  ** In this module: A requester class that prints and logs warnings.
  **********************************************************************************/

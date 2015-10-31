@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: serialdevice.hpp,v 1.16 2013/05/31 22:08:00 thor Exp $
+ ** $Id: serialdevice.hpp,v 1.18 2014/03/16 14:54:08 thor Exp $
  **
  ** In this module: Interface specifications for serial devices.
  ** All serial devices (printer, disks, ...) must be derived from
@@ -62,7 +62,17 @@ public:
   // in the data frame (if there is any). If this is a write
   // command, datasize can be set to zero to indicate single
   // byte transfer.
-  virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize) = 0;
+  virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize,UWORD speed) = 0;
+  //
+  // Acknowledge the command frame. This is called as soon the SIO implementation
+  // in the host system tries to receive the acknowledge function from the
+  // client. Will return 'A' in case the command frame is accepted. Note that this
+  // is only called if CheckCommandFrame indicates already a valid command.
+  virtual UBYTE AcknowledgeCommandFrame(const UBYTE *,UWORD &,UWORD &)
+  {
+    // Default is to rely that SIO does the right thing here.
+    return 'A';
+  }
   //
   // Read bytes from the device into the system. Returns the command status
   // after the read operation, and installs the number of bytes really written
@@ -70,26 +80,26 @@ public:
   // SIO will call back in case only a part of the buffer has been transmitted.
   // Delay is the number of 15kHz cycles (lines) the command requires for completion.
   virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
-			   int &datasize,UWORD &delay) = 0;
+			   int &datasize,UWORD &delay,UWORD &speed) = 0;
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error. 
   virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
-			    int &datasize,UWORD &delay) = 0;
+			    int &datasize,UWORD &delay,UWORD speed) = 0;
   //
   // After a written command frame, either sent or test the checksum and flush the
   // contents of the buffer out. For block transfer, SIO does this for us. Otherwise,
   // we must do it manually.
-  virtual UBYTE FlushBuffer(const UBYTE *,UWORD &)
+  virtual UBYTE FlushBuffer(const UBYTE *,UWORD &,UWORD &)
   {
-    // Default is to rely on the SIO checksumming, send an acknolwedge
-    return 'A';
+    // Default is to rely on the SIO checksumming, send a complete.
+    return 'C';
   }
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2. This returns the command status of the
   // device.
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay) = 0;
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay,UWORD &speed) = 0;
   //
   // Rather exotic concurrent read/write commands. These methods are used for
   // the 850 interface box to send/receive bytes when bypassing the SIO. In these

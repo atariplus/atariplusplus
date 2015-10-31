@@ -112,6 +112,9 @@
 /* Define to 1 if you have the `close' function. */
 #undef HAVE_CLOSE
 
+/* Define to 1 if you have the `cos' function. */
+#undef HAVE_COS
+
 /* Define to 1 if you have the `creat' function. */
 #undef HAVE_CREAT
 
@@ -133,6 +136,9 @@
 
 /* Define to 1 if you have the `DPMSInfo' function. */
 #undef HAVE_DPMSINFO
+
+/* Define to 1 if you have the `ecvt_r' function. */
+#undef HAVE_ECVT_R
 
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
@@ -324,6 +330,9 @@
 
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
+
+/* Define to 1 if you have the `strncasecmp' function. */
+#undef HAVE_STRNCASECMP
 
 /* Define to 1 if you have the `strrchr' function. */
 #undef HAVE_STRRCHR

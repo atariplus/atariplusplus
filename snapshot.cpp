@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: snapshot.cpp,v 1.3 2013-03-16 15:08:53 thor Exp $
+ ** $Id: snapshot.cpp,v 1.4 2015/05/21 18:52:43 thor Exp $
  **
  ** This class defines an interface that loads and saves state configurations
  ** to an (possibly external) source.

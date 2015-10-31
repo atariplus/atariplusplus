@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: axlonextension.cpp,v 1.6 2012-12-31 14:34:59 thor Exp $
+ ** $Id: axlonextension.cpp,v 1.8 2015/10/25 09:11:22 thor Exp $
  **
  ** In this module: This RAM extension implements various AXLON compatible
  ** RAM extensions.
@@ -84,7 +84,7 @@ UBYTE AxlonExtension::AxlonControlPage::ComplexRead(ADR mem)
 // result in a request to change the banking.
 void AxlonExtension::AxlonControlPage::ComplexWrite(ADR mem,UBYTE value)
 {
- #if CHECK_LEVEL > 0
+#if CHECK_LEVEL > 0
   if (Hidden == NULL)
     Throw(ObjectDoesntExist,"AxlonExtension::AxlonControlPage::ComplexWrite",
 	  "Axlon page is not mapped in, or no page this hides");
@@ -105,6 +105,17 @@ void AxlonExtension::AxlonControlPage::ComplexWrite(ADR mem,UBYTE value)
   // Otherwise, perform the write into the RAM/ROM/Whatever as
   // normal.
   Hidden->WriteByte(mem,value);
+}
+///
+
+/// AxlonExtension::AxlonControlPage::isIOSpace
+// Return an indicator whether this is an I/O area or not.
+// This is used by the monitor to check whether reads are harmless
+bool AxlonExtension::AxlonControlPage::isIOSpace(ADR mem) const
+{
+  if ((mem & 0xff) == 0xff)
+    return true;
+  return false;
 }
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.hpp,v 1.40 2013-02-14 16:09:16 thor Exp $
+ ** $Id: monitor.hpp,v 1.45 2015/11/07 18:53:12 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -36,6 +36,67 @@ class Monitor {
   //
   // The log file for the output tracing, if possible.
   FILE           *tracefile;
+  //
+  // Symbol database for symbolic debugging.
+  struct Symbol {
+    //
+    // The next symbol.
+    struct Symbol *next;
+    //
+    // The type of the symbol
+    enum Type {
+      Equate,      // a symbolic equate
+      Label,       // an absolute address
+      Any,         // Only for matching: do not care
+      PreferLabel, // Prefer a label if exists
+      PreferEquate
+    }              type;
+    //
+    // The size of a label: 16 bit or 8 bit.
+    enum Size {
+      ZeroPage,   // within the z-page
+      Absolute,   // the full 16-bit range.
+      All,        // only for matching: do not care
+      PreferZeroPage,
+      PreferAbsolute
+    }              size;
+    //
+    enum {
+      MaxLabelSize = 64
+    };
+    //
+    // The name of a label.
+    char           name[MaxLabelSize];
+    //
+    // And the address itself.
+    UWORD          value;
+    //
+    // Read a label from a line of a file. Returns true on
+    // a successful parse.
+    bool ParseLabel(char *line);
+    //
+    // Find a label by its address, size and type.
+    static const struct Symbol *FindSymbol(const struct Symbol *list,
+					   UWORD address,Type t,Size s);
+    //
+    // Find a label by its name. Try to find the symbol that is closest
+    // to the given PC value.
+    static const struct Symbol *FindSymbol(const struct Symbol *list,
+					   const char *name,UWORD pc,Type t,Size s);
+    //
+    // Construct an empty label.
+    Symbol(void)
+    : next(NULL)
+    { }
+    //
+    // Copy a label from another label.
+    Symbol(const Symbol &o)
+    : next(NULL), type(o.type), size(o.size), value(o.value)
+    {
+      memcpy(name,o.name,sizeof(name));
+    }
+  }              *symboltable;
+  //
   //
   // curses output window
   struct CursesWindow {
@@ -120,6 +181,12 @@ class Monitor {
   //
   // Fill a buffer with the CPU flags in readable form
   void CPUFlags(char pstring[9]) const;
+  //
+  // Clear the symbol table.
+  void ClearSymbolTable(void);
+  //
+  // Read a symbol table from a file.
+  bool ParseSymbolTable(const char *filename);
   //
   // Add a command to the command chain
   struct Command* &CommandChain(void);
@@ -490,6 +557,14 @@ class Monitor {
     void Apply(char e);
   } Disk;
   friend struct Disk;
+  //
+  // The profiling command.
+  struct Prof : public Command {
+    Prof(class Monitor *mon,const char *lng,const char *shr,const char *helper);
+  public:
+    void Apply(char e);
+  } Prof;
+  friend struct Prof;
   //
   // The online help "system"
   struct Help : public Command {

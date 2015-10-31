@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: directory.cpp,v 1.12 2011-04-26 17:15:26 thor Exp $
+ ** $Id: directory.cpp,v 1.13 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Os compatibility layer for directory reading.
  ** This file takes definitions from "types.h" build by autoconf/configure

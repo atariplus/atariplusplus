@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: interfacebox.cpp,v 1.29 2013/12/05 20:37:14 thor Exp $
+ ** $Id: interfacebox.cpp,v 1.31 2014/03/16 14:54:08 thor Exp $
  **
  ** In this module: Emulation of the 850 interface box.
  **********************************************************************************/
@@ -761,10 +761,10 @@ UBYTE InterfaceBox::ReadPokeyStatus(UBYTE *buffer)
 // and have to be implemented in order to make this work:
 // Check whether this device accepts the indicated command
 // as valid command, and return the command type of it.
-SIO::CommandType InterfaceBox::CheckCommandFrame(const UBYTE *CommandFrame,int &datasize)
+SIO::CommandType InterfaceBox::CheckCommandFrame(const UBYTE *CommandFrame,int &datasize,UWORD speed)
 {
   // If the box is not turned on, return an error.
-  if (!BoxOn)
+  if (!BoxOn || speed != SIO::Baud19200)
     return SIO::Off;
   //
   // Otherwise, check the command frame for valid commands.
@@ -807,8 +807,12 @@ SIO::CommandType InterfaceBox::CheckCommandFrame(const UBYTE *CommandFrame,int &
 /// InterfaceBox::ReadBuffer
 // Read bytes from the device into the system. Returns the number of
 // bytes read.
-UBYTE InterfaceBox::ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &,UWORD &)
+UBYTE InterfaceBox::ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &,UWORD &,UWORD &speed)
 {
+  //
+  // All these are commands in the non-concurrent mode.
+  speed = SIO::Baud19200;
+  //
   switch(CommandFrame[1]) {  
   case 'S': // Return 850 status
     return ReadStatusLines(buffer);
@@ -833,9 +837,15 @@ UBYTE InterfaceBox::ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,int &,UWO
 // Write the indicated data buffer out to the target device.
 // Return 'C' if this worked fine, 'E' on error.
 UBYTE InterfaceBox::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
-				int &size,UWORD &)
+				int &size,UWORD &,UWORD speed)
 {
   int aux;
+  
+  //
+  // This is the write command in the short-block mode.
+  // Communications to the interface box run at 19200 baud here.
+  if (speed != SIO::Baud19200)
+    return 'E';
   
   switch (commandframe[1]) { 
   case 'W':
@@ -861,8 +871,13 @@ UBYTE InterfaceBox::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
 /// InterfaceBox::ReadStatus
 // Execute a status-only command that does not read or write any data except
 // the data that came over AUX1 and AUX2
-UBYTE InterfaceBox::ReadStatus(const UBYTE *commandframe,UWORD &)
+UBYTE InterfaceBox::ReadStatus(const UBYTE *commandframe,UWORD &,UWORD &speed)
 {
+  //
+  // This all only works in the non-concurrent mode
+  // and thus at 19200 baud.
+  speed = SIO::Baud19200;
+  //
   switch(commandframe[1]) {
   case 'B': // Set baud rate
     return SetBaudRate(commandframe[2],commandframe[3]);

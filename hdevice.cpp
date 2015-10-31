@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hdevice.cpp,v 1.50 2013-05-05 20:43:39 thor Exp $
+ ** $Id: hdevice.cpp,v 1.52 2015/09/25 18:50:30 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/
@@ -52,7 +52,7 @@ HDevice::~HDevice(void)
 /// HDevice::BinaryLoadCallbackPatch::BinaryLoadCallbackPatch
 // The callback patch of the binary load interface.
 HDevice::BinaryLoadCallbackPatch::BinaryLoadCallbackPatch(class Machine *mach,class PatchProvider *p)
-  : Patch(mach,p,1), State(Idle), CPU(mach->CPU())
+  : Patch(mach,p,1), State(Idle), CPU(mach->CPU()), machine(mach)
 {
 }
 ///
@@ -265,6 +265,11 @@ void HDevice::BinaryLoadCallbackPatch::RunPatch(class AdrSpace *,class CPU *,UBY
     //
     // Run into the following.
   case Idle:
+    // Generate a warning.
+    machine->PutWarning("A program is currently trying to boot "
+			"from the tape, however the tape is currently "
+			"unavailable due to the HDevice patch. Disable the "
+			"HDevice patch in the OsRom menu to allow booting.");
     // If we are called here, then a program called the cassette init vector
     // without really knowing what is going on. Return with an error code.
     CPU->Y()  = 0x90;
@@ -970,6 +975,7 @@ UBYTE HDevice::Special(UBYTE channel,UBYTE unit,class AdrSpace *adr,UBYTE cmd,
   UBYTE result = 0x01;
   struct HandlerChannel *ch;
   char path[256];
+  char *comma;
   //
   // Whether we need a channel here or not depends on the specific CIO command.
   switch (cmd) {
@@ -996,10 +1002,13 @@ UBYTE HDevice::Special(UBYTE channel,UBYTE unit,class AdrSpace *adr,UBYTE cmd,
     ch          = new struct HandlerChannel(0x00,BaseDir[unit-1]);
     Buffer[8]   = ch;
     channel     = 8;
-    ExtractFileName(adr,mem,path,sizeof(path));    
+    ExtractFileName(adr,mem,path,sizeof(path));
+    comma       = strchr(path,',');
     FilterAux1(path,aux[0]);
     switch(cmd) {
     case 0x20:
+      if (comma)
+	*comma = ',';
       result  = Rename(ch,path);
       break;
     case 0x21:

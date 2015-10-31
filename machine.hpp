@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.hpp,v 1.75 2013/06/01 15:12:25 thor Exp $
+ ** $Id: machine.hpp,v 1.76 2015/10/17 18:45:12 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -159,6 +159,7 @@ class Machine {
   class AtariDisplay    *display;
   class AtariDisplay    *xepdisplay;
   class Printer         *printer;
+  class Tape            *tape;
   class InterfaceBox    *serial;
   class AtariSIOPort    *sioport;
   class AnalogJoystick  *analogjoysticks[8];
@@ -417,6 +418,11 @@ public:
   class Printer *Printer(void) const
   {
     return printer;
+  }
+  //
+  class Tape *Tape(void) const
+  {
+    return tape;
   }
   //
   class InterfaceBox *InterfaceBox(void) const

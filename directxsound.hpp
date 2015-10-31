@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: directxsound.hpp,v 1.7 2011-04-21 21:35:16 thor Exp $
+ ** $Id: directxsound.hpp,v 1.8 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Sound frontend for direct X sound output under Win32
  ** and related M$ "operating systems".

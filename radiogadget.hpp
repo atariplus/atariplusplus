@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: radiogadget.hpp,v 1.3 2013-03-16 15:08:52 thor Exp $
+ ** $Id: radiogadget.hpp,v 1.4 2015/05/21 18:52:41 thor Exp $
  **
  ** In this module: Definition of a mutually exclusive arrangement of buttons
  ** forming a radio-button (array)

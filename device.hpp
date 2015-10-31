@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: device.hpp,v 1.17 2008-08-25 16:42:57 thor Exp $
+ ** $Id: device.hpp,v 1.19 2015/09/22 11:46:33 thor Exp $
  **
  ** In this module: CIO device interface
  **********************************************************************************/
@@ -103,7 +103,7 @@ protected:
     return 0;
   }
   //
-  static void SetResult(class CPU *cpu,UBYTE result);
+  static void SetResult(class CPU *cpu,class AdrSpace *adr,UBYTE result);
   //
 public:
   //

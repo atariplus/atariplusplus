@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.cpp,v 1.105 2014/02/20 19:18:49 thor Exp $
+ ** $Id: machine.cpp,v 1.106 2015/10/17 18:45:12 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -129,6 +129,7 @@ Machine::Machine(void)
   warninglog     = NULL;
   errorlog       = NULL;
   printer        = NULL;
+  tape           = NULL;
   serial         = NULL;
   globalargs     = NULL;
   keypadstick    = NULL;
@@ -270,7 +271,7 @@ void Machine::BuildMachine(class ArgParser *args)
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.2",1));
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.3",2));
   sio->RegisterDevice(new class AtariSIO(this,"AtariSIO.4",3));
-  sio->RegisterDevice(new class Tape(this,"Tape"));
+  sio->RegisterDevice(tape = new class Tape(this,"Tape"));
 
   for(i=0;i<4;i++) {
     snprintf(devname,40,"Joystick.%d",i);

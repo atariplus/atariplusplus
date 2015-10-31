@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: errorrequester.hpp,v 1.6 2008-05-22 13:03:54 thor Exp $
+ ** $Id: errorrequester.hpp,v 1.7 2014/06/01 20:07:53 thor Exp $
  **
  ** In this module: A requester class that prints and logs errors.
  **********************************************************************************/
@@ -65,6 +65,9 @@ private:
   class ButtonGadget   *MonitorGadget;
   class ButtonGadget   *MenuGadget;
   class ButtonGadget   *OKGadget;
+  //
+  // The machine pointer.
+  class Machine        *machine;
   //
   // Nest-counter. Avoids double errors.
   bool                  active;

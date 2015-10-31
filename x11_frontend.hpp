@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.hpp,v 1.41 2013/12/20 21:14:42 thor Exp $
+ ** $Id: x11_frontend.hpp,v 1.42 2015/10/18 16:48:17 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -65,6 +65,7 @@ class X11_FrontEnd : public XFront {
   bool            havefocus;     // set if we have the input focus
   bool            truecolor;     // set if we would like a truecolor framebuffer
   bool            showcursor;    // set if the cursor is to be shown
+  bool            button;        // state of the mouse button
   int             dumpcnt;       // counts the number of screen dumps
   int             scrolledlines; // counts the number of lines scrolled since the last query.
   // 
@@ -121,6 +122,7 @@ class X11_FrontEnd : public XFront {
   //
   // Default base name for the screen dumps
   char           *PictureBaseName;
+  //
   // Format of the screen dump
   ScreenDump::GfxFormat Format;
   //

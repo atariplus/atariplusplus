@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.hpp,v 1.68 2013-01-18 07:50:25 thor Exp $
+ ** $Id: gtia.hpp,v 1.69 2015/05/21 18:52:40 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/

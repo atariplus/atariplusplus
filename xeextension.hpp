@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xeextension.hpp,v 1.6 2013-03-16 15:08:54 thor Exp $
+ ** $Id: xeextension.hpp,v 1.7 2015/05/21 18:52:44 thor Exp $
  **
  ** In this module: This RAM extension implements the 130XE 64K of
  ** additional RAM.

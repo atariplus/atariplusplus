@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartbbob.cpp,v 1.9 2012-12-31 14:34:59 thor Exp $
+ ** $Id: cartbbob.cpp,v 1.10 2015/05/21 18:52:36 thor Exp $
  **
  ** In this module: The implementation of the bounty bob cart
  **********************************************************************************/

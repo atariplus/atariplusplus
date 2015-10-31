@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rdevice.cpp,v 1.4 2013-02-05 02:07:11 thor Exp $
+ ** $Id: rdevice.cpp,v 1.6 2014/03/16 14:54:08 thor Exp $
  **
  ** In this module: R: emulated device
  **********************************************************************************/
@@ -97,12 +97,13 @@ UBYTE RDevice::RunCommand(UBYTE cmd,UBYTE aux1,UBYTE aux2,int &size)
     SIO::CommandType cmdtype;
     int datasize = 0;
     UBYTE status = 'C';
+    UWORD speed  = SIO::Baud19200;
     //
-    cmdframe[0] = 0x50; // The SIO identifier of the 850 interface box.
-    cmdframe[1] = cmd;
-    cmdframe[2] = aux1;
-    cmdframe[3] = aux2;
-    cmdtype     = serial->CheckCommandFrame(cmdframe,datasize);
+    cmdframe[0]  = 0x50; // The SIO identifier of the 850 interface box.
+    cmdframe[1]  = cmd;
+    cmdframe[2]  = aux1;
+    cmdframe[3]  = aux2;
+    cmdtype      = serial->CheckCommandFrame(cmdframe,datasize,SIO::Baud19200);
     //
     switch(cmdtype) {
     case SIO::Off:
@@ -117,18 +118,18 @@ UBYTE RDevice::RunCommand(UBYTE cmd,UBYTE aux1,UBYTE aux2,int &size)
       EnlargeBuffer(datasize);
       // Read the bytes into the system.
       delay    = 0;
-      status   = serial->ReadBuffer(cmdframe,buffer,datasize,delay);
+      status   = serial->ReadBuffer(cmdframe,buffer,datasize,delay,speed);
       size     = datasize;
       break;
     case SIO::WriteCommand:
       // Transfer data from our buffer to the device.
       delay    = 0;
-      status   = serial->WriteBuffer(cmdframe,buffer,size,delay);
+      status   = serial->WriteBuffer(cmdframe,buffer,size,delay,SIO::Baud19200);
       break;
     case SIO::StatusCommand:
       // Just a simple status command, no data phase here.
       delay    = 0;
-      status   = serial->ReadStatus(cmdframe,delay);
+      status   = serial->ReadStatus(cmdframe,delay,speed);
     }
     //
     // Check for the status, possibly create an error code.

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: timer.cpp,v 1.23 2013-03-16 15:08:53 thor Exp $
+ ** $Id: timer.cpp,v 1.26 2015/10/01 16:55:14 thor Exp $
  **
  ** In this module: Support for various timing related issues
  **********************************************************************************/
@@ -12,6 +12,9 @@
 #include "timer.hpp"
 #include "string.hpp"
 #include "exceptions.hpp"
+#ifdef OS2
+# define USE_SDL_TIMER 1
+#endif
 #if HAVE_SDL_SDL_H && USE_SDL_TIMER
 # include <SDL/SDL.h>
 #else

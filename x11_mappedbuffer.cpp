@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_mappedbuffer.cpp,v 1.10 2014/01/08 20:07:10 thor Exp $
+ ** $Id: x11_mappedbuffer.cpp,v 1.11 2014/06/01 20:07:53 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -173,7 +173,8 @@ void X11_MappedBuffer::RebuildScreen(bool differential)
   UBYTE *lastrow,*lastentry;
   bool   update = false;
 
-  if (active == NULL || display == 0 || mapped == false) 
+  if (active == NULL  || display == 0 || 
+      mapped == false || graphiccontexts == NULL)
     return;
 
   colormap      = machine->GTIA()->ActiveColorMap();

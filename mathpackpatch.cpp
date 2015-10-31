@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mathpackpatch.cpp,v 1.19 2008-09-24 15:05:23 thor Exp $
+ ** $Id: mathpackpatch.cpp,v 1.26 2015/10/02 19:26:26 thor Exp $
  **
  ** In this module: Replacements for MathPack calls for speedup
  **********************************************************************************/
@@ -41,7 +41,7 @@ const double MathPackPatch::NegTenPowers[7] = {
 
 /// MathPackPatch::MathPackPatch
 MathPackPatch::MathPackPatch(class Machine *mach,class PatchProvider *p)
-  : Patch(mach,p,29) // requires quite a lot of slots
+  : Patch(mach,p,30) // requires quite a lot of slots
 {
 }
 ///
@@ -168,7 +168,7 @@ void MathPackPatch::IEEEToBCD(double num,struct BCD &out)
 	// We are normalized and hence have a number between 1 and 10
 	// We now add an epsilon value for the conversion to avoid
 	// systematic errors by always rounding down.
-	num += 0.4e-9;
+	num += 5e-9 - 1e-14;
       }
       // Mantissa should now be a number between 1..99 except it is
       // denormalized. Extract this number and insert it into the
@@ -295,9 +295,89 @@ void MathPackPatch::FASC(class AdrSpace *adr,class CPU *cpu)
   char *out,buffer[32];
   double v = ReadFR0(adr);
   //
+  // If the ECVT_R function is available, perform a manual conversion
+  // as it allows more control on the formatting. The Mathpack uses
+  // naturally an exponential notation one digit sooner than the C
+  // standard.
+#if HAVE_ECVT_R
+  int decimal;
+  int sign;
+  int exponent = 0;
+  char *in,tmp[32];
+  //
+  if (ecvt_r(v,10,&decimal,&sign,tmp,sizeof(tmp)) == 0) {
+    out     = buffer;
+    tmp[10] = 0;
+    // First fixup the sign.
+    if (sign)
+      *out++ = '-';
+    // Check whether we need an exponential representation or a standard
+    // representation. Rules are a bit different here compared to what
+    // %G does.
+    // First, if the number is zero, print zero.
+    if (tmp[0] == '0' || decimal < -98) {
+      *out++ = '0';
+    } else {
+      if (decimal <= -2 || decimal > 10) {
+	// Use the exponential representation.
+	exponent = decimal - 1;
+	decimal  = 1;
+      }
+      // Write leading zeros if we have any.
+      if (decimal <= 0) {
+	*out++ = '0';
+	*out++ = '.';
+	while(++decimal <= 0) {
+	  *out++ = '0';
+	}
+	decimal = 0;
+      }
+      in   = tmp;
+      while(*in) {
+	*out++ = *in++;
+	if (--decimal == 0) {
+	  *out++ = '.';
+	}
+      }
+      // Finally, remove trailing zeros if we have any.
+      if (decimal <= 0) {
+	while(out[-1] == '0') {
+	  out--;
+	}
+	// Also possibly remove the dot.
+	if (out[-1] == '.')
+	  out--;
+      }
+      //
+      // And write the exponent if we have to.
+      // We checked above that the exponent is at least -99, and
+      // arithmetics ensured that it is at most +99, otherwise mathpack
+      // returned with a range error. Otherwise, if the number is invalid,
+      // the same junk is generated as by the mathpack.
+      if (exponent) {
+	*out++ = 'E';
+	if (exponent < 0) {
+	  *out++   = '-';
+	  exponent = -exponent;
+	} else {
+	  *out++   = '+';
+	}
+	*out++ = (exponent / 10) + '0';
+	*out++ = (exponent % 10) + '0';
+      }
+    }
+    *out++ = 0;
+    out    = buffer;
+  } else {
+    snprintf(buffer,31,"%.10G",v);
+    buffer[31] = 0; // zero-terminate
+    out = buffer;
+  }
+#else
   snprintf(buffer,31,"%.10G",v);
   buffer[31] = 0; // zero-terminate
   out = buffer;
+#endif
   //
   // Now write the result into the output buffer
   do {
@@ -346,7 +426,7 @@ void MathPackPatch::FPI(class AdrSpace *adr,class CPU *cpu)
   // Extract FR0
   v = ReadFR0(adr);
   if (v>=0 && v < 65536) {
-    data = UWORD(v); // convert to integer
+    data = UWORD(v + 0.5); // convert to integer, be consistent with os++
     adr->WriteByte(0xd4,UBYTE(data & 0xff));
     adr->WriteByte(0xd5,UBYTE(data >> 8));
     cpu->P() &= ~CPU::C_Mask;
@@ -367,7 +447,9 @@ void MathPackPatch::ZFR0(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(0xd7,0);
   adr->WriteByte(0xd8,0);
   adr->WriteByte(0xd9,0);
+  cpu->A()  = 0;
   cpu->P() &= ~CPU::C_Mask;
+  cpu->P() |=  CPU::Z_Mask;
 }
 ///
 
@@ -383,7 +465,9 @@ void MathPackPatch::ZFR1(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(reg + 3,0);
   adr->WriteByte(reg + 4,0);
   adr->WriteByte(reg + 5,0);
+  cpu->A()  = 0;
   cpu->P() &= ~CPU::C_Mask;
+  cpu->P() |=  CPU::Z_Mask;
 }
 ///
 
@@ -521,6 +605,7 @@ void MathPackPatch::FLD0R(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(0xd7,adr->ReadByte(mem++));
   adr->WriteByte(0xd8,adr->ReadByte(mem++));
   adr->WriteByte(0xd9,adr->ReadByte(mem++));
+  cpu->Y() = 0xff;
   cpu->P() &= ~CPU::C_Mask;
 }
 ///
@@ -538,6 +623,7 @@ void MathPackPatch::FLD0P(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(0xd7,adr->ReadByte(mem++));
   adr->WriteByte(0xd8,adr->ReadByte(mem++));
   adr->WriteByte(0xd9,adr->ReadByte(mem++));
+  cpu->Y() = 0xff;
   cpu->P() &= ~CPU::C_Mask;
 }
 ///
@@ -555,6 +641,7 @@ void MathPackPatch::FLD1R(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(0xe3,adr->ReadByte(mem++));
   adr->WriteByte(0xe4,adr->ReadByte(mem++));
   adr->WriteByte(0xe5,adr->ReadByte(mem++));
+  cpu->Y() = 0xff;
   cpu->P() &= ~CPU::C_Mask;
 }
 ///
@@ -572,6 +659,7 @@ void MathPackPatch::FLD1P(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(0xe3,adr->ReadByte(mem++));
   adr->WriteByte(0xe4,adr->ReadByte(mem++));
   adr->WriteByte(0xe5,adr->ReadByte(mem++));
+  cpu->Y() = 0xff;
   cpu->P() &= ~CPU::C_Mask;
 }
 ///
@@ -588,6 +676,7 @@ void MathPackPatch::FST0R(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(mem++,adr->ReadByte(0xd7));
   adr->WriteByte(mem++,adr->ReadByte(0xd8));
   adr->WriteByte(mem++,adr->ReadByte(0xd9));
+  cpu->Y() = 0xff;
   cpu->P() &= ~CPU::C_Mask;
 }
 ///
@@ -604,6 +693,7 @@ void MathPackPatch::FST0P(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(mem++,adr->ReadByte(0xd7));
   adr->WriteByte(mem++,adr->ReadByte(0xd8));
   adr->WriteByte(mem++,adr->ReadByte(0xd9));
+  cpu->Y() = 0xff;
   cpu->P() &= ~CPU::C_Mask;
 }
 ///
@@ -876,6 +966,38 @@ void MathPackPatch::TESTDIGIT(class AdrSpace *adr,class CPU *cpu)
 }
 ///
 
+/// MathPackPatch::FR0TIMESTEN
+// Multiply FR0 by ten by upscaling the
+// mantissa.
+void MathPackPatch::FR0TIMESTEN(class AdrSpace *adr,class CPU *cpu)
+{ 
+  struct BCD bcd;
+  //
+  // Read bytes one after another
+  bcd.SignExponent = adr->ReadByte(0xd4);
+  bcd.Mantissa[0]  = adr->ReadByte(0xd5);
+  bcd.Mantissa[1]  = adr->ReadByte(0xd6);
+  bcd.Mantissa[2]  = adr->ReadByte(0xd7);
+  bcd.Mantissa[3]  = adr->ReadByte(0xd8);
+  bcd.Mantissa[4]  = adr->ReadByte(0xd9);
+  //
+  // Now upshift. Do not shift into the exponent.
+  cpu->A()         = (bcd.Mantissa[0] & 0xf0) >> 4; // Os++ only, not required by Basic++
+  bcd.Mantissa[0]  = (bcd.Mantissa[0] << 4) | ((bcd.Mantissa[1] & 0xf0) >> 4);
+  bcd.Mantissa[1]  = (bcd.Mantissa[1] << 4) | ((bcd.Mantissa[2] & 0xf0) >> 4);
+  bcd.Mantissa[2]  = (bcd.Mantissa[2] << 4) | ((bcd.Mantissa[3] & 0xf0) >> 4);
+  bcd.Mantissa[3]  = (bcd.Mantissa[3] << 4) | ((bcd.Mantissa[4] & 0xf0) >> 4);
+  bcd.Mantissa[4]  = (bcd.Mantissa[4] << 4);
+  //
+  adr->WriteByte(0xd4,bcd.SignExponent);
+  adr->WriteByte(0xd5,bcd.Mantissa[0]);
+  adr->WriteByte(0xd6,bcd.Mantissa[1]);
+  adr->WriteByte(0xd7,bcd.Mantissa[2]);
+  adr->WriteByte(0xd8,bcd.Mantissa[3]);
+  adr->WriteByte(0xd9,bcd.Mantissa[4]);
+}
+///
+
 /// MathPackPatch::InstallPatch
 // Install all the patches into the math pack
 void MathPackPatch::InstallPatch(class AdrSpace *adr,UBYTE code)
@@ -928,6 +1050,8 @@ void MathPackPatch::InstallPatch(class AdrSpace *adr,UBYTE code)
   InsertESC(adr,0xda48,code + 26); // ZERORGS
   InsertESC(adr,0xdc00,code + 27); // NORMALIZE
   InsertESC(adr,0xdbaf,code + 28); // TESTDIGIT
+  // Undocumented call-ins used by Basic++
+  InsertESC(adr,0xdbeb,code + 29); // FR0TIMESTEN
   //
   // Undocumented constants, BASIC requires them
   adr->PatchByte(0xdf6c  ,0x3f);
@@ -1034,6 +1158,9 @@ void MathPackPatch::RunPatch(class AdrSpace *adr,class CPU *cpu,UBYTE code)
     break;
   case 28:
     TESTDIGIT(adr,cpu);
+    break;
+  case 29:
+    FR0TIMESTEN(adr,cpu);
     break;
   }
 }

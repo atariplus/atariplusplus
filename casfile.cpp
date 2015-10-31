@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: casfile.cpp,v 1.5 2014/02/23 10:41:08 Administrator Exp $
+ ** $Id: casfile.cpp,v 1.6 2015/09/20 20:22:28 thor Exp $
  **
  ** In this module: Abstraction of CAS files aka "FUJI"
  **********************************************************************************/
@@ -16,7 +16,7 @@
 // Construct a cas file from a raw file. The file
 // must be administrated outside of this class.
 CASFile::CASFile(FILE *is) 
-  : src(is), inbuf(0), bytecnt(0)
+  : src(is)
 {
 }
 ///
@@ -110,9 +110,9 @@ void CASFile::WriteChunk(UBYTE *buffer,LONG buffersize,UWORD irg)
 }
 ///
 
-/// CASFile::CreateCASHeader
+/// CASFile::OpenForWriting
 // Create the header for a CAS file.
-void CASFile::CreateCASHeader(void)
+void CASFile::OpenForWriting(void)
 {
   char buffer[128];
   const char *description = "Created by Atari++";
@@ -135,61 +135,3 @@ void CASFile::CreateCASHeader(void)
   }
 }
 ///
-
-/// CASFile::Get
-// Byte-wise access to the contents, ignoring the IRGs
-// and the baud rate. This is the "cooked" access for
-// disk emulation.
-UBYTE CASFile::Get(void)
-{
-  do {
-    if (inbuf < bytecnt) {
-      return buffer[inbuf++];
-    } else {
-      UWORD irg; // ignored.
-      UWORD size = ReadChunk(buffer,sizeof(buffer),irg);
-      int i;
-      UBYTE chksum;
-      
-      if (size == 0)
-	throw 0; // The EOF condition is indicated by throwing an int.
-      
-      // Initialize the input buffer pointer and the size of the buffer.
-      inbuf = 3;
-      // Skip the buffer header.
-      if (buffer[0] != 0x55 && buffer[1] != 0x55)
-	Throw(InvalidParameter,"CASFile::Get","invalid CAS chunk, sync marker missing");
-      switch(buffer[2]) {
-      case 0xfc: // A full chunk
-	bytecnt = size - 1; // not the checksum
-	break;
-      case 0xfa: // A partial chunk.
-	bytecnt = buffer[size - 2] + 3;
-	if (bytecnt >= size - 1)
-	  Throw(InvalidParameter,"CASFile::Get","invalid CAS length indicator");
-	break;
-      case 0xfe: // An EOF chunk.
-	bytecnt = 0;
-	break;
-      default:
-	Throw(InvalidParameter,"CASFile::Get","invalid CAS chunk type");
-      }
-      // Compute the checksum.
-      for(i = 0,chksum = 0;i < size - 1;i++) {
-	if (buffer[i] + int(chksum) >= 256) {
-	  chksum += buffer[i] + 1; // also add the carry;
-	} else {
-	  chksum += buffer[i];
-	}
-      }
-      if (chksum != buffer[size - 1])
-	Throw(InvalidParameter,"CASFile::Get","CAS chunk checksum is invalid");
-      //
-      // Everything is now initialized. Just throw on EOF now.
-      if (buffer[2] == 0xfe)
-	throw 0;
-    }
-  } while(true);
-}
-///
-

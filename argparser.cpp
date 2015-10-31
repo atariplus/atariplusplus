@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: argparser.cpp,v 1.17 2013-03-16 15:08:50 thor Exp $
+ ** $Id: argparser.cpp,v 1.18 2015/05/21 18:52:35 thor Exp $
  **
  ** In this module: Generic argument parser for configuration file and command line
  **********************************************************************************/

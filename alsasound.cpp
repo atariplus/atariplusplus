@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.31 2013-01-08 19:02:15 thor Exp $
+ ** $Id: alsasound.cpp,v 1.32 2015/03/21 14:31:27 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -37,7 +37,8 @@ AlsaSound::AlsaSound(class Machine *mach)
     SoundStream(NULL), HWParms(NULL), SWParms(NULL), AsyncHandler(NULL),
     MayRunPokey(false), AbleIRQ(false),
     FragSize(8), NumFrags(12), 
-    BufferedSamples(0), ForceStereo(false), UpdateBuffer(false), UpdateSamples(0)
+    BufferedSamples(0), ForceStereo(false), UpdateBuffer(false), Polling(false), 
+    UpdateSamples(0)
 {
   strcpy(CardName,"default"); //hw:0,0");
 }
@@ -368,6 +369,7 @@ bool AlsaSound::InitializeDsp(void)
   DifferentialAdjust = 0;
   CycleCarry         = 0;
   UpdateBuffer       = false;
+  Polling            = false;
   UpdateSamples      = 0;
   // Compute the size of a frame in bits
   FragSamples        = fragsize;
@@ -375,7 +377,10 @@ bool AlsaSound::InitializeDsp(void)
   //
   // Start the async handler now.
   if ((err = snd_async_add_pcm_handler(&AsyncHandler,SoundStream,&AlsaSound::AlsaCallBackStub,this)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to install the async callback handler");
+    Polling = true; 
+    // Sigh, so go into the polling mode. Some ^#+$!@!!
+    // sound preventers/handlers like pulse do not support the
+    // full sound API.
   }
   //
   // Start the sound processing now.
@@ -504,6 +509,11 @@ void AlsaSound::AlsaCallBack(void)
 // sound driver.
 void AlsaSound::HBI(void)
 {
+  
+  if (EnableSound && Polling) {
+    AlsaCallBack();
+  }
+  
   if (EnableSound) {
     LONG  remaining,samples;
     ULONG cycles   = machine->CPU()->ElapsedCycles();

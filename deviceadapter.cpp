@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: deviceadapter.cpp,v 1.4 2008-08-25 16:42:57 thor Exp $
+ ** $Id: deviceadapter.cpp,v 1.5 2015/05/21 18:52:38 thor Exp $
  **
  ** In this module: Device maintainment
  **********************************************************************************/

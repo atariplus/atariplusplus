@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: edevice.hpp,v 1.1 2008-08-25 19:23:12 thor Exp $
+ ** $Id: edevice.hpp,v 1.2 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: E: emulated device for stdio editor access (no curses)
  **********************************************************************************/

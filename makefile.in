@@ -2,7 +2,7 @@
 ##
 ## GNU g++ makefile.in for the Atari++ emulator
 ##
-## $Id: makefile.in,v 1.18 2008-11-22 14:17:59 thor Exp $
+## $Id: makefile.in,v 1.20 2015/09/25 09:33:26 thor Exp $
 ##
 ##
 ###################################################################################
@@ -24,7 +24,7 @@ DEBUGGER	= @DEBUGGER_FLAGS@ -DDEBUG_LEVEL=2 -DCHECK_LEVEL=3
 TOASM           = -S
 DBLIBS          = #-lefence # does also break exception handling
 LD		= @CXX@
-LDFLAGS		= @X_LIBS@ @SDL_LDFLAGS@
+LDFLAGS		= @LDFLAGS@ @X_LIBS@ @X_PRE_LIBS@ @X_EXTRA_LIBS@ @SDL_LDFLAGS@
 LDLIBS		= @X_PRE_LIBS@ @X_EXTRA_LIBS@ @LIBS@
 ECHO		= echo
 prefix		= @prefix@

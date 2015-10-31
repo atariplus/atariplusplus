@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gadget.cpp,v 1.7 2009-08-10 20:19:06 thor Exp $
+ ** $Id: gadget.cpp,v 1.8 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Abstract base class for all gadgets used in the GUI
  **********************************************************************************/

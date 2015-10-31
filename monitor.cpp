@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.90 2013-03-14 20:58:51 Administrator Exp $
+ ** $Id: monitor.cpp,v 1.101 2015/11/07 18:53:12 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -40,7 +40,8 @@ Monitor::Monitor(class Machine *mach)
   : machine(mach), cpu(mach->CPU()), MMU(mach->MMU()),
     cpuspace(MMU->CPURAM()), anticspace(MMU->AnticRAM()), currentadr(MMU->CPURAM()),
     debugspace(MMU->DebugRAM()),
-    tracefile(NULL), curses(NULL), cmdline(NULL), abort(false), fetchtrace(false),
+    tracefile(NULL), symboltable(NULL), curses(NULL), cmdline(NULL), 
+    abort(false), fetchtrace(false),
     cmdchain(NULL),
     Envi(this,"ENVI","V","environment settings"),
     Splt(this,"SPLT","/","split off display"),
@@ -63,6 +64,7 @@ Monitor::Monitor(class Machine *mach)
     Dump(this,"DUMP","D","[expr]         : display memory contents"),
     SkTb(this,"SKTB","K","[expr]         : stack traceback"),
     Disk(this,"DISK","I","file addr size : read or write memory to a file"),
+    Prof(this,"PROF","O","profile code"),
     // help must go last into the chain to be the first getting displayed.
     Help(this,"HELP","?","display this text")
 { }
@@ -71,9 +73,295 @@ Monitor::Monitor(class Machine *mach)
 /// Monitor::~Monitor
 Monitor::~Monitor(void)
 {
+  ClearSymbolTable();
   if (tracefile)
     fclose(tracefile);
   delete[] cmdline;
+}
+///
+
+/// Monitor::ClearSymbolTable
+// Remove all known labels from the symbol table.
+void Monitor::ClearSymbolTable(void)
+{
+  struct Symbol *s;
+
+  while(symboltable) {
+    s = symboltable;
+    symboltable = symboltable->next;
+    delete s;
+  }
+}
+///
+
+/// Monitor::ParseSymbolTable
+// This parses a ld65 debug file which contains
+// all the symbols and labels of an assembled and linked ca65
+// binary.
+bool Monitor::ParseSymbolTable(const char *filename)
+{
+  FILE *symbols;
+  char line[256];
+  bool result = false;
+
+  errno   = 0;
+  symbols = fopen(filename,"r");
+  if (symbols) {
+    try {
+      errno = 0;
+      while(!feof(symbols)) {
+	if (fgets(line,sizeof(line),symbols)) {
+	  if (strncmp(line,"sym ",4) == 0 || strncmp(line,"sym\t",4) == 0) {
+	    char *linebuffer;
+	    struct Symbol s;
+	    // This is a symbol line. These are the only ones we care about.
+	    linebuffer = &line[4];
+	    while(*linebuffer == ' ' || *linebuffer == '\t')
+	      linebuffer++;
+	    if (s.ParseLabel(linebuffer)) {
+	      struct Symbol *add;
+	      result = true;
+	      if ((add = const_cast<struct Symbol *>(Symbol::FindSymbol(symboltable,s.name,0,s.type,s.size)))) {
+		// Label already exists, replace its value.
+		add->value  = s.value;
+	      } else {
+		add         = new struct Symbol(s);
+		add->next   = symboltable;
+		symboltable = add;
+	      }
+	    }
+	  }
+	} else if (errno) {
+	  Print("Error %s reading the symbol file %s\n",strerror(errno),filename);
+	}
+      }
+      fclose(symbols);
+    } catch(...) {
+      ClearSymbolTable();
+      fclose(symbols);
+      Print("Cannot allocate symbol table, no memory left.\n");
+    }
+  } else {
+    Print("Error %s opening the symbol file %s\n",strerror(errno),filename);
+  }
+
+  return result;
+}
+///
+
+/// Monitor::Symbol::ParseLabel
+// Parse a label from a parsed-off ld65 debug output line.
+// return true on success.
+bool Monitor::Symbol::ParseLabel(char *line)
+{
+  char buf[32];
+  size_t offs = 0;
+  bool havetype = false;
+  bool havesize = false;
+  bool havevalue = false;
+
+  while(*line == ' ' || *line == '\t')
+    line++;
+  //
+  // Next is the label name in quotes.
+  if (*line != '\"')
+    return false;
+  line++;
+  while(*line != '"') {
+    if (*line == '\\') {
+      line++;
+      if (*line == '"') {
+	if (offs < sizeof(name)-1)
+	  name[offs++] = '\"';
+      } else if (*line == '\\') {
+	if (offs < sizeof(name)-1)
+	  name[offs++] = '\\';
+      } else return false;
+    } else {
+      if (offs < sizeof(name)-1)
+	name[offs++] = *line;
+      line++;
+    }
+  }
+  if (offs == 0)
+    return false;
+  // Name is now complete.
+  name[offs] = 0;
+  //
+  // Names that start with a dot are local labels or assembler
+  // generated labels. They do not become part of the database.
+  if (name[0] == '.')
+    return false;
+  //
+  // Skip over the quote.
+  line++;
+  //
+  // Now parse off the remaining parameters.
+  do {
+    while(*line == ' ' || *line == '\t')
+      line++;
+    if (*line != ',') {
+      if (*line == '\n' && havetype && havesize && havevalue)
+	break;
+      return false;
+    }
+    // Skip over the comma.
+    line++;
+    while(*line == ' ' || *line == '\t')
+      line++;
+    offs = 0;
+    while(*line && *line != '=') {
+      if (offs > sizeof(buf)-1)
+	return false;
+      buf[offs++] = *line++;
+    }
+    buf[offs] = 0;
+    line++; // skip over the equates sign
+    if (!strcmp(buf,"value")) {
+      char *endptr = line;
+      long v = strtol(line,&endptr,0);
+      if (endptr == line)
+	return false;
+      if (v > 0xffff || v < 0)
+	return false;
+      value = UWORD(v);
+      line  = endptr;
+      if (havevalue)
+	return false;
+      havevalue = true;
+    } else if (!strcmp(buf,"addrsize")) {
+      if (!strncmp(line,"absolute",8)) {
+	size  = Absolute;
+	line += 8;
+      } else if (!strncmp(line,"zeropage",8)) {
+	size  = ZeroPage;
+	line += 8;
+      } else return false;
+      if (havesize)
+	return false;
+      havesize = true;
+    } else if (!strcmp(buf,"type")) {
+      if (!strncmp(line,"equate",6)) {
+	type  = Equate;
+	line += 6;
+      } else if (!strncmp(line,"label",5)) {
+	type  = Label;
+	line += 5;
+      } else return false;
+      if (havetype)
+	return false;
+      havetype = true;
+    }
+  } while(true);
+  //
+  return true;
+}
+///
+
+/// Monitor::Symbol::FindSymbol
+// Find a label by its address, size and type.
+const struct Monitor::Symbol *Monitor::Symbol::FindSymbol(const struct Symbol *list,UWORD address,Type t,Size s)
+{
+  const struct Symbol *bestmatch = NULL;
+  int score     = 0;
+  int bestscore = 0;
+  
+  for(;list;list = list->next) {
+    if (list->value == address) {
+      score = 0;
+      switch(t) {
+      case Equate:
+	if (list->type == Equate)
+	  score += 10;
+	else
+	  continue;
+	break;
+      case Label:
+	if (list->type == Label)
+	  score += 10;
+	else
+	  continue;
+	break;
+      case Any:
+	score += 5;
+	break;
+      case PreferLabel:
+	if (list->type == Label)
+	  score += 5;
+	score += 2;
+	break;
+      case PreferEquate:
+	if (list->type == Equate)
+	  score += 5;
+	score += 2;
+	break;
+      }
+      switch(s) {
+      case ZeroPage:
+	if (list->size == ZeroPage)
+	  score += 10;
+	else
+	  continue;
+	break;
+      case Absolute:
+	if (list->size == Absolute)
+	  score += 10;
+	else
+	  continue;
+	break;
+      case Any:
+	score += 5;
+	break;
+      case PreferZeroPage:
+	if (list->size == ZeroPage)
+	  score += 5;
+	score += 2;
+	break;
+      case PreferAbsolute:
+	if (list->size == Absolute)
+	  score += 5;
+	score += 2;
+	break;
+      }
+      if (score >= bestscore) {
+	bestscore = score;
+	bestmatch = list;
+      }
+    }
+  }
+  
+  return bestmatch;
+}
+///
+
+/// Monitor::Symbol::FindSymbol
+// Find a symbol by its name, size and type.
+const struct Monitor::Symbol *Monitor::Symbol::FindSymbol(const struct Symbol *list,const char *name,UWORD pc,Type t,Size s)
+{
+  int bestdist = 0xffff;
+  const struct Symbol *bestmatch = NULL;
+  size_t l = strlen(name) + 1;
+
+  if (l > Symbol::MaxLabelSize)
+    l = Symbol::MaxLabelSize;
+
+  while(list) {
+    if ((t == Any || list->type == t) && (s == All || list->size == s)) {
+      
+      if (!strncasecmp(name,list->name,l)) {
+	int dist = int(list->value) - int(pc);
+	if (dist < 0)
+	  dist = -dist;
+	if (dist < bestdist) {
+	  bestdist  = dist;
+	  bestmatch = list;
+	}
+      }
+    }
+    list = list->next;
+  }
+
+  return bestmatch;
 }
 ///
 
@@ -263,7 +551,7 @@ LONG Monitor::EvaluateShift(char *&s)
 LONG Monitor::EvaluateNumeric(char *&s)
 {
   LONG v1;
-
+  
   if (*s == '-') {
     s++;
     v1 = EvaluateNumeric(s);
@@ -302,19 +590,19 @@ LONG Monitor::EvaluateNumeric(char *&s)
   } else if (!memcmp(s,"pc",2)) {
     s += 2;
     return cpu->PC();
-  } else if (*s == 'x') {
+  } else if (*s == 'x' && (!isalnum(s[1]))) {
     s++;
     return cpu->X();
-  } else if (*s == 'y') {
+  } else if (*s == 'y' && (!isalnum(s[1]))) {
     s++;
     return cpu->Y();
-  } else if (*s == 'p') {
+  } else if (*s == 'p' && (!isalnum(s[1]))) {
     s++;
     return cpu->P();
-  } else if (*s == 's') {
+  } else if (*s == 's' && (!isalnum(s[1]))) {
     s++;
     return cpu->S();
-  } else if (*s == 'a' && (!isxdigit(s[1]))) {
+  } else if (*s == 'a'  && (!isalnum(s[1]))) {
     s++;
     return cpu->A();
   } else if (*s == '#') {
@@ -327,10 +615,37 @@ LONG Monitor::EvaluateNumeric(char *&s)
       throw NumericException(this,"Error: Invalid token %s\n",s);
     s  = end;
     return v1;
-  } else {
+  } else if (*s == '$') {
     char *end;
-    if (*s == '$')
-      s++;
+    s++;
+    v1 = strtol(s,&end,16);
+    if (errno == ERANGE)
+      throw NumericException(this,"Error: %s is out of range\n",s);
+    if (s == end)
+      throw NumericException(this,"Error: Invalid token %s\n",s);
+    s  = end;
+    return v1;
+  } else if (isalpha(*s)) {
+    char labelname[64]; 
+    const struct Symbol *symbol;
+    char *sptr = s;
+    char *lptr = labelname;
+    while(lptr < labelname + sizeof(labelname) - 1) {
+      *lptr = *sptr;
+      lptr++,sptr++;
+      if (!isalnum(*sptr)) 
+	break;
+    }
+    *lptr  = 0;
+    symbol = Symbol::FindSymbol(symboltable,labelname,cpu->PC(),Symbol::Any,Symbol::All);
+    if (symbol) {
+      s = sptr;
+      return symbol->value;
+    }
+  }
+  // Final try: Another type of value.
+  {
+    char *end;
     v1 = strtol(s,&end,16);
     if (errno == ERANGE)
       throw NumericException(this,"Error: %s is out of range\n",s);
@@ -1237,21 +1552,26 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
 {
   int op;
   ADR pc = where;
+  class CPU *cpu = monitor->cpu;
   const char *name;
   UBYTE inst;
-  char buf[16];
+  char buf[48];
+  char pcbuf[48];
   Instruction::OperandType type;
+  const struct Symbol *pctarget;
+  const struct Symbol *target;
   
   if (where >= 0x10000) {
     *line = 0;
     return where;
   }
   // Format of the output:
-  // xxxx  ab cd ef  IIII noooo
-  // 0123456789abcdef0
+  // xxxx             ab cd ef  IIII noooo
+  // namenamenamenam:                namenamenamenamn,namenamenamenam    
+  // 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
   inst    = adr->ReadByte(where++); 
   {
-    const struct Instruction &dis = monitor->cpu->Disassemble(inst);
+    const struct Instruction &dis = cpu->Disassemble(inst);
     name    = dis.Name;
     type    = dis.AddressingMode;
   }
@@ -1261,8 +1581,13 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
     break;
   case Instruction::Immediate:
     if (where < 0x10000) {
-      op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s #$%02x",name,op);
+      op     = adr->ReadByte(where++);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,op,Symbol::Equate,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s #%.16s",name,target->name);
+      } else {
+	sprintf(buf,"%-4s #$%02x",name,op);
+      }
     } else {
       sprintf(buf,"%-4s #$XX",name);
     }
@@ -1272,8 +1597,13 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
     break;
   case Instruction::ZPage:
     if (where < 0x10000) {
-      op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s  $%02x",name,op);
+      op     = adr->ReadByte(where++);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,op,Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%02x",name,op);
+      }
     } else {
       sprintf(buf,"%-4s  $XX",name);
     }
@@ -1281,15 +1611,25 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::ZPage_X:
     if (where < 0x10000) {
       op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s  $%02x,X",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,UBYTE(op + cpu->X()),Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s,X",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%02x,X",name,op);
+      }
     } else {
       sprintf(buf,"%-4s  $XX,X",name);
     }
     break;
   case Instruction::ZPage_Y:
     if (where < 0x10000) {
-      op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s  $%02x,Y",name,op);
+      op  = adr->ReadByte(where++); 
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,UBYTE(op + cpu->Y()),Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s,Y",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%02x,Y",name,op);
+      }
     } else {
       sprintf(buf,"%-4s  $XX,Y",name);
     }
@@ -1297,7 +1637,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Indirect:
     if (where < 0x10000) {
       op  = adr->ReadWord(where);
-      sprintf(buf,"%-4s ($%04x)",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,op,Symbol::PreferEquate,Symbol::PreferAbsolute);
+      if (target) {
+	sprintf(buf,"%-4s  (%.16s)",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  ($%04x)",name,op);
+      }
       where += 2;
     } else {
       sprintf(buf,"%-4s ($XXXX)",name);
@@ -1306,7 +1651,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Indirect_X:
     if (where < 0x10000) {
       op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s ($%02x,X)",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,UBYTE(op + cpu->X()),Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s  (%.16s,X)",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  ($%02x,X)",name,op);
+      }
     } else {
       sprintf(buf,"%-4s ($XX,X)",name);
     }
@@ -1314,7 +1664,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Indirect_Y:
     if (where < 0x10000) {
       op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s ($%02x),Y",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,op,Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s  (%.16s),Y",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  ($%02x),Y",name,op);
+      }
     } else {
       sprintf(buf,"%-4s ($XX),Y",name);
     }
@@ -1322,7 +1677,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Indirect_Z:
     if (where < 0x10000) {
       op  = adr->ReadByte(where++);
-      sprintf(buf,"%-4s ($%02x)",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,op,Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	sprintf(buf,"%-4s  (%.16s)",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  ($%02x)",name,op);
+      }
     } else {
       sprintf(buf,"%-4s ($XX)",name);
     }
@@ -1330,7 +1690,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Absolute:
     if (where < 0xffff) {
       op  = adr->ReadWord(where);
-      sprintf(buf,"%-4s  $%04x",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,op,Symbol::PreferLabel,Symbol::PreferAbsolute);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%04x",name,op);
+      }
       where += 2;
     } else {
       sprintf(buf,"%-4s  $XXXX",name);
@@ -1339,7 +1704,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Absolute_X:
     if (where < 0xffff) {
       op  = adr->ReadWord(where);
-      sprintf(buf,"%-4s  $%04x,X",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,UWORD(op + cpu->X()),Symbol::PreferLabel,Symbol::PreferAbsolute);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s,X",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%04x,X",name,op);
+      }
       where += 2;
     } else {
       sprintf(buf,"%-4s  $XXXX,X",name);
@@ -1348,7 +1718,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::Absolute_Y:
     if (where < 0xffff) {
       op  = adr->ReadWord(where);
-      sprintf(buf,"%-4s  $%04x,Y",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,UWORD(op + cpu->Y()),Symbol::PreferLabel,Symbol::PreferAbsolute);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s,Y",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%04x,Y",name,op);
+      }
       where += 2;
     } else {
       sprintf(buf,"%-4s  $XXXX,Y",name);
@@ -1357,7 +1732,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   case Instruction::AbsIndirect_X:
     if (where < 0xffff) {
       op  = adr->ReadWord(where);
-      sprintf(buf,"%-4s ($%04x,X)",name,op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,UBYTE(op + cpu->X()),Symbol::PreferLabel,Symbol::PreferAbsolute);
+      if (target) {
+	sprintf(buf,"%-4s  (%.16s,X)",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  ($%04x,X)",name,op);
+      }
       where += 2;
     } else {
       sprintf(buf,"%-4s ($XXXX,X)",name);
@@ -1367,7 +1747,12 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
     // Note that this displacement is signed
     if (where < 0x10000) {
       op  = (BYTE)(adr->ReadByte(where++));
-      sprintf(buf,"%-4s  $%04x",name,where+op);
+      target = Monitor::Symbol::FindSymbol(monitor->symboltable,where+op,Symbol::PreferLabel,Symbol::PreferAbsolute);
+      if (target) {
+	sprintf(buf,"%-4s  %.16s",name,target->name);
+      } else {
+	sprintf(buf,"%-4s  $%04x",name,where+op);
+      }
     } else {
       sprintf(buf,"%-4s  $XXXX",name);
     }
@@ -1376,7 +1761,21 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
     if (where < 0xffff) {
       UBYTE zp = adr->ReadByte(where++);
       op       = (BYTE)adr->ReadByte(where++);
-      sprintf(buf,"%-4s  $%02x,$%04x",name,zp,where + op);
+      pctarget = Monitor::Symbol::FindSymbol(monitor->symboltable,where+op,Symbol::PreferLabel,Symbol::PreferAbsolute);
+      target   = Monitor::Symbol::FindSymbol(monitor->symboltable,zp      ,Symbol::PreferLabel,Symbol::ZeroPage);
+      if (target) {
+	if (pctarget) {
+	  sprintf(buf,"%-4s  %.16s,%.16s",name,target->name,pctarget->name);
+	} else {
+	  sprintf(buf,"%-4s  %.16s,$%04x",name,target->name,where+op);
+	}
+      } else {
+	if (pctarget) {
+	  sprintf(buf,"%-4s  $%02x,%.16s",name,zp,pctarget->name);
+	} else {
+	  sprintf(buf,"%-4s  $%02x,$%04x",name,zp,where+op);
+	}
+      }
     } else {
       sprintf(buf,"%-4s  $XX,$XXXX"  ,name);
     }
@@ -1385,15 +1784,21 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   //
   // Now disassemble the remaining line dependent on the number of arguments
   // we pulled off (one to three).
+  pctarget = Monitor::Symbol::FindSymbol(monitor->symboltable,pc,Symbol::Any,Symbol::Absolute);
+  if (pctarget) {
+    sprintf(pcbuf,"$%04x:%.16s",pc,pctarget->name);
+  } else {
+    sprintf(pcbuf,"$%04x:",pc);
+  }
   switch(where - pc) {
   case 1:
-    sprintf(line,"$%04x: %02x        %s",pc,inst,buf);
+    sprintf(line,"%-22s %02x        %s",pcbuf,inst,buf);
     break;
   case 2:
-    sprintf(line,"$%04x: %02x %02x     %s",pc,inst,adr->ReadByte(pc+1),buf);
+    sprintf(line,"%-22s %02x %02x     %s",pcbuf,inst,adr->ReadByte(pc+1),buf);
     break;
   case 3:
-    sprintf(line,"$%04x: %02x %02x %02x  %s",pc,inst,adr->ReadByte(pc+1),
+    sprintf(line,"%-22s %02x %02x %02x  %s",pcbuf,inst,adr->ReadByte(pc+1),
 	    adr->ReadByte(pc+2),buf);
     break;
   }
@@ -1401,11 +1806,11 @@ ADR Monitor::UnAs::DisassembleLine(class AdrSpace *adr,ADR where,char *line)
   // Check whether we are at the CPU PC position. If so, print
   // a star behind the address.
   if (pc == monitor->cpu->PC()) {
-    line[16] = '*';
+    line[32] = '*';
   }
   // Check whether we have a break point at this position.
   if (monitor->cpu->IfBreakPoint(pc)) {
-    line[15] = 'B';
+    line[31] = 'B';
   }
 
   return where;
@@ -1614,7 +2019,7 @@ bool Monitor::Step::RefreshLine(class AdrSpace *adr,ADR pc,bool showpc)
       if (lineaddresses[lines] == pc) {
 	monitor->UnAs.DisassembleLine(adr,pc,buffer);
 	if (!showpc)
-	  buffer[16] = ' ';
+	  buffer[32] = ' ';
 	move(y,0);
 	deleteln();
 	insertln();
@@ -2464,6 +2869,8 @@ void Monitor::Envi::Apply(char e)
   case '?':
     Print("ENVI.A : toggle between CPU and ANTIC address space\n");
     Print("ENVI.L [filename] : set tracing output file\n");
+    Print("ENVI.S [filename] : load ld65 debug symbols from file\n");
+    Print("ENVI.C : clear symbol table\n");
     break;
   case 'A':
     if (monitor->currentadr == monitor->cpuspace) {
@@ -2472,6 +2879,17 @@ void Monitor::Envi::Apply(char e)
     } else {
       monitor->currentadr = monitor->cpuspace;
       Print("Current address space is CPU.\n");
+    }
+    break;
+  case 'C':
+    monitor->ClearSymbolTable();
+    Print("Symbol table removed.\n");
+    break;
+  case 'S':
+    token = NextToken();
+    if (token) {
+      if (monitor->ParseSymbolTable(token))
+	Print("Symbols from %s added to the symbol table.\n",token);
     }
     break;
   case 'L':
@@ -2908,6 +3326,158 @@ void Monitor::Disk::Apply(char e)
     break;
   default:
     ExtInvalid();   
+  }
+}
+///
+
+/// Monitor::Prof::Prof
+// Build the profiler.
+Monitor::Prof::Prof(class Monitor *mon,const char *lng,const char *shr,const char *helper)
+  : Command(mon,lng,shr,helper,'L')
+{ }
+///
+
+/// Monitor::Prof::Apply
+// The monitor implementation.
+void Monitor::Prof::Apply(char e)
+{
+  switch(e) {
+  case '?':
+    Print("Profiler subcommands:\n"
+	  "PROF.S : start profiling\n"
+	  "PROF.X : stop profiling\n"
+	  "PROF.L : list profile data\n"
+	  "PROF.C : list cumulative profiling data\n");
+    break;
+  case 'S':
+    if (monitor->cpu->ProfilingCountersOf()) {
+      Print("Profiler is already running.\n");
+    } else {
+      monitor->cpu->StartProfiling();
+      Print("Profiling enabled.\n");
+    }
+    break;
+  case 'X':
+    if (monitor->cpu->ProfilingCountersOf()) {
+      monitor->cpu->StopProfiling();
+      Print("Profiler stopped.\n");
+    } else {
+      Print("Profiler is not running.\n");
+    }
+    break;
+  case 'L':
+  case 'C':
+    {
+      struct Entry {
+	struct Entry *next;
+	ULONG count;
+	ADR   pc;
+      } *entries         = NULL,*last = NULL;
+      const ULONG *cntrs = (e == 'L')?
+	(monitor->cpu->ProfilingCountersOf()):
+	(monitor->cpu->CumulativeProfilingCountersOf());
+      int lines;
+      int height  = 32;
+      ADR pc      = 0;
+      UQUAD total = 0;
+#ifdef USE_CURSES
+      WINDOW *window = (WINDOW *)monitor->curses->window;
+      getmaxyx(window,height,lines);
+#endif
+      if (cntrs == NULL) {
+	Print("Profiler is currently not running. Please start the profiler first with\n"
+	      "PROF.S, run the program, then use PROF.L again to show collected data.\n");
+	break;
+      }
+      try {
+	do {
+	  if (cntrs[pc]) {
+	    // Ok, so this address was used after all. Check whether its count is the
+	    // same as that of the last entry (i.e. the PC above). If so, do not collect
+	    // because it is likely the same function.
+	    if (last == NULL || last->count != cntrs[pc]) {
+	      struct Entry **i;
+	      struct Entry *e = new struct Entry;
+	      e->count = cntrs[pc];
+	      e->pc    = pc;
+	      total   += cntrs[pc];
+	      // Run a stupid insertion sort to sort entries by size...
+	      i = &entries;
+	      while(*i && (*i)->count >= e->count)
+		i = &((*i)->next);
+	      // insert before i
+	      e->next = *i;
+	      *i      = e;
+	      last    = e;
+	    }
+	  }
+	  pc++;
+	} while(pc != 0xffff);
+	if (e == 'C')
+	  total = cntrs[pc];
+	//
+	// Now print the profiling entries.
+	last  = entries;
+	lines = 0;
+	while(last) {
+	  const struct Symbol *target;
+	  target = Monitor::Symbol::FindSymbol(monitor->symboltable,last->pc,Symbol::Label,Symbol::PreferAbsolute);
+	  //
+	  // Print the label name if we have it, or the label.
+	  if (target) {
+	    Print("%-22s %10lu (%.3f%%)\n",target->name,(unsigned long)(last->count),
+		  100.0*last->count/double(total));
+	  } else {
+	    Print("%4x                   %10lu (%.3f%%)\n",(unsigned int)last->pc,
+		  (unsigned long)(last->count),
+		  100.0*last->count/double(total));
+	  }
+	  lines++;
+	  if (lines >= (height >> 1)) {
+	    const char *prompt = "*** Press RETURN to continue or Q to abort ***";
+	    int in = 0;
+#ifndef USE_CURSES
+	    char input[64];
+	    
+	    printf("%s",prompt);
+	    fflush(stdout);
+	    monitor->machine->RefreshDisplay();
+	    fgets(input,sizeof(input),stdin);
+	    in = input[0];
+#else
+	    monitor->Print("%s",prompt);
+	    do {
+	      in = getch();
+	    } while(in == ERR);
+	    monitor->Print("\n");
+#endif	   
+	    if (in == 'q' || in == 'Q')
+	      break;
+	    lines = 0;
+#ifdef USE_CURSES
+	    {
+	      int x,y;
+	      getyx(window,y,x);
+	      wmove(window,y-1,0);
+	      wdeleteln(window);
+	    }
+#endif
+	  }
+	  last = last->next;
+	}
+	while((last = entries)) {
+	  entries = entries->next;
+	  delete last;
+	}
+      } catch(...) {
+	while((last = entries)) {
+	  entries = entries->next;
+	  delete last;
+	}
+	throw;
+      }
+    }
+    break;
   }
 }
 ///

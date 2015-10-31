@@ -4,7 +4,7 @@
 ## builds the makefiles with small 'm' which are then searched first
 ## for the real program.
 ##
-## $Id: Makefile,v 1.53 2014/01/07 12:21:11 thor Exp $
+## $Id: Makefile,v 1.55 2015/09/20 15:47:16 thor Exp $
 ##
 ###################################################################################
 
@@ -18,9 +18,11 @@ final:		atari
 
 makefile:	makefile.in configure
 	./configure
+	touch types.h
 
 makefile.icc:	makefile.icc.in configure
 	./configure
+	touch types.h
 
 configure:	configure.in types.h.in
 	autoconf
@@ -31,6 +33,7 @@ types.h.in:	configure.in
 
 types.h:	types.h.in configure.in configure
 	./configure
+	touch types.h
 
 realclean:	clean
 

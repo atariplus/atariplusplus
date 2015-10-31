@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: no_frontend.cpp,v 1.1 2009-08-08 17:19:55 thor Exp $
+ ** $Id: no_frontend.cpp,v 1.2 2015/05/21 18:52:41 thor Exp $
  **
  ** In this module: A dummy frontend not displaying anything.
  **********************************************************************************/

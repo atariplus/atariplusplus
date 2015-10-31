@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cycleaction.hpp,v 1.1 2010-12-25 14:04:26 thor Exp $
+ ** $Id: cycleaction.hpp,v 1.2 2015/05/21 18:52:38 thor Exp $
  **
  ** In this module: Interface for frequent operations that have to happen
  **                 each cycle.

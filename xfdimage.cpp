@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xfdimage.cpp,v 1.5 2013-02-23 18:11:01 thor Exp $
+ ** $Id: xfdimage.cpp,v 1.7 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image class for .xfd images.
  **********************************************************************************/
@@ -25,6 +25,13 @@ XFDImage::XFDImage(class Machine *mach)
 
 /// XFDImage::~XFDImage
 XFDImage::~XFDImage(void)
+{
+}
+///
+
+/// XFDImage::Reset
+// Reset the image to the start of it.
+void XFDImage::Reset(void)
 {
 }
 ///

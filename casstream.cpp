@@ -2,21 +2,21 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: casstream.cpp,v 1.4 2013/06/01 15:12:24 thor Exp $
+ ** $Id: casstream.cpp,v 1.6 2015/10/09 19:20:42 thor Exp $
  **
  ** In this module: Disk image class for .cas (tape) archives.
  **********************************************************************************/
 
 /// Includes
 #include "casstream.hpp"
-#include "casfile.hpp"
+#include "tapeimage.hpp"
 #include "exceptions.hpp"
 #include "stdio.hpp"
 ///
 
 /// CASStream::CASStream
-CASStream::CASStream(void)
-  : File(NULL), Buffer(NULL), Size(0)
+CASStream::CASStream(class Machine *mach)
+  : machine(mach), File(NULL), Buffer(NULL), Size(0)
 {
 }
 ///
@@ -35,6 +35,7 @@ CASStream::~CASStream(void)
 void CASStream::OpenImage(const char *filename)
 {
   ULONG size;
+  class TapeImage *cas = NULL;
   
 #if CHECK_LEVEL > 0
   if (File) {
@@ -49,14 +50,20 @@ void CASStream::OpenImage(const char *filename)
   // First pass: Compute the size of the archive.
   size = 0;
   try {
-    class CASFile cas(File);
+    cas = TapeImage::CreateImageForFile(machine,File);
+    cas->OpenForReading();
     do {
-      cas.Get();
+      cas->Get();
       size++;
     } while(true);
   } catch (int) {
     // Just the EOF.
+  } catch(...) {
+    delete cas;cas = NULL;
+    // Something else: Move upwards.
+    throw;
   }
+  delete cas;cas = NULL;
   //
   // Round up to the next multiple of 128 to allow this to be loaded
   // as an XFD image.
@@ -71,14 +78,20 @@ void CASStream::OpenImage(const char *filename)
   }
   //
   try {
-    class CASFile cas(File);
+    cas = TapeImage::CreateImageForFile(machine,File);
+    cas->OpenForReading();
     UBYTE *target = Buffer;
     do {
-      *target++ = cas.Get();
+      *target++ = cas->Get();
     } while(target < Buffer + Size);
   } catch(int) {
     // EOF
-  } 
+  } catch(...) {
+    delete cas;cas = NULL;
+    // Something else. Move upwards
+    throw;
+  }
+  delete cas;cas = NULL;
   //
   // Replicate the last data as if it was loaded from the
   // tape buffer.

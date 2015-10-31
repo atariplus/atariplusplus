@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dcmimage.cpp,v 1.7 2013-02-05 02:07:11 thor Exp $
+ ** $Id: dcmimage.cpp,v 1.9 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image interface towards the dcm format
  **********************************************************************************/
@@ -196,6 +196,13 @@ void DCMImage::DecodeUncompressed(UBYTE *lastsector)
   do {
     *lastsector++ = GetC();
   } while(--offset);
+}
+///
+
+/// DCMImage::Reset
+// Reset the image after turning the drive off and on again.
+void DCMImage::Reset(void)
+{
 }
 ///
 

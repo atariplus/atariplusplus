@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: adrspace.hpp,v 1.19 2012-12-31 14:34:59 thor Exp $
+ ** $Id: adrspace.hpp,v 1.21 2015/10/25 09:11:22 thor Exp $
  **
  ** In this module: Definition of the complete 64K address space of the emulator
  **********************************************************************************/
@@ -117,6 +117,20 @@ public:
   UBYTE *StackPage(void) const
   {
     return pages[1]->Memory();
+  }
+  //
+  // Check whether a byte belongs to a hardware register. If so,
+  // it cannot be read without a side effect.
+  bool isIOSpace(ADR mem) const
+  {
+#if CHECK_LEVEL > 1
+    if (mem < 0 || mem > 0xffff) {
+      Throw(OutOfRange,"Page::isIOSpace","Address is invalid");
+    }
+    if (pages[mem >> PAGE_SHIFT] == NULL)
+      Throw(ObjectDoesntExist,"Page::isIOSpace","Page is undefined");
+#endif
+    return pages[mem >> PAGE_SHIFT]->isIOSpace(mem);
   }
 };
 ///

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rompage.hpp,v 1.9 2012-12-31 14:34:59 thor Exp $
+ ** $Id: rompage.hpp,v 1.11 2015/10/25 09:11:23 thor Exp $
  **
  ** In this module: Definition of a page of ROM
  **********************************************************************************/
@@ -72,6 +72,13 @@ public:
   virtual void PatchByte(ADR mem,UBYTE val)
   {
     romimage[mem & PAGE_MASK] = val;
+  }
+  //
+  // Return an indicator whether this is an I/O area or not.
+  // This is used by the monitor to check whether reads are harmless
+  virtual bool isIOSpace(ADR) const
+  {
+    return false;
   }
 };
 ///

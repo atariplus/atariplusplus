@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: tape.hpp,v 1.5 2013/06/04 21:12:43 thor Exp $
+ ** $Id: tape.hpp,v 1.11 2015/10/17 18:45:13 thor Exp $
  **
  ** In this module: Support for the dump tape.
  **********************************************************************************/
@@ -23,6 +23,7 @@ class Pokey;
 class Monitor;
 class ArgParser;
 class CASFile;
+class TapeImage;
 ///
 
 /// Tape
@@ -33,60 +34,65 @@ class CASFile;
 class Tape : public SerialDevice, private VBIAction {
   // 
   // The pokey handle into which we push data directly.
-  class Pokey   *Pokey;
+  class Pokey     *Pokey;
   //
   // SIO, for checking the motor line.
-  class SIO     *SIO;
+  class SIO       *SIO;
   // 
   // Currently inserted tape.
-  class CASFile *TapeImg;
+  class TapeImage *TapeImg;
   //
   // Current file to the tape, handled separately.
-  FILE          *File;
+  FILE            *File;
   //
   // Handling flags. Recording or playing.
-  bool           Playing;
-  bool           Recording;
+  bool             Playing;
+  bool             Recording;
+  //
+  // Write the output as WAV file?
+  bool             RecordAsWav;
   //
   // Ready to read the next record?
-  bool           ReadNextRecord;
+  bool             ReadNextRecord;
   //
   // Size of the record in bytes.
-  UWORD          RecordSize;
+  UWORD            RecordSize;
   //
   // Size of the IRG in msecs
-  UWORD          IRGSize;
+  UWORD            IRGSize;
   //
   // The timing flag - PAL or NTSC
-  bool           NTSC;
+  bool             NTSC;
   //
   // Inter-gap counter - measures the delay.
-  LONG           IRGCounter;
+  LONG             IRGCounter;
   //
   // Counts the time period the motor is off.
   // If the motor is off for too long, an EOF is assumed
   // and the tape file is closed.
-  LONG           MotorOffCounter;
+  LONG             MotorOffCounter;
   //
   // Time period in milliseconds after which an EOF will
   // be assumed when the motor is off.
-  LONG           EOFGap;
+  LONG             EOFGap;
   //
   // 15Khz ticks per frame.
-  LONG           TicksPerFrame;
+  LONG             TicksPerFrame;
   //
   // Input buffer or output buffer of the tape.
-  UBYTE          Buffer[3+256+1];
+  UBYTE            Buffer[3+256+1];
   //
   // Output buffer when pokey is ready.
-  UBYTE          OutputBuffer[3+256+1];
+  UBYTE            OutputBuffer[3+256+1];
   //
   // Image the user selected for loading.
-  char          *ImageToLoad;
+  char            *ImageToLoad;
   //
   // Image that is currently loaded.
-  char          *ImageName;
+  char            *ImageName;
   //
+  // An indicator if a SIO direct transfer is active.
+  bool             SIODirect;
   //
   // Insert a tape to the tape drive.
   void InsertTape();
@@ -97,6 +103,12 @@ class Tape : public SerialDevice, private VBIAction {
   // Open or create a tape image, depending
   // on the settings.
   void OpenImage(void);
+  //
+  // Fill the record buffer with the next record for reading from tape.
+  void FillRecordBuffer(void);
+  //
+  // Write the last one if we have.
+  void FlushRecordBuffer(void);
   //
   // Timing of the tape - identifies gaps and creates them.
   //
@@ -112,45 +124,40 @@ class Tape : public SerialDevice, private VBIAction {
   // command, datasize can be set to zero to indicate single
   // byte transfer.
   // The tape actually never handles a command frame at all....
-  virtual SIO::CommandType CheckCommandFrame(const UBYTE *,int &)
-  {
-    return SIO::Off;
-  }
+  // Except when run thru the SIO patch.
+  virtual SIO::CommandType CheckCommandFrame(const UBYTE *commandframe,int &datasize,UWORD);
+  // 
+  // Acknowledge the command frame. This is called as soon the SIO implementation
+  // in the host system tries to receive the acknowledge function from the
+  // client. Will return 'A' in case the command frame is accepted. Note that this
+  // is only called if CheckCommandFrame indicates already a valid command.
+  // The tape does nothing here.
+  virtual UBYTE AcknowledgeCommandFrame(const UBYTE *,UWORD &,UWORD &);
   //
   // Read bytes from the device into the system. Returns the command status
   // after the read operation, and installs the number of bytes really written
   // into the data size if it differs from the requested amount of bytes.
   // SIO will call back in case only a part of the buffer has been transmitted.
   // Delay is the number of 15kHz cycles (lines) the command requires for completion.
-  //
-  // The tape just sends data right away, without waiting and handshaking,
-  // so this does nothing.
-  virtual UBYTE ReadBuffer(const UBYTE *,UBYTE *,int &,UWORD &)
-  {
-    return 0;
-  }
+  virtual UBYTE ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,
+			   int &datasize,UWORD &delay,UWORD &speed);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error. 
   // The tape does nothing of that.
-  virtual UBYTE WriteBuffer(const UBYTE *,const UBYTE *,int &,UWORD &)
-  {
-    return 0;
-  }
+  virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
+			    int &datasize,UWORD &delay,UWORD speed);
   //
   // After a written command frame, either sent or test the checksum and flush the
   // contents of the buffer out. For block transfer, SIO does this for us. Otherwise,
   // we must do it manually.
   // The tape does nothing like that.
-  virtual UBYTE FlushBuffer(const UBYTE *,UWORD &)
-  {
-    return 0;
-  }
+  virtual UBYTE FlushBuffer(const UBYTE *,UWORD &,UWORD &);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2. This returns the command status of the
   // device. Neither are there any status-related calls for the tape.
-  virtual UBYTE ReadStatus(const UBYTE *,UWORD &)
+  virtual UBYTE ReadStatus(const UBYTE *,UWORD &,UWORD &)
   {
     return 0;
   }
@@ -166,11 +173,9 @@ public:
   // Check whether this device is responsible for the indicated command frame
   // Actually, the tape never feels responsible for a command frame since it
   // is a dumb device. It only reacts on two-tone data comming over a side
-  // channel.
-  virtual bool HandlesFrame(const UBYTE *)
-  {
-    return false;
-  }
+  // channel. However, to make the SIO patch work, we need here to react
+  // on 0x5f (unit 0, tape).
+  virtual bool HandlesFrame(const UBYTE *commandframe);
   //
   // Check whether this device accepts two-tone coded data (only the tape does)
   // Returns true if the device does, returns false otherwise.
@@ -187,6 +192,20 @@ public:
   //
   // Status display for the monitor.
   virtual void DisplayStatus(class Monitor *mon);
+  //
+  // Return indicators of whether the tape is playing. If true,
+  // the PLAY button is pressed.
+  bool isPlaying(void) const
+  {
+    return Playing;
+  }
+  //
+  // Return indicators of whether the tape is recording. If true,
+  // the RECORD button is pressed.
+  bool isRecording(void) const
+  {
+    return Recording;
+  }
 };
 ///
 

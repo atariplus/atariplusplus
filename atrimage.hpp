@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atrimage.hpp,v 1.6 2013-02-23 18:11:00 thor Exp $
+ ** $Id: atrimage.hpp,v 1.8 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image class for .atr images.
  **********************************************************************************/
@@ -73,6 +73,9 @@ public:
   //
   // Open a disk image from a file given an image stream.
   virtual void OpenImage(class ImageStream *image);
+  //
+  // Reset to the initial stage.
+  virtual void Reset(void);
   //
   // Return the sector size given the sector offset passed in.
   virtual UWORD SectorSize(UWORD sector);  

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: stringgadget.cpp,v 1.8 2013-01-30 22:09:54 thor Exp $
+ ** $Id: stringgadget.cpp,v 1.9 2015/05/21 18:52:43 thor Exp $
  **
  ** In this module: Definition of a string-entry gadget
  **********************************************************************************/

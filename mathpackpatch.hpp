@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mathpackpatch.hpp,v 1.5 2013-03-16 15:08:52 thor Exp $
+ ** $Id: mathpackpatch.hpp,v 1.7 2015/08/28 18:59:58 thor Exp $
  **
  ** In this module: Replacements for MathPack calls for speedup
  **********************************************************************************/
@@ -122,6 +122,8 @@ class MathPackPatch : public Patch {
   // Test whether the character at INBUF+CIX is a valid
   // digit, set carry if not.
   void TESTDIGIT(class AdrSpace *adr,class CPU *cpu);
+  // Multiply fr0 by ten.
+  void FR0TIMESTEN(class AdrSpace *adr,class CPU *cpu);
 protected:
   // Implemenation of the patch interface:
   // We can only provide the RunPatch interface. 

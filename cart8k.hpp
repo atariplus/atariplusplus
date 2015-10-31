@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart8k.hpp,v 1.4 2013-03-16 15:08:51 thor Exp $
+ ** $Id: cart8k.hpp,v 1.6 2015/09/13 14:30:31 thor Exp $
  **
  ** In this module: The implementation of a plain 8K cart
  **********************************************************************************/
@@ -20,6 +20,8 @@
 // whatsoever.
 class Cart8K : public Cartridge {
   //
+protected:
+  // The basic requires access here.
   // The contents of the cart
   class RomPage Rom[32];
   //

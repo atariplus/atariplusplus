@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.71 2013-01-17 16:58:39 thor Exp $
+ ** $Id: cpu.hpp,v 1.76 2015/10/20 19:39:38 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -163,9 +163,21 @@ public:
   // Pointer to the last available cycle.
   UBYTE *LastCycle;
   //
+  // In case this is non-NULL, it is a set of counters that is used for
+  // profiling code. Counters are increased as soon as the CPU
+  // reaches a given PC. There is one counter per memory location.
+  ULONG *ProfilingCounters;
+  //
+  // If this is non-NULL, it points to profiling counters that accumulate
+  // over subroutine calls.
+  ULONG *CumulativeCounters;
+  //
   // Current CPU cycle counter. This counts the number of cycles to the next
   // cycle reset and is used to control the sound output.
   ULONG  CycleCounter;
+  //
+  // Profile counter, counts steps for the profiler.
+  ULONG  ProfileCounter;
   //
   // CPU preferences
   LONG   WSyncPosition; // horizontal position of the WSync release slot. Defaults to 104.
@@ -1411,6 +1423,12 @@ public:
   // coldstart.
   void ClearInstructions(void);
   //
+  // Run the microcode decoder, fetch the next instruction.
+  // This is here and not in an atomic step because the monitor
+  // could replace the latter on the fly when inserting
+  // watch-points.
+  UWORD DecodeInstruction(void);
+  //
   // Since the instruction builder is too LONG for some architectures
   // that would require here out-of-range branches, we split it up into
   // several groups.
@@ -1546,6 +1564,8 @@ public:
     CycleCounter++;
     // Bump the horizontal position.
     CurCycle++;
+    // Bump the profile counter
+    ProfileCounter++;
     //CurCycle - StolenCycles
     //
     // Advance the rest of the hardware by a single cycle
@@ -1649,6 +1669,26 @@ public:
   bool is65C02(void) const
   {
     return Emulate65C02;
+  }
+  //
+  // Start profiling CPU execution.
+  void StartProfiling(void);
+  //
+  // Stop profiling CPU execution.
+  void StopProfiling(void);
+  //
+  // Return the profile conters, one per possible PC location.
+  // Returns NULL in case profiling is disabled.
+  const ULONG *ProfilingCountersOf(void) const
+  {
+    return ProfilingCounters;
+  }
+  //
+  // Return the cumulative profiling counters that accumulate
+  // over subroutine calls.
+  const ULONG *CumulativeProfilingCountersOf(void) const
+  {
+    return CumulativeCounters;
   }
 };
 ///

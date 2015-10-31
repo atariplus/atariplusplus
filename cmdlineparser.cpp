@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cmdlineparser.cpp,v 1.24 2008-05-22 13:03:54 thor Exp $
+ ** $Id: cmdlineparser.cpp,v 1.25 2015/05/21 18:52:37 thor Exp $
  **
  ** In this module: Parser subclass that reads data from the command line
  **********************************************************************************/

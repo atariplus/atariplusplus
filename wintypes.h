@@ -90,6 +90,9 @@
 /* Define to 1 if you have the `exp' function. */
 #define HAVE_EXP 1
 
+/* Define to 1 if you have the `cos' function. */
+#define HAVE_COS 1
+
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
@@ -250,6 +253,9 @@
 /* Define to 1 if you have the `strcasecmp' function. */
 #define HAVE_STRCASECMP 1
 
+/* Define to 1 if you have the `strncasecmp' function. */
+#define HAVE_STRNCASECMP 1
+
 /* Define to 1 if you have the `strchr' function. */
 #define HAVE_STRCHR 1
 
@@ -371,13 +377,13 @@
 #define PACKAGE_NAME "atari++"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "atari++ 1.72"
+#define PACKAGE_STRING "atari++ 1.80"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "atari--"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.72"
+#define PACKAGE_VERSION "1.80"
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void

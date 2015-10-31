@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.cpp,v 1.61 2013/06/01 19:50:10 thor Exp $
+ ** $Id: sio.cpp,v 1.65 2015/09/25 18:50:31 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.
@@ -27,6 +27,7 @@ SIO::SIO(class Machine *mach)
   : Chip(mach,"SIO"), 
     DataFrame(NULL), DataFrameSize(0)
 {
+  pokey             = NULL;
   SerIn_Cmd_Delay   = 50;
   Write_Done_Delay  = 50;
   Read_Done_Delay   = 50;
@@ -82,7 +83,7 @@ void SIO::RegisterDevice(class SerialDevice *device)
 
 /// SIO::ChkSum
 // Compute a checksum over a sequence of bytes in the SIO way.
-UBYTE SIO::ChkSum(UBYTE *buffer,int bytes)
+UBYTE SIO::ChkSum(const UBYTE *buffer,int bytes)
 {
   int sum = 0;
  
@@ -119,7 +120,7 @@ void SIO::ColdStart(void)
   pokey    = machine->Pokey();
   //
   // Reset the state machine
-  SIOState = NoFrame;
+  SIOState = NoState;
   //
   WarmStart();
 }
@@ -130,7 +131,7 @@ void SIO::ColdStart(void)
 void SIO::WarmStart(void)
 {
   // Reset the state machine
-  SIOState          = NoFrame;
+  SIOState          = NoState;
   MotorEnabled      = false;
   HaveWarned        = false;
   ActiveDevice      = NULL;
@@ -145,7 +146,7 @@ void SIO::WriteByte(UBYTE byte)
 
   // Check which state we are in
   switch(SIOState) {
-  case CmdFrame: 
+  case CmdState: 
     // We are currently in a command frame, the serial device
     // receives the SIO command.
     if (CommandFrameIdx < ExpectedBytes) {
@@ -163,7 +164,8 @@ void SIO::WriteByte(UBYTE byte)
 	    // of the data frame. For first, reset the data frame
 	    // size to zero.
 	    DataFrameLength = 0;
-	    CmdType = ActiveDevice->CheckCommandFrame(CommandFrame,DataFrameLength);
+	    CmdType = ActiveDevice->CheckCommandFrame(CommandFrame,DataFrameLength,
+						      pokey->SerialTransmitSpeed());
 	    if (CmdType != Off) {	      
 	      // Check whether we have enough data buffer here; if not,
 	      // enlarge it. Note that we need one additional byte
@@ -179,41 +181,50 @@ void SIO::WriteByte(UBYTE byte)
 	      // result here and get the "real" device result later.
 	      // This is not very nice, but such is life. It helps to
 	      // keep the transmission fast.
-	      CommandStatus = (CmdType != InvalidCommand)?('A'):('N');
-	      //
-	      // Send the OK for the command frame. (Accepted/rejected)
-	      // This is just the command frame acknlowedge, not yet the
-	      // command completion byte
-	      pokey->SignalSerialBytes(&CommandStatus,1,UWORD(SerIn_Cmd_Delay));
-	      //
-	      // Now accept the second byte to be returned from the device.
-	      // This indicates whether the command completes (for read
-	      // commands)
-	      if (CommandStatus == 'A') {
-		SIOState = StatusRead;
-		return;
-	      } 
+	      if (CmdType == InvalidCommand) {
+		// Reject the command immediately.
+		CommandStatus = 'N';
+		// This is just the command frame acknlowedge, not yet the
+		// command completion byte
+		pokey->SignalSerialBytes(&CommandStatus,1,UWORD(SerIn_Cmd_Delay),
+					 pokey->SerialReceiveSpeed());
+		// Done with it.
+		SIOState = NoState;
+	      } else {
+		// Otherwise accept the command for now and wait until the
+		// atari asks again.
+		CommandStatus = 'A';
+		// Just tell pokey that something is waiting.
+		pokey->SignalSerialBytes(NULL,0,UWORD(SerIn_Cmd_Delay),
+					 pokey->SerialReceiveSpeed());
+		// Now accept the second byte to be returned from the device.
+		// This indicates whether the command completes (for read
+		// commands)
+		SIOState = AcknowledgeState;
+	      }
+	      // Done with it.
+	      return;
 	    }
 	  } else {
-	    // Put a device error since the checksum is invalid
-	    CommandStatus = 'E';
-	    pokey->SignalSerialBytes(&CommandStatus,1,UWORD(SerIn_Cmd_Delay));
-	    // Run into the following code that aborts the frame.
+	    // According to the SIO specs, devices should not react on command frames
+	    // with invalid checksums.
+	    // Command frame is just nonsense
+	    machine->PutWarning("Checksum of SIO command frame is invalid, ignoring it.\n");
 	  }
 	}
 	// Device does not exist or is turned off, or the command
 	// was invalid. In the latter case, the DeviceNAK has been
 	// send back already.
-	SIOState = NoFrame; // just don't react. Nobody at home!
+	SIOState = NoState; // just don't react. Nobody at home!
 	break;
       }
     } else {
       // Command frame is just nonsense
       machine->PutWarning("Received invalid command frame at SIO.\n");
-      SIOState = NoFrame;
+      SIOState = NoState;
     }
     break;
-  case WriteFrame: 
+  case WriteState: 
     // Feed our input data buffer (write to device)
     // Actually, the delay is never needed here.
     delay = UWORD(Write_Done_Delay);
@@ -235,27 +246,36 @@ void SIO::WriteByte(UBYTE byte)
 	    // The checksum is just fine. Now check whether
 	    // the serial device writes the buffer fine.
 	    // We do not include the checksum. 
-	    result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len,delay);
+	    result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len,delay,
+					       pokey->SerialTransmitSpeed());
 	    if (result) {
 	      // Switch to the flush frame to collect the final result
-	      // after writing the data out. 
-	      StatusFrame[1] = result;
-	      SIOState       = FlushFrame;
+	      // after writing the data out.
+	      // Bummer! If WriteBuffer() already performed the command,
+	      // then this should be the final response and not the intermediate
+	      // response.
+	      StatusFrame[0] = result;
+	      SIOState       = FlushState;
 	      // Ask pokey to come back later.
 	      pokey->SignalSerialBytes(NULL,0);
 	    } else {
 	      // No reaction otherwise. Yuck.
-	      SIOState       = NoFrame;
+	      SIOState       = NoState;
 	    }
 	  } else {
 	    // A checksum error. Signal this directly, don't bother the device.
-	    StatusFrame[1] = 'N'; // Must be a NAK, see SIO documentatin
-	    pokey->SignalSerialBytes(StatusFrame,1);
+	    StatusFrame[0] = 'N'; // Must be a NAK, see SIO documentation
+	    // The SIO docs also state that only the NAK shall be send, but this is not
+	    // how the Os works. It always expects a second indicator here.
+	    StatusFrame[1] = 'E'; 
+	    pokey->SignalSerialBytes(StatusFrame,1,0,pokey->SerialReceiveSpeed());
+	    // Come again to collect the next error.
+	    SIOState       = DoneState;
 	  }
 	}
       } else {
 	machine->PutWarning("Received overLONG data frame.\n");
-	SIOState = NoFrame;
+	SIOState = NoState;
       }
     } else {
       UBYTE result;
@@ -271,7 +291,8 @@ void SIO::WriteByte(UBYTE byte)
       CurrentSum += byte;
       len         = DataFrameIdx;
       // Check whether the device can write this (and the remaining buffer) out.
-      result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len,delay);
+      result = ActiveDevice->WriteBuffer(CommandFrame,DataFrame,len,delay,
+					 pokey->SerialTransmitSpeed());
       // Remove the written bytes from the buffer.
       if (len > 0) {
 	if (len < DataFrameIdx)
@@ -284,11 +305,11 @@ void SIO::WriteByte(UBYTE byte)
 	// Insert the status into the status buffer, go to the flush frame.
 	// This frame also expects the checksum there.
 	StatusFrame[1] = result;
-	SIOState       = FlushFrame;
+	SIOState       = FlushState;
       }
     }
     break;
-  case FlushFrame:
+  case FlushState:
     // If we enter here, then from a single-byte transfer of the checksum.
     // Test whether the checksum is consistent. If not, force-generate an
     // error condition on the already collected status. This has the draw-back
@@ -297,7 +318,7 @@ void SIO::WriteByte(UBYTE byte)
     if (CurrentSum != byte) {
       // The troublesome case.
       // Must sent a NAK according to the rules.
-      StatusFrame[1] = 'N';
+      StatusFrame[0] = 'N';
       // Still run into the read-byte case to have this status read back
       // into the emulated Atari.
     }
@@ -329,7 +350,60 @@ void SIO::RequestInput(void)
   int sum;
   
   switch(SIOState) {
-  case StatusRead:
+  case AcknowledgeState:
+    // Check whether the command got accepted by the device. Depending on the command
+    // type, we either need to call the status collector, or the command acknowledge.
+    delay         = 0;
+    InputSpeed    = pokey->SerialReceiveSpeed();
+    switch(CmdType) {
+    case ReadCommand:
+    case FormatCommand:
+    case WriteCommand:
+      result = ActiveDevice->AcknowledgeCommandFrame(CommandFrame,delay,InputSpeed);
+      if (result) {
+	if (result == 'A' || result == 'C')
+	  StatusFrame[0] = 'A';
+	pokey->SignalSerialBytes(StatusFrame,1,delay,InputSpeed);
+	if (StatusFrame[0] == 'A') {
+	  SIOState = StatusState;
+	} else {
+	  SIOState = NoState;
+	}
+      } else {
+	// Otherwise ask pokey to come back later.
+	pokey->SignalSerialBytes(NULL,0);
+      }
+      break;
+    case StatusCommand:
+      // This is similar to read except that zero bytes are transfered
+      // and the result is immediate.
+      result = ActiveDevice->ReadStatus(CommandFrame,delay,InputSpeed);
+      if (result) {
+	StatusFrame[0] = result;
+	pokey->SignalSerialBytes(StatusFrame,1,delay,InputSpeed);
+	// Done with it.
+	SIOState = NoState;
+      } else {
+	// Otherwise ask pokey to come back later.
+	pokey->SignalSerialBytes(NULL,0);
+      }
+      break;
+    case InvalidCommand:
+      // Transmit the error immediately.
+      // The code should actually not enter here.
+      StatusFrame[0] = 'N';
+      pokey->SignalSerialBytes(StatusFrame,1,delay,InputSpeed);
+      // We are done with the handling
+      SIOState       = NoState;
+      break;
+    case Off:
+      // The device does not want to react at all. Do not answer, to not
+      // transmit a status
+      SIOState = NoState;
+      break;
+    }
+    break;
+  case StatusState:
     // The command was accepted by the device, and Pokey read
     // this acceptance fine. Now execute this command by the 
     // corresponding device.
@@ -341,12 +415,13 @@ void SIO::RequestInput(void)
       // we get something, then signal the result.    
       bytes         = DataFrameLength; // Size of the expected data buffer.
       ExpectedBytes = DataFrameLength;
+      InputSpeed    = pokey->SerialReceiveSpeed();
       if (CmdType == FormatCommand) {
 	delay       = UWORD(Format_Done_Delay);
       } else {
 	delay       = UWORD(Read_Done_Delay);
       }
-      result        = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes,delay);
+      result        = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes,delay,InputSpeed);
       // Check whether we already got any bytes in return.
       if (bytes) {
 	// Yes, we did. Integrate them into our data frame buffer, 
@@ -361,7 +436,7 @@ void SIO::RequestInput(void)
 	// Advance already the data position by the number of read bytes. All later
 	// reads are performed in the "ReadFrame" case below.
 	ExpectedBytes   -= bytes;
-	SIOState         = ReadFrame;
+	SIOState         = ReadState;
 	DataFrameIdx     = bytes;	
 	CurrentSum       = ChkSum(DataFrame,bytes);
 	// Read some data from the device. Generate the answer of the
@@ -374,9 +449,9 @@ void SIO::RequestInput(void)
 	}
 	// Mis-use status frame to keep the information whether
 	// the current command already completed with this go, or whether
-	// we need to come back
+	// we need to come back. If non-zero, the call completed.
 	StatusFrame[1]   = result;
-	pokey->SignalSerialBytes(StatusFrame,1,delay);
+	pokey->SignalSerialBytes(StatusFrame,1,delay,InputSpeed);
       } else if (result) {
 	// All done, error or completed: We got a non-zero status from the
 	// device.
@@ -384,8 +459,8 @@ void SIO::RequestInput(void)
 	StatusFrame[0]   = result;
 	// Here we just got a result code and no
 	// data bytes at all. Abort the frame.
-	SIOState                  = NoFrame;
-	pokey->SignalSerialBytes(StatusFrame,1,delay);
+	SIOState                  = NoState;
+	pokey->SignalSerialBytes(StatusFrame,1,delay,InputSpeed);
       } else {
 	// Otherwise, ask pokey to wait a bit longer and call back later.
 	pokey->SignalSerialBytes(NULL,0);
@@ -406,39 +481,17 @@ void SIO::RequestInput(void)
       }
       // Do not signal anything but switch to the write frame right
       // away.
-      SIOState = WriteFrame;
-      break;
-    case StatusCommand:
-      // This is similar to read except that zero bytes are transfered
-      // and the result is immediate.
-      delay          = UWORD(Write_Done_Delay);
-      result         = ActiveDevice->ReadStatus(CommandFrame,delay);
-      if (result) {
-	StatusFrame[0] = result;
-	StatusFrame[1] = 'C';
-	pokey->SignalSerialBytes(StatusFrame,(result == 'A')?2:1,delay);
-	// We are done with the handling
-	SIOState       = NoFrame;
-      } else {
-	// Otherwise ask pokey to come back later.
-	pokey->SignalSerialBytes(NULL,0);
-      }
+      SIOState = WriteState;
       break;
     case InvalidCommand:
-      // The code should actually not enter here.
-      StatusFrame[0] = 'N'; // signal device NAK
-      pokey->SignalSerialBytes(StatusFrame,1,UWORD(Write_Done_Delay));
-      // We are done with the handling
-      SIOState       = NoFrame;
-      break;
+    case StatusCommand:
     case Off:
-      // The device does not want to react at all. Do not answer, to not
-      // transmit a status
-      SIOState = NoFrame;
+      // Code should not go here.
+      SIOState = NoState;
       break;
     }
     break;
-  case ReadFrame:
+  case ReadState:
     // We enter here to read data from the device into pokey,
     // after the status read completed. For that, first
     // check whether we have anything in our buffer. If so,
@@ -455,7 +508,8 @@ void SIO::RequestInput(void)
 	// The initial read completed, do not try to read again.
 	result       = StatusFrame[1];
       } else {
-	result       = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes,delay);
+	InputSpeed   = pokey->SerialReceiveSpeed();
+	result       = ActiveDevice->ReadBuffer(CommandFrame,DataFrame,bytes,delay,InputSpeed);
 	// If we collected any bytes, add up the checksum.
 	sum          = ChkSum(DataFrame,bytes);
 	sum         += CurrentSum;
@@ -467,7 +521,7 @@ void SIO::RequestInput(void)
       if (result) {
 	DataFrame[bytes++] = CurrentSum;
 	// Terminate the transmission now.
-	SIOState           = NoFrame;
+	SIOState           = NoState;
       }
       // Remember how much we have in the buffer and thus how much we
       // need to forward to pokey.
@@ -475,38 +529,65 @@ void SIO::RequestInput(void)
       ExpectedBytes -= bytes;
     }
     // Transmit now the bytes in this buffer.
-    pokey->SignalSerialBytes(DataFrame,DataFrameIdx,delay);
+    pokey->SignalSerialBytes(DataFrame,DataFrameIdx,delay,InputSpeed);
     // Now we have zero data available in the buffer, need to
     // refill on the next go.
     DataFrameIdx = 0;
     break;
-  case FlushFrame:
+  case FlushState:
     // A write command returned, we are now expected to deliver
-    // the result code.
+    // the result code. This is the primary result from the
+    // data transmission phase, not yet the command return.
     // Check whether flushing out the buffer was succesful. 
-    result = ActiveDevice->FlushBuffer(CommandFrame,delay);
+    InputSpeed = pokey->SerialReceiveSpeed();
+    result     = ActiveDevice->FlushBuffer(CommandFrame,delay,InputSpeed);
     if (result) {
       // Got a result. Test whether it is valid or not. If not,
       // insert this as immediate result and return. 
-      if (result == 'N' || StatusFrame[1] == 'N') {
+      if (result == 'E' || result == 'N' || StatusFrame[0] == 'N') {
 	// Device NAK? Then only one result, namely this one.
 	// The data transmission was erraneously (checksum!)
-	StatusFrame[0] = 'N';
-	pokey->SignalSerialBytes(StatusFrame,1,UWORD(Write_Done_Delay));
+	if (StatusFrame[0] == 'N')
+	  result = 'N'; // Deliver a NAK if the data was not received correctly.
+	StatusFrame[1]   = result;
+	pokey->SignalSerialBytes(StatusFrame,1,UWORD(SerIn_Cmd_Delay),InputSpeed); 
+	SIOState         = DoneState;
       } else {
 	// Otherwise, the data transmission must have been fine and we
 	// just insert the result code of the command execution.
-	StatusFrame[0] = result;
-	pokey->SignalSerialBytes(StatusFrame,2,UWORD(Write_Done_Delay));
+	// If the Atari++ device returned an 'E', make this the result of the
+	// final phase and not of the data acknowledge phase. Also translate
+	// the completed into an acknowledge.
+	if (StatusFrame[0] == 'E') {
+	  result         = 'E';
+	  StatusFrame[0] = 'A';
+	} else if (StatusFrame[0] == 'C') {
+	  StatusFrame[0] = 'A';
+	}
+	// StatusFrame[1] will be fixed up later.
+	StatusFrame[1] = result;
+	// Signal the result of the data phase.
+	pokey->SignalSerialBytes(StatusFrame,1,UWORD(SerIn_Cmd_Delay),InputSpeed);
+	SIOState       = DoneState;
       }
-      // We are done with the command, return to the initial state
-      SIOState         = NoFrame;
     } else {
       // Tell pokey to wait a bit longer as the device is not yet ready.
       pokey->SignalSerialBytes(NULL,0);
     }
     break;
-  case NoFrame:
+  case DoneState:
+    // The final transmission. Also fix up the code. Note that for Atari++ internal
+    // devices, StatusFrame[0] is already the final result and Flush does only
+    // return 'C', thus make StatusFrame[1] conform.
+    if (StatusFrame[1] == 'A')
+      StatusFrame[1] = 'C'; // completed.
+    if (StatusFrame[1] == 'N' || (StatusFrame[0] != 'A' && StatusFrame[0] != 'C'))
+      StatusFrame[1] = 'E'; // error
+    pokey->SignalSerialBytes(StatusFrame+1,1,UWORD(Write_Done_Delay),InputSpeed);
+    // We are done with the command, return to the initial state
+    SIOState       = NoState;
+    break;
+  case NoState:
     // Someone requested serial data, but there's currently nothing
     // pending.
     break;
@@ -529,14 +610,14 @@ void SIO::SetCommandLine(bool onoff)
     // Entering a command frame now. If we are already in a command frame,
     // ignore me.
     HaveWarned   = false;
-    if (SIOState == CmdFrame)
+    if (SIOState == CmdState)
       return;
-    if (SIOState != NoFrame) {
+    if (SIOState != NoState) {
       // Ooops, enabled COMMAND within an active frame?
       // To resync with the device, run it thru a warmstart.
       if (ActiveDevice) {
 	ActiveDevice->WarmStart();
-	SIOState = NoFrame;
+	SIOState = NoState;
       }
       machine->PutWarning("Enabled SIO CMD line within an active frame.\n");
     }
@@ -544,7 +625,7 @@ void SIO::SetCommandLine(bool onoff)
     DataFrameIdx    = 0;
     // Expect a SIO command frame here.
     ExpectedBytes   = 5;
-    SIOState        = CmdFrame;
+    SIOState        = CmdState;
     // Enforce serial transfer resync here. This is strictly speaking never
     // required should every serial transfer work well.
     pokey->SignalCommandFrame();
@@ -553,12 +634,11 @@ void SIO::SetCommandLine(bool onoff)
     // Disabling the command frame.
     machine->Display()->SetLED(false);
     //
-    if (SIOState != StatusRead && SIOState != NoFrame &&
-	SIOState != ReadFrame  && SIOState != FlushFrame) {
-      if (!(SIOState == CmdFrame && CommandFrameIdx == 0)) {
+    if (SIOState != AcknowledgeState && SIOState != NoState) {
+      if (SIOState == CmdState && CommandFrameIdx != 0) {
 	machine->PutWarning("Command frame unfinished.\n");
       }
-      SIOState      = NoFrame;
+      SIOState      = NoState;
     }
     CommandFrameIdx = 0;
   }
@@ -615,6 +695,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
   int bytes,transfer,count,retrycnt;
   UBYTE error;
   UWORD delay = 0; // No need to delay here.
+  UWORD speed;
   
   // Retry several times before giving up
   retrycnt  = 15;
@@ -640,7 +721,8 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
       // Check whether the device accepts this command and
       // check for the number of bytes in a data frame.
       DataFrameLength = 0;
-      cmdtype         = ser->CheckCommandFrame(cmdframe,DataFrameLength);
+      speed           = Baud19200;
+      cmdtype         = ser->CheckCommandFrame(cmdframe,DataFrameLength,Baud19200);
       ReallocDataFrame(DataFrameLength);
       switch(cmdtype) {
       case Off:
@@ -655,6 +737,9 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	return 0x8b; // was: 0x90
       case ReadCommand:
       case FormatCommand:
+	// Test whether the device still likes the command.
+	if (ser->AcknowledgeCommandFrame(cmdframe,delay,speed) != 'A')
+	  return 0x8b;
 	// Complete a read now.
 	// Toggle to the ReadFrame, read data and return it. First
 	// signal whether we could read the data as expected. For
@@ -677,7 +762,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	count  = 0;
 	do {
 	  transfer = bytes;
-	  result   = ser->ReadBuffer(cmdframe,buffer,transfer,delay);
+	  result   = ser->ReadBuffer(cmdframe,buffer,transfer,delay,speed);
 	  bytes   -= transfer;
 	  buffer  += transfer;
 	  count   += transfer;
@@ -721,6 +806,9 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	  error = (result == 'C')?0x01:0x90;
 	break;
       case WriteCommand:
+	// Test whether the device still likes the command.
+	if (ser->AcknowledgeCommandFrame(cmdframe,delay,speed) != 'A')
+	  return 0x8b;
 	// Complete a write now. For that, we
 	// need to distinguish between single byte
 	// transfer and block transfer.
@@ -747,7 +835,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	  // Now write the buffer back to the device until all
 	  // data has been written or a problem has been
 	  // reported.
-	  result = ser->WriteBuffer(cmdframe,DataFrame,DataFrameLength,delay);
+	  result = ser->WriteBuffer(cmdframe,DataFrame,DataFrameLength,delay,Baud19200);
 	  count  = DataFrameLength;
 	} else {
 	  UBYTE dat;
@@ -760,7 +848,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	  do {
 	    transfer = 1; // single bytes at once.
 	    dat      = UBYTE(ram->ReadByte(UWORD(mem)));
-	    result   = ser->WriteBuffer(cmdframe,&dat,transfer,delay);
+	    result   = ser->WriteBuffer(cmdframe,&dat,transfer,delay,Baud19200);
 	    count   += transfer;
 	    mem     += transfer;	  
 	    if (transfer == 0) {	  
@@ -786,7 +874,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	// Now flush the contents. This may also take a while.
 	if (result == 'A' || result == 'C') {
 	  do {
-	    result = ser->FlushBuffer(cmdframe,delay);
+	    result = ser->FlushBuffer(cmdframe,delay,speed);
 	    if (timeout.EventIsOver()) {	      
 	      // Test whether we timed out. 
 	      // If so, generate a timeout error.
@@ -811,11 +899,11 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	// This is similar to read except that zero bytes are transfered
 	// and the result is immediate. AtariSIO doesn't support this
 	// currently, so we don't care much
-	switch (ser->ReadStatus(cmdframe,delay)) {
+	switch (ser->ReadStatus(cmdframe,delay,speed)) {
 	case 0x00:
-	  return 0x8b; // device did not sync
+	  return 0x8a; // device did not sync
 	case 'E':
-	  return 0x90; // device returned an error
+	  return 0x8b; // device returned an error
 	case 'C':
 	  return 1;    // device worked.
 	}
@@ -925,23 +1013,33 @@ void SIO::DisplayStatus(class Monitor *mon)
   const char *framename;
 
   switch(SIOState) {
-  case NoFrame:
+  case NoState:
     framename = "no frame pending";
     break;
-  case CmdFrame:
+  case CmdState:
     framename = "command frame";
     break;
-  case StatusRead:
-    framename = "command status";
+  case AcknowledgeState:
+    framename = "command acknowledge";
     break;
-  case ReadFrame:
+  case StatusState:
+    framename = "data acknowledge";
+    break;
+  case ReadState:
     framename = "reading";
     break;
-  case WriteFrame:
+  case WriteState:
     framename = "writing";
+    break;
+  case FlushState:
+    framename = "write acknowledge";
+    break;
+  case DoneState:
+    framename = "write done";
     break;
   default:
     framename = "undefined";
+    break;
   }
 
   mon->PrintStatus("SIO Status:\n"

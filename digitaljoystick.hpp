@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: digitaljoystick.hpp,v 1.4 2008-05-22 13:03:54 thor Exp $
+ ** $Id: digitaljoystick.hpp,v 1.5 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Frontend for the Linux /dev/jsx handler with interface
  ** adapter for Amiga/Atari style joysticks

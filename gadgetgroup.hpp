@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gadgetgroup.hpp,v 1.3 2008-03-22 23:05:20 thor Exp $
+ ** $Id: gadgetgroup.hpp,v 1.4 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Definition of a meta gadget containing other gadgets
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.83 2014/01/09 00:05:46 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.85 2015/10/18 16:48:17 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -58,10 +58,10 @@ X11_FrontEnd::X11_FrontEnd(class Machine *mach,int unit)
   : XFront(mach,unit), visual(NULL), depth(0), defcolormap(0), custommap(0), 
     colormap(NULL), framebuffer(NULL), root(0),
     isinit(false), ismapped(false), dump(false), grab(false), isgrabbed(false), havefocus(false), 
-    truecolor(false), showcursor(true), dumpcnt(1), scrolledlines(0),
+    truecolor(false), showcursor(true), button(false), dumpcnt(1), scrolledlines(0),
     LeftEdge(unit?0:16), TopEdge(0), 
     Width(unit?80*8:Antic::WindowWidth), Height(unit?25*8:Antic::WindowHeight),
-    PixelWidth(2), PixelHeight(2), PixMapIndirect(false),
+    PixelWidth(2), PixelHeight(2), PixMapIndirect(false), EnableXVideo(false),
     WMDeleteWindowAtom(0), WMProtocolsAtom(0), Shown(0), Hidden(0),
     KeypadStick(NULL), MouseStick(mach,"MouseStick",false), RelMouseStick(mach,"RelMouseStick",true), 
     PrivateCMap(false), SyncX(false), DisableDPMS(true),
@@ -108,7 +108,10 @@ class X11_DisplayBuffer *X11_FrontEnd::GetFrameBuffer(void)
 	framebuffer->ConnectToX(display,screen,window,cmap,
 				LeftEdge,TopEdge,Width,Height,
 				PixelWidth,PixelHeight,PixMapIndirect);
-      } else throw;
+      } else {
+	UnloadFrameBuffer();
+	throw;
+      }
     }
   }
   return framebuffer;
@@ -283,7 +286,8 @@ void X11_FrontEnd::CreateDisplay(void)
   // Now create the root window of this application
   //
   memset(&xswda,0,sizeof(xswda));
-  xswda.event_mask = KeyPressMask | KeyReleaseMask | ExposureMask | FocusChangeMask | ButtonPress;
+  xswda.event_mask = KeyPressMask | KeyReleaseMask | ExposureMask | FocusChangeMask | 
+    ButtonPress | ButtonRelease;
   xswda.colormap   = cmap;
   //
   window = XCreateWindow (display,root,0,0,emuwidth,emuheight,3,depth,
@@ -366,7 +370,13 @@ void X11_FrontEnd::CreateDisplay(void)
 #endif
   // This will build a new one. Must happen here in case the frame buffer
   // setup throws.
-  GetFrameBuffer();
+  try {
+    GetFrameBuffer();
+  } catch(AtariException &aex) {
+    UnloadFrameBuffer();
+    throw aex;
+  }
+  //
   XSync(display,false);    
   //XSetInputFocus(display,window,RevertToNone,CurrentTime);
   if (truecolor && depth <= 8) {
@@ -386,6 +396,7 @@ void X11_FrontEnd::CreateDisplay(void)
       //
       machine->PutWarning("XVideo display not available.");
     } else {
+      UnloadFrameBuffer();
       Throw(ObjectDoesntExist,"X11_FrontEnd::CreateDisplay",
 	    "Unable to create an X11 display.\n"
 	    "Sorry, no graphical output available.\n");
@@ -647,6 +658,14 @@ void X11_FrontEnd::HandleButtonEvent(XButtonEvent *event)
     // A scroll-down event.
     scrolledlines++;
     break;
+  case 1:
+  case 2:
+    // Button events.
+    if (event->type == ButtonPress) {
+      button = true;
+    } else if (event->type == ButtonRelease) {
+      button = false;
+    }
   }
 }
 ///
@@ -801,19 +820,21 @@ void X11_FrontEnd::ShowPointer(bool showit)
 /// X11_FrontEnd::MousePosition
 // For GUI frontends within this buffer: Get the position and the status
 // of the mouse within this buffer measured in internal coordinates.
-void X11_FrontEnd::MousePosition(LONG &x,LONG &y,bool &button)
+void X11_FrontEnd::MousePosition(LONG &x,LONG &y,bool &but)
 {   
+  bool dummy;
+  //
   // Initialize the frontend if we do not have done so already
   if (!isinit) {
     CreateDisplay();
   } 
-  GetFrameBuffer()->MousePosition(x,y,button);
-  // If we don't have the focus, do not react on button presses
-  // This doesn't work reliable for twm, so disable.
-  /*
-  if (havefocus == false)
+  GetFrameBuffer()->MousePosition(x,y,dummy);
+  //
+  // Get the button state rather from the event chain and make sure
+  // we did not miss any mouse-up events.
+  if (dummy == false)
     button = false;
-  */
+  but = button;
 }
 ///
 

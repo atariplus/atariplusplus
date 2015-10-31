@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskimage.hpp,v 1.3 2013-02-23 18:11:00 thor Exp $
+ ** $Id: diskimage.hpp,v 1.5 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Abstract base class for disk images
  **********************************************************************************/
@@ -47,6 +47,9 @@ public:
   //
   // Open a disk image from a file given an image stream class.
   virtual void OpenImage(class ImageStream *image) = 0;
+  //
+  // Restore the image to its initial state if necessary.
+  virtual void Reset(void) = 0;
   //
   // Return the sector size given the sector offset passed in.
   virtual UWORD SectorSize(UWORD sector) = 0;

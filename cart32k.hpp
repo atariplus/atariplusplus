@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart32k.hpp,v 1.7 2013-03-16 15:08:51 thor Exp $
+ ** $Id: cart32k.hpp,v 1.8 2015/05/21 18:52:36 thor Exp $
  **
  ** In this module: The implementation of a plain 32K cart
  ** for the 5200. This has possibly incomplete mapping

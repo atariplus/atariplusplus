@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: binaryimage.cpp,v 1.16 2013-03-07 21:21:06 thor Exp $
+ ** $Id: binaryimage.cpp,v 1.20 2015/11/07 18:53:12 thor Exp $
  **
  ** In this module: Disk image class for binary load files
  **********************************************************************************/
@@ -37,6 +37,68 @@ BinaryImage::~BinaryImage(void)
 }
 ///
 
+/// BinaryImage::Reset
+void BinaryImage::Reset(void)
+{
+  BootStage   = 0;
+  LoaderStage = 0;
+  PatchProvider::InstallPatchList();
+
+  if (Contents)
+    CreateBootSector(Contents);
+}
+///
+
+/// BinaryImage::CreateBootSector
+// Create the boot sector with the binary image
+void BinaryImage::CreateBootSector(UBYTE *bootimage)
+{
+  if (bootimage) {
+    bootimage[0]  = 0; // boot flag
+    bootimage[1]  = 1; // number of sectors
+    bootimage[2]  = 0; // load address, lo
+    bootimage[3]  = 7; // load address, hi
+    bootimage[4]  = 0x77; // run address, lo
+    bootimage[5]  = 0xe4; // run address, hi
+    bootimage[6]  = ESC_Code; 
+    bootimage[7]  = loaderEscape;
+    bootimage[8]  = 0x38; // sec
+    bootimage[9]  = 0x60; // rts
+    bootimage[10] = 0x6c; // at address 0x70a: jmp init
+    bootimage[11] = 0xe2;
+    bootimage[12] = 0x02;
+    bootimage[13] = 0x6c; // at address 0x70d: jmp run
+    bootimage[14] = 0xe0;
+    bootimage[15] = 0x02;
+  }
+}
+///
+
+/// BinaryImage::CreateVTOC
+// Create the VTOC at offset 0x168
+void BinaryImage::CreateVTOC(UBYTE *image,UWORD totalcount)
+{
+  image[0x05] = 0x00; // VTOC is valid
+  image[0x00] = 0x02; // type is Dos 2.0S
+  image[0x01] = UBYTE(totalcount & 0xff); // total number of sectors, low
+  image[0x02] = UBYTE(totalcount >> 8  ); // total number of sectors, high
+}
+///
+
+/// BinaryImage::CreateDirectory
+// Create the directory at offset 0x169
+void BinaryImage::CreateDirectory(UBYTE *image,UWORD sectorcount)
+{
+  // Create the direcgtory entry
+  image[0x00] = 0x62; // locked, in-use
+  image[0x01] = UBYTE(sectorcount & 0xff);
+  image[0x02] = UBYTE(sectorcount >> 8  );
+  image[0x03] = 4; // start sector, low
+  image[0x04] = 0; // start sector, hi
+  memcpy(image + 0x05,"AUTORUN SYS",8+3);
+}
+///
+
 /// BinaryImage::OpenImage
 // Open a disk image from a file. This requires to read
 // the sector size and other nifties.
@@ -46,8 +108,8 @@ void BinaryImage::OpenImage(class ImageStream *image)
   UBYTE *dest;
   UBYTE *file;
   UWORD nextsector;
+  UWORD totalcount;
   bool firstsector = true;
-  UBYTE bootimage[16];
   //
   // First check whether we are already open. If so, we
   // cannot re-open again.
@@ -60,43 +122,45 @@ void BinaryImage::OpenImage(class ImageStream *image)
   //
   filesize     = image->ByteSize();
   imagesectors = (filesize + 124) / 125;
+  if (imagesectors + 3 > 0xffff)
+    Throw(OutOfRange,"BinaryImage::OpenImage",
+	  "image file too large, must fit into 65533 sectors");
+  totalcount   = UWORD(imagesectors + 3);
   //
-  // Create the boot image.
-  bootimage[0]  = 0; // boot flag
-  bootimage[1]  = 1; // number of sectors
-  bootimage[2]  = 0; // load address, lo
-  bootimage[3]  = 7; // load address, hi
-  bootimage[4]  = 0x77; // run address, lo
-  bootimage[5]  = 0xe4; // run address, hi
-  bootimage[6]  = ESC_Code; 
-  bootimage[7]  = loaderEscape;
-  bootimage[8]  = 0x38; // sec
-  bootimage[9]  = 0x60; // rts
-  bootimage[10] = 0x6c; // at address 0x70a: jmp init
-  bootimage[11] = 0xe2;
-  bootimage[12] = 0x02;
-  bootimage[13] = 0x6c; // at address 0x70d: jmp run
-  bootimage[14] = 0xe0;
-  bootimage[15] = 0x02;
   // initialize the state machine.
   BootStage     = 0;
   //
   // Ok, we know now how much we have to allocate for the disk:
   // The size of the binary, rounded to sectors, plus the
   // size of the header, also rounded to sectors.
-  ByteSize  = ((sizeof(bootimage) + 0x7f) & (~0x7f)) + (imagesectors << 7);
+  ByteSize  = 128 * 3 + (imagesectors << 7);
+  // Also make sure that we have enough sectors for the VTOC at 0x168
+  // and eight directory sectors.
+  if (3 + imagesectors < 0x168) {
+    ByteSize   = 0x170 * 128;
+    totalcount = 0x170;
+  } else {
+    // Otherwise, add nine sectors for the VTOC and the directory.
+    ByteSize   += 9 * 128;
+    totalcount += 9;
+  }
   Contents  = new UBYTE[ByteSize];
   // Quiet down valgrind and initialize the sectors to zero to make them
   // initialized.
   memset(Contents,0,ByteSize);
+  //
   // Copy the file into the buffer now.
-  memcpy(Contents,bootimage,sizeof(bootimage));
+  CreateBootSector(Contents);
+  // Create the VTOC at sector 0x168
+  CreateVTOC(Contents + (0x168 - 1) * 128,totalcount);
+  // Create the directory at sector 0x169
+  CreateDirectory(Contents + (0x169 - 1) * 128,UWORD(imagesectors));
   //
   // Read the image, and add the Dos 2.0S type sector linkage into bytes 125..127.
-  dest       = Contents + ((sizeof(bootimage) + 0x7f) & (~0x7f));
+  dest       = Contents + 128 * 3;
   file       = dest;
   offset     = 0;
-  nextsector = 1 + (((sizeof(bootimage) + 0x7f)) >> 7); // sectors count from one.
+  nextsector = 4; // sectors count from one.
   while(filesize) {
     ULONG databytes = filesize;
     // 125 data bytes per sectors.
@@ -124,7 +188,8 @@ void BinaryImage::OpenImage(class ImageStream *image)
 	  if (dest[0x22] == 0xea &&
 	      dest[0x23] == 0xea &&
 	      dest[0x24] == 0xea) {
-	    if (FixupRequester->Request("Detected hacked broken binary loader, shall I try to fix it?",
+	    if (FixupRequester->Request("Detected hacked broken binary loader, "
+					"shall I try to fix it?",
 					"Fix it!","Leave alone!",NULL) == 0) {
 	      //
 	      // Ok, replace the NOPs by the sector increment that has been removed
@@ -137,14 +202,24 @@ void BinaryImage::OpenImage(class ImageStream *image)
       }
     }
     //
-    // Add linkage to the next sector in dos 2.0S way.
-    dest[125] = UBYTE(nextsector >> 8);
-    dest[126] = UBYTE(nextsector);
-    dest[127] = UBYTE(databytes);
+    // If the next sector would link into the VTOC, skip that part.
+    if (nextsector == 0x168) {
+      nextsector = 0x171;
+      dest[125]  = UBYTE(nextsector >> 8);
+      dest[126]  = UBYTE(nextsector);
+      dest[127]  = UBYTE(databytes);
+      // Advance to the next sector (the VTOC) and skip
+      // the nine following sectors.
+      dest      += 128 * 10;
+    } else {
+      dest[125]  = UBYTE(nextsector >> 8);
+      dest[126]  = UBYTE(nextsector);
+      dest[127]  = UBYTE(databytes);
+      dest      += 128;
+    }
     //
     offset   += databytes;
     filesize -= databytes;
-    dest     += 128;
   }
   VerifyImage(file);
   Image = image;
@@ -302,17 +377,22 @@ void BinaryImage::VerifyImage(UBYTE *src)
     // Here something wicked happened. We'll see...
     switch(error) {
     case 0:
-      if (FixupRequester->Request("Binary load structure seems damaged, start address > end address.\n"
-				  "Shall I try to fix it?","Fix it!","Leave alone",NULL) == 0) {
+      if (FixupRequester->Request("Binary load structure seems damaged, "
+				  "start address > end address.\n"
+				  "Shall I try to fix it?",
+				  "Fix it!","Leave alone",NULL) == 0) {
 	backup.Truncate();
       }
       break;
     case 1:
-      DiskImage::Machine->PutWarning("Binary load file header is missing, this file will most likey not work.");
+      DiskImage::Machine->PutWarning("Binary load file header is missing, "
+				     "this file will most likey not work.");
       break;
     case -1:
-      if (FixupRequester->Request("Binary load structure seems damaged, detected unexpected end of file.\n"
-				  "Shall I try to fix it?","Fix it!","Leave alone",NULL) == 0) {	
+      if (FixupRequester->Request("Binary load structure seems damaged, "
+				  "detected unexpected end of file.\n"
+				  "Shall I try to fix it?",
+				  "Fix it!","Leave alone",NULL) == 0) {	
 	// Can we fix it by providing a better end address?
 	if (data) {
 	  adr.PutWord(start-1);
@@ -503,7 +583,7 @@ void BinaryImage::InitStage(class AdrSpace *adr,class CPU *cpu)
   adr->WriteByte(0x02e3,0x00);
   adr->WriteByte(0x030a,0x00); // Reset the sector.
   // Next sector to load
-  NextSector  = 2;
+  NextSector  = 4;
   AvailBytes  = 0;
   PushReturn(adr,cpu,0x0706);  // call me again.
   PushReturn(adr,cpu,0xe450);  // call SIO init

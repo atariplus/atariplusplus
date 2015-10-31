@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.126 2013-01-17 16:58:39 thor Exp $
+ ** $Id: cpu.cpp,v 1.133 2015/10/25 09:11:22 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -67,7 +67,7 @@
 /// CPU::CPU
 CPU::CPU(class Machine *mach)
   : Chip(mach,"CPU"), Saveable(mach,"CPU"), HBIAction(mach),
-    Instructions(NULL)
+    ProfilingCounters(NULL), CumulativeCounters(NULL), Instructions(NULL)
 {
   int i;
   //
@@ -91,6 +91,7 @@ CPU::CPU(class Machine *mach)
   InterruptS             = 0x00;
   IRQMask                = 0;
   CycleCounter           = 0;
+  ProfileCounter         = 0;
   NMI                    = false;
   HaltStart              = ClocksPerLine;
   IRQPending             = false;
@@ -156,6 +157,9 @@ const UBYTE CPU::FlagUpdate[256] = { Z_Mask,0     ,0     ,0     ,0     ,0     ,0
 /// CPU::~CPU destructor
 CPU::~CPU(void)
 {
+  delete[] ProfilingCounters;
+  delete[] CumulativeCounters;
+
   ClearInstructions();
 }
 ///
@@ -1054,110 +1058,154 @@ UWORD CPU::ESCUnit::Execute(UWORD operand)
 // instruction into the step pipeline and tests for NMIs and
 // IRQs.
 UWORD CPU::DecodeUnit::Execute(UWORD)
-{   
+{
+  //
+  // Forward this to the CPU directly. The reason is
+  // that the monitor might replace the atomic instruction
+  // unit "under our feet" and hence crash us.
+  return Cpu->DecodeInstruction();
+}
+///
+
+/// CPU::DecodeInstruction
+// Run the microcode decoder, fetch the next instruction.
+// This is here and not in an atomic step because the monitor
+// could replace the latter on the fly when inserting
+// watch-points.
+UWORD CPU::DecodeInstruction(void)
+{
   class MicroCode **aeu;
   int opcode;
   //
   // If we require synchronization, then bail out here.
-  if (Cpu->ISync) {
-    Cpu->NextStep       = Cpu->ExecutionSteps[-2];
-    Cpu->ExecutionSteps--;
-    Cpu->ISync          = false;
+  if (ISync) {
+    NextStep       = ExecutionSteps[-2];
+    ExecutionSteps--;
+    ISync          = false;
     return 0;
   }
   //
   // Check for pending breaks.
-  if (Cpu->EnableBreak) {
+  if (EnableBreak) {
     int i;	
     // Re-insert the instruction decoder into the pipeline here unless something
     // else happens. This ensures that the monitor can at least
     // launch off the CPU again once we left here due to a breakpoint
-    Cpu->NextStep       = Cpu->ExecutionSteps[-2];
-    Cpu->ExecutionSteps--;
+    NextStep       = ExecutionSteps[-2];
+    ExecutionSteps--;
     //
 #ifdef HAS_MEMBER_INIT
-    for(i=0;i<Cpu->NumBreakPoints;i++) {
-      if (Cpu->BreakPoints[i].Enabled && Cpu->BreakPoints[i].BreakPC == Cpu->GlobalPC) {  
-	Cpu->InterruptS = 0x00; // Keep tracing
-	Cpu->monitor->CapturedBreakPoint(i,Cpu->GlobalPC);
+    for(i=0;i<NumBreakPoints;i++) {
+      if (BreakPoints[i].Enabled && BreakPoints[i].BreakPC == GlobalPC) {  
+	InterruptS = 0x00; // Keep tracing
+	monitor->CapturedBreakPoint(i,GlobalPC);
       }
     }
 #else
     for(i=0;i<NumBreakPoints;i++) {
-      if (Cpu->BreakPoints[i].Enabled && Cpu->BreakPoints[i].BreakPC == Cpu->GlobalPC) {
-	Cpu->InterruptS = 0x00; // Keep tracing
-	Cpu->monitor->CapturedBreakPoint(i,Cpu->GlobalPC);
+      if (BreakPoints[i].Enabled && BreakPoints[i].BreakPC == GlobalPC) {
+	InterruptS = 0x00; // Keep tracing
+	monitor->CapturedBreakPoint(i,GlobalPC);
       }
     }
 #endif
     // Check for watchpoints. The instruction is completed before the watchpoint is
     // entered.
-    if (Cpu->EnableWatch) {
-      int watch = Cpu->HitWatchPoint;
+    if (EnableWatch) {
+      int watch = HitWatchPoint;
       if (watch >= 0) {
-	Cpu->HitWatchPoint = -1;
-	Cpu->monitor->CapturedWatchPoint(watch,Cpu->PreviousPC);
+	HitWatchPoint = -1;
+	monitor->CapturedWatchPoint(watch,PreviousPC);
       }
-      Cpu->PreviousPC = Cpu->GlobalPC;
+      PreviousPC = GlobalPC;
     }
     //
     // Check for Tracing and stacking.
-    if (Cpu->EnableStacking) {
-      if (Cpu->GlobalS >= Cpu->TraceS) {
-	Cpu->InterruptS = 0x00; // Keep tracing
-	Cpu->monitor->CapturedTrace(Cpu->GlobalPC);
+    if (EnableStacking) {
+      if (GlobalS >= TraceS) {
+	InterruptS = 0x00; // Keep tracing
+	monitor->CapturedTrace(GlobalPC);
       }
-    } else if (Cpu->EnableUntil) {
-      if (Cpu->GlobalS > Cpu->TraceS || (Cpu->GlobalPC > Cpu->TracePC && Cpu->GlobalS == Cpu->TraceS)) {
-	Cpu->TracePC = 0x0000;
-	Cpu->monitor->CapturedTrace(Cpu->GlobalPC);
+    } else if (EnableUntil) {
+      if (GlobalS > TraceS || (GlobalPC > TracePC && GlobalS == TraceS)) {
+	TracePC = 0x0000;
+	monitor->CapturedTrace(GlobalPC);
       }
-    } else if (Cpu->EnableTracing) {
-      if (Cpu->TraceInterrupts || Cpu->GlobalS >= Cpu->InterruptS) {
-	Cpu->InterruptS = 0x00; // Keep tracing
-	Cpu->monitor->CapturedTrace(Cpu->GlobalPC);
+    } else if (EnableTracing) {
+      if (TraceInterrupts || GlobalS >= InterruptS) {
+	InterruptS = 0x00; // Keep tracing
+	monitor->CapturedTrace(GlobalPC);
       }
     }  
   }
   // Interrupt processing follows.
   // Check for pending NMIs. If so, service them by providing the pipeline of the NMI
   // processor. 
-  if (Cpu->NMI) {
-    aeu                 = Cpu->Instructions[0x101]->Sequence;
-    Cpu->NextStep       = aeu[1];
-    Cpu->ExecutionSteps = aeu + 2;
-    Cpu->InterruptS     = Cpu->GlobalS;
+  if (NMI) {
+    aeu            = Instructions[0x101]->Sequence;
+    NextStep       = aeu[1];
+    ExecutionSteps = aeu + 2;
+    InterruptS     = GlobalS;
     return (*aeu)->Execute(0);          // start the NMI processing here.
   }
   // Check for pending interrupts. If so, fetch it now.
  
   // Check whether we need to serve an IRQ next - only checked on instruction boundaries.
-  if (Cpu->IRQPending) {
-    Cpu->IRQPending     = false;
-    aeu                 = Cpu->Instructions[0x102]->Sequence;
-    Cpu->NextStep       = aeu[1];
-    Cpu->ExecutionSteps = aeu + 2;
-    Cpu->InterruptS     = Cpu->GlobalS;
+  if (IRQPending) {
+    IRQPending     = false;
+    aeu            = Instructions[0x102]->Sequence;
+    NextStep       = aeu[1];
+    ExecutionSteps = aeu + 2;
+    InterruptS     = GlobalS;
     return (*aeu)->Execute(0);          // start the IRQ processing here.
   }
-  if (Cpu->IRQMask && ((Cpu->GlobalP & I_Mask) == 0)) {
+  if (IRQMask && ((GlobalP & I_Mask) == 0)) {
     // Delay for the next instruction - wierdo.
-    Cpu->IRQPending     = true;
+    IRQPending     = true;
   }
   //
+  // Update the profiling counters, i.e. run the profiler.
+  if (ProfilingCounters) {
+    if (ProfilingCounters[GlobalPC] < ULONG(~0UL))
+      ProfilingCounters[GlobalPC]++;
+    if (CumulativeCounters) {
+      ADR addr = GlobalS + 0x101;
+      if (CumulativeCounters[0xffff] < ULONG(~0UL) - ProfileCounter)
+	CumulativeCounters[0xffff] += ProfileCounter;
+      while(addr <= 0x1fe) {
+	// Check whether the address is a RAM or ROM address.
+	ADR back = Ram->ReadWord(addr) - 2;
+	if (back >= 0x0000 && back < 0xfffa &&
+	    Ram->isIOSpace(back) == false && Ram->isIOSpace(back + 1) == false) {
+	  if (Ram->ReadByte(back) == 0x20) { // Is a JSR
+	    ADR target = Ram->ReadWord(back + 1);
+	    if (CumulativeCounters[target] < ULONG(~0UL) - ProfileCounter)
+	      CumulativeCounters[target] += ProfileCounter;
+	    addr += 2;
+	  } else {
+	    addr++;
+	  }
+	} else {
+	  addr++;
+	}
+      }
+    }
+  }
+  ProfileCounter = 0;
+  //
   // Fetch the next Opcode: This counts as one execution step.
-  opcode = Ram->ReadByte(Cpu->GlobalPC);
+  opcode     = Ram->ReadByte(GlobalPC);
 #if CHECK_LEVEL > 0
   // Keep the last opcode for debugging purposes
-  Cpu->LastIR     = opcode;
+  LastIR     = opcode;
 #endif
-  Cpu->GlobalPC++;
+  GlobalPC++;
   //
   // Fetch the execution sequence for this opcode
   // and install it.
-  aeu                 = Cpu->Instructions[opcode]->Sequence;
-  Cpu->NextStep       = aeu[0];
-  Cpu->ExecutionSteps = aeu + 1;
+  aeu            = Instructions[opcode]->Sequence;
+  NextStep       = aeu[0];
+  ExecutionSteps = aeu + 1;
   return 0;
 }
 ///
@@ -1502,7 +1550,7 @@ void CPU::BuildInstructions10(void)
     // 0x14: NOP zpage,X 4 cycles 
     Disassembled[0x14] =Instruction("NOPE",Instruction::ZPage_X,4);
     Instructions[0x14]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-    Instructions[0x14]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+    Instructions[0x14]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0x14]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // (op)->op
     Instructions[0x14]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -1510,14 +1558,14 @@ void CPU::BuildInstructions10(void)
   // 0x15: ORA zpage,X 4 cycles
   Disassembled[0x15] =Instruction("ORA",Instruction::ZPage_X,4);
   Instructions[0x15]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0x15]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0x15]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0x15]->AddStep(new Cat2<ZPageIndirectionUnit<Adr> ,ORAUnit>(this));// (op)->op,op|A->A
   Instructions[0x15]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x16: ASL zpage,X 6 cycles
   Disassembled[0x16] =Instruction("ASL",Instruction::ZPage_X,6);
   Instructions[0x16]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0x16]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0x16]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0x16]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0x16]->AddStep(new Cat1<ASLUnit>(this));                           // op<<1->op
   Instructions[0x16]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->(ea)
@@ -1535,7 +1583,7 @@ void CPU::BuildInstructions10(void)
     // 0x17: SLO zpage,X 6 cycles
     Disassembled[0x17] =Instruction("SLOR",Instruction::ZPage_X,6);
     Instructions[0x17]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-    Instructions[0x17]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+    Instructions[0x17]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0x17]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0x17]->AddStep(new Cat1<ASLUnit>(this));                         // op<<1->op
     Instructions[0x17]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr> ,ORAUnit>(this,Emulate65C02)); // op->(ea),op|A->A
@@ -1860,7 +1908,7 @@ void CPU::BuildInstructions30(void)
   if (Emulate65C02) {
     // BIT zpage,x 4 cycles
     Disassembled[0x34] =Instruction("BIT",Instruction::ZPage_X,3);
-    Instructions[0x34]->AddStep(new Cat2<ImmediateUnit,AddXUnit>(this));        // ZPage address->op
+    Instructions[0x34]->AddStep(new Cat2<ImmediateUnit,AddXUnitZero>(this));    // ZPage address->op
     Instructions[0x34]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // (op)->op,A&op->flags
     Instructions[0x34]->AddStep(new Cat1<BITUnit>(this));                       // (op)->op,A&op->flags
     Instructions[0x34]->AddStep(new Cat1<DecodeUnit>(this));                                       
@@ -1868,7 +1916,7 @@ void CPU::BuildInstructions30(void)
     // 0x34: NOP zpage,X 4 cycles 
     Disassembled[0x34] =Instruction("NOPE",Instruction::ZPage_X,4);
     Instructions[0x34]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
-    Instructions[0x34]->AddStep(new Cat1<AddXUnit>(this));                      // op+X->op
+    Instructions[0x34]->AddStep(new Cat1<AddXUnitZero>(this));                  // op+X->op
     Instructions[0x34]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // (op)->op
     Instructions[0x34]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -1876,14 +1924,14 @@ void CPU::BuildInstructions30(void)
   // 0x35: AND zpage,X 4 cycles
   Disassembled[0x35] =Instruction("AND",Instruction::ZPage_X,4);
   Instructions[0x35]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-  Instructions[0x35]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+  Instructions[0x35]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
   Instructions[0x35]->AddStep(new Cat2<ZPageIndirectionUnit<Adr>,ANDUnit>(this));// (op)->op,op&A->A
   Instructions[0x35]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x36: ROL zpage,X 6 cycles
   Disassembled[0x36] =Instruction("ROL",Instruction::ZPage_X,6);
   Instructions[0x36]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-  Instructions[0x36]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+  Instructions[0x36]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
   Instructions[0x36]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
   Instructions[0x36]->AddStep(new Cat1<ROLUnit>(this));                         // op<<1->op
   Instructions[0x36]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
@@ -1901,7 +1949,7 @@ void CPU::BuildInstructions30(void)
     // 0x37: RLA zpage,X 6 cycles
     Disassembled[0x37] =Instruction("RLAN",Instruction::ZPage_X,6);
     Instructions[0x37]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
-    Instructions[0x37]->AddStep(new Cat1<AddXUnit>(this));                      // op+X->op
+    Instructions[0x37]->AddStep(new Cat1<AddXUnitZero>(this));                  // op+X->op
     Instructions[0x37]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // op->ea,(op)->op
     Instructions[0x37]->AddStep(new Cat1<ROLUnit>(this));                       // op<<1->op
     Instructions[0x37]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ANDUnit>(this,Emulate65C02)); // op->(ea),op&A->A
@@ -2222,21 +2270,21 @@ void CPU::BuildInstructions50(void)
   // 0x54: NOP zpage,X 4 cycles
   Disassembled[0x54] =Instruction("NOPE",Instruction::ZPage_X,4);
   Instructions[0x54]->AddStep(new Cat1<ImmediateUnit>(this));                      // ZPage address->op
-  Instructions[0x54]->AddStep(new Cat1<AddXUnit>(this));                           // op+X->op
+  Instructions[0x54]->AddStep(new Cat1<AddXUnitZero>(this));                       // op+X->op
   Instructions[0x54]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));         // (op)->op
   Instructions[0x54]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x55: EOR zpage,X 4 cycles
   Disassembled[0x55] =Instruction("EOR",Instruction::ZPage_X,4);
   Instructions[0x55]->AddStep(new Cat1<ImmediateUnit>(this));                      // ZPage address->op
-  Instructions[0x55]->AddStep(new Cat1<AddXUnit>(this));                           // op+X->op
+  Instructions[0x55]->AddStep(new Cat1<AddXUnitZero>(this));                       // op+X->op
   Instructions[0x55]->AddStep(new Cat2<ZPageIndirectionUnit<Adr>,EORUnit>(this));  // (op)->op,op^A->A
   Instructions[0x55]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0x56: LSR zpage,X 6 cycles
   Disassembled[0x56] =Instruction("LSR",Instruction::ZPage_X,6);
   Instructions[0x56]->AddStep(new Cat1<ImmediateUnit>(this));                      // ZPage address->op
-  Instructions[0x56]->AddStep(new Cat1<AddXUnit>(this));                           // op+X->op
+  Instructions[0x56]->AddStep(new Cat1<AddXUnitZero>(this));                       // op+X->op
   Instructions[0x56]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));         // op->ea,(op)->op
   Instructions[0x56]->AddStep(new Cat1<LSRUnit>(this));                            // op>>1->op
   Instructions[0x56]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));      // op->(ea)
@@ -2254,7 +2302,7 @@ void CPU::BuildInstructions50(void)
     // 0x57: LSE zpage,X 6 cycles 
     Disassembled[0x57] =Instruction("LSEO",Instruction::ZPage_X,6);
     Instructions[0x57]->AddStep(new Cat1<ImmediateUnit>(this));                    // ZPage address->op
-    Instructions[0x57]->AddStep(new Cat1<AddXUnit>(this));                         // op+X->op
+    Instructions[0x57]->AddStep(new Cat1<AddXUnitZero>(this));                     // op+X->op
     Instructions[0x57]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));       // op->ea,(op)->op
     Instructions[0x57]->AddStep(new Cat1<LSRUnit>(this));                          // op>>1->op
     Instructions[0x57]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,EORUnit>(this,Emulate65C02));  // op->(ea),op^A->A
@@ -2607,13 +2655,13 @@ void CPU::BuildInstructions70(void)
   if (Emulate65C02) {
     // STZ zpage,X
     Disassembled[0x74] =Instruction("STZ",Instruction::ZPage_X,3);
-    Instructions[0x74]->AddStep(new Cat2<ImmediateUnit,AddXUnit>(this));        // address->op,op+X->op
+    Instructions[0x74]->AddStep(new Cat2<ImmediateUnit,AddXUnitZero>(this));        // address->op,op+X->op
     Instructions[0x74]->AddStep(new Cat2<ZeroUnit,ZPageIndirectWriterUnit<Adr> >(this));// op->ea,A->(ea)
     Instructions[0x74]->AddStep(new Cat1<DecodeUnit>(this));
   } else {
     Disassembled[0x74] =Instruction("NOPE",Instruction::ZPage_X,4);
     Instructions[0x74]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
-    Instructions[0x74]->AddStep(new Cat1<AddXUnit>(this));                      // op+X->op
+    Instructions[0x74]->AddStep(new Cat1<AddXUnitZero>(this));                  // op+X->op
     Instructions[0x74]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // (op)->op
     Instructions[0x74]->AddStep(new Cat1<DecodeUnit>(this));
   }
@@ -2621,7 +2669,7 @@ void CPU::BuildInstructions70(void)
   // 0x75: ADC zpage,X 4 cycles
   Disassembled[0x75] =Instruction("ADC",Instruction::ZPage_X,4);
   Instructions[0x75]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-  Instructions[0x75]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+  Instructions[0x75]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
   if (Emulate65C02) {
     Instructions[0x75]->AddStep(new Cat2<ZPageIndirectionUnit<Adr>,ADCUnitFixed>(this));// (op)->op,op+A->A
   } else {
@@ -2632,7 +2680,7 @@ void CPU::BuildInstructions70(void)
   // 0x76: ROR zpage,X 6 cycles
   Disassembled[0x76] =Instruction("ROR",Instruction::ZPage_X,6);
   Instructions[0x76]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-  Instructions[0x76]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+  Instructions[0x76]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
   Instructions[0x76]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
   Instructions[0x76]->AddStep(new Cat1<RORUnit>(this));                         // op>>1->op
   Instructions[0x76]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));   // op->(ea)
@@ -2650,7 +2698,7 @@ void CPU::BuildInstructions70(void)
     // 0x77: RRA zpage,X 6 cycles
     Disassembled[0x77] =Instruction("RRAD",Instruction::ZPage_X,6);
     Instructions[0x77]->AddStep(new Cat1<ImmediateUnit>(this));                 // ZPage address->op
-    Instructions[0x77]->AddStep(new Cat1<AddXUnit>(this));                      // op+X->op
+    Instructions[0x77]->AddStep(new Cat1<AddXUnitZero>(this));                  // op+X->op
     Instructions[0x77]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));    // op->ea,(op)->op
     Instructions[0x77]->AddStep(new Cat1<RORUnit>(this));                       // op>>1->op
     Instructions[0x77]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,ADCUnit>(this,Emulate65C02));// op->(ea),op+A->A
@@ -3583,21 +3631,21 @@ void CPU::BuildInstructionsD0(void)
   // 0xd4: NOP zpage,X 4 cycles
   Disassembled[0xd4] =Instruction("NOPE",Instruction::ZPage_X,4);
   Instructions[0xd4]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0xd4]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0xd4]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0xd4]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // (op)->op
   Instructions[0xd4]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0xd5: CMP zpage,X 4 cycles
   Disassembled[0xd5] =Instruction("CMP",Instruction::ZPage_X,4);
   Instructions[0xd5]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0xd5]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0xd5]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0xd5]->AddStep(new Cat2<ZPageIndirectionUnit<Adr>,CMPUnit>(this)); // (op)->op,A-op->A
   Instructions[0xd5]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0xd6: DEC zpage,X 6 cycles
   Disassembled[0xd6] =Instruction("DEC",Instruction::ZPage_X,6);
   Instructions[0xd6]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0xd6]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0xd6]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0xd6]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0xd6]->AddStep(new Cat1<DECUnit>(this));                           // --op->op
   Instructions[0xd6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->(ea)
@@ -3615,7 +3663,7 @@ void CPU::BuildInstructionsD0(void)
     // 0xd7: DCM zpage,X 6 cycles
     Disassembled[0xd7] =Instruction("DECP",Instruction::ZPage_X,6);
     Instructions[0xd7]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-    Instructions[0xd7]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+    Instructions[0xd7]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0xd7]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0xd7]->AddStep(new Cat1<DECUnit>(this));                         // --op->op
     Instructions[0xd7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,CMPUnit>(this,Emulate65C02)); // op->(ea),A-op->A
@@ -3933,14 +3981,14 @@ void CPU::BuildInstructionsF0(void)
   // 0xf4: NOP zpage,X 4 cycles
   Disassembled[0xf4] =Instruction("NOPE",Instruction::ZPage_X,4);
   Instructions[0xf4]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0xf4]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0xf4]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0xf4]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // (op)->op
   Instructions[0xf4]->AddStep(new Cat1<DecodeUnit>(this));
   //
   // 0xf5: SBC zpage,X 4 cycles
   Disassembled[0xf5] =Instruction("SBC",Instruction::ZPage_X,4);
   Instructions[0xf5]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0xf5]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0xf5]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   if (Emulate65C02) {
     Instructions[0xf5]->AddStep(new Cat2<ZPageIndirectionUnit<Adr>,SBCUnitFixed>(this)); // (op)->op,A-op->A
   } else {
@@ -3951,7 +3999,7 @@ void CPU::BuildInstructionsF0(void)
   // 0xf6: INC zpage,X 6 cycles
   Disassembled[0xf6] =Instruction("INC",Instruction::ZPage_X,6);
   Instructions[0xf6]->AddStep(new Cat1<ImmediateUnit>(this));                     // ZPage address->op
-  Instructions[0xf6]->AddStep(new Cat1<AddXUnit>(this));                          // op+X->op
+  Instructions[0xf6]->AddStep(new Cat1<AddXUnitZero>(this));                      // op+X->op
   Instructions[0xf6]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));        // op->ea,(op)->op
   Instructions[0xf6]->AddStep(new Cat1<INCUnit>(this));                           // ++op->op
   Instructions[0xf6]->AddStep(new Cat1<ZPageIndirectWriterUnit<Adr> >(this,Emulate65C02));     // op->(ea)
@@ -3969,7 +4017,7 @@ void CPU::BuildInstructionsF0(void)
     // 0xf7: INS zpage,X 6 cycles
     Disassembled[0xf7] =Instruction("INSB",Instruction::ZPage,6);
     Instructions[0xf7]->AddStep(new Cat1<ImmediateUnit>(this));                   // ZPage address->op
-    Instructions[0xf7]->AddStep(new Cat1<AddXUnit>(this));                        // op+X->op
+    Instructions[0xf7]->AddStep(new Cat1<AddXUnitZero>(this));                    // op+X->op
     Instructions[0xf7]->AddStep(new Cat1<ZPageIndirectionUnit<Adr> >(this));      // op->ea,(op)->op
     Instructions[0xf7]->AddStep(new Cat1<INCUnit>(this));                         // ++op->op
     Instructions[0xf7]->AddStep(new Cat2<ZPageIndirectWriterUnit<Adr>,SBCUnit>(this,Emulate65C02)); // op->(ea),A-op->A
@@ -4156,6 +4204,7 @@ void CPU::WarmStart(void)
   GlobalP        = 0x20;  // the unused bit is always on
   GlobalS        = 0xff;  // reset stack pointer to top of stack
   CycleCounter   = 0;
+  ProfileCounter = 0;
   // Fetch the reset vector and run from there.
   ExecutionSteps = Instructions[0x100]->Sequence;
   NextStep       = *ExecutionSteps++;
@@ -4362,7 +4411,15 @@ void CPU::Sync(void)
   // Reset the CPU to the beginning of the scanline. This is required
   // to prevent overflows.
   HBI();
-  do {    
+  do {
+    // Inject a NOP in case we lost the next step due to
+    // an exception in the instruction execution itself
+    if (NextStep == NULL) {
+      class MicroCode **aeu;
+      aeu            = Instructions[0xea]->Sequence;
+      NextStep       = aeu[0];
+      ExecutionSteps = aeu + 1;
+    }
     Step();
   } while(ISync);
   HBI();
@@ -4487,6 +4544,33 @@ void CPU::HBI(void)
     // Done.
     HaltStart = ClocksPerLine;
   }
+}
+///
+
+/// CPU::StartProfiling
+// Start profiling CPU execution.
+void CPU::StartProfiling(void)
+{
+  if (ProfilingCounters == NULL)
+    ProfilingCounters = new ULONG[1L << 16];
+
+  if (CumulativeCounters == NULL)
+    CumulativeCounters = new ULONG[1L << 16];
+
+  memset(ProfilingCounters ,0,(1L << 16) * sizeof(ULONG));
+  memset(CumulativeCounters,0,(1L << 16) * sizeof(ULONG));
+}
+///
+
+/// CPU::StopProfiling
+// Stop profiling CPU execution.
+void CPU::StopProfiling(void)
+{
+  delete[] ProfilingCounters;
+  delete[] CumulativeCounters;
+  
+  ProfilingCounters  = NULL;
+  CumulativeCounters = NULL;
 }
 ///
 

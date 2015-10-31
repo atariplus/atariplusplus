@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gameport.cpp,v 1.11 2013-03-16 15:08:51 thor Exp $
+ ** $Id: gameport.cpp,v 1.12 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Interface between the gamecontroller and various
  **                 input modules that possibly feed joysticks/paddle/lightpen

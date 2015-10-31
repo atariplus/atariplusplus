@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboardstick.hpp,v 1.7 2011-05-01 09:23:58 thor Exp $
+ ** $Id: keyboardstick.hpp,v 1.8 2015/05/21 18:52:40 thor Exp $
  **
  ** In this module: An emulation layer for keyboard driven joysticks
  **********************************************************************************/

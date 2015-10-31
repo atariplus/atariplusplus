@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pia.hpp,v 1.15 2012-12-31 14:34:59 thor Exp $
+ ** $Id: pia.hpp,v 1.16 2015/05/21 18:52:41 thor Exp $
  **
  ** In this module: PIA emulation module
  **********************************************************************************/

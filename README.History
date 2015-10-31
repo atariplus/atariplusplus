@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.92 2014/02/23 12:32:59 thor Exp $
+# $Id: README.History,v 1.96 2015/10/30 17:28:33 thor Exp $
 #
 
 Atari++ 1.00:
@@ -954,6 +954,56 @@ Atari++ 1.73
 	- A complete manual of Os++, including a memory map, is now available as
 	download.
 	- Included the Os++ system disk, including disk-based utilities around Os++
-	  including a Dos overlay manager that relocates Dos buffers behind the
-	  cartridge, an RS232 handler, an updated version of DISKIO, a disk-based 
-	  tape handler, a menu based DUP and a lot of tools.
+	including a Dos overlay manager that relocates Dos buffers behind the
+	cartridge, an RS232 handler, an updated version of DISKIO, a disk-based 
+	tape handler, a menu based DUP and a lot of tools.
+
+Atari++ 1.80
+	- Atari++ has now a built-in Basic interpreter, namely Basic++. It is a
+	mildly extended Atari Basic dialect, which is quite a bit faster, plus
+	one additional command, "DIR". See the Basic++ distribution for additional
+	modifications.
+	- The Basic settings have been improved, the preferences allow now up to
+	three Basic images to be defined, typically corresponding to revisions A,B
+	and C of the language.
+	- The CPU emulation fixed the cycle count for some rarely used instructions.
+	- Added a profiler to the monitor. PROF.S starts the profiler. PROF.L lists
+	the profile counts collected so far, PROF.C lists the cumulative cycle counts
+	of subroutines.
+	- Tape emulation has been largely extended and simplified. Entering a non-
+	existing tape will now create an error immediately. The tape emulation also
+	allows now WAV files, i.e. digitized real tapes, and will decode them on demand.
+	Output to .WAV files (audio-encoding) is now also possible. This integrates
+	the wav2cas and cas2wav programs of the same author into the emulator.
+	- SIO sound emulation has been extended. The SIO sound now also emulates the
+	tape sound on input, and improves on the authenticity of the disk drive sound.
+	- The X11 front end improves the handling of mouse clicks. Mouse clicks that
+	do not go into the window but into an overlapping window are now ignored.
+	- Audio outut can now be recorded into a SAP Record-Type R file for playback.
+	- Disk drive emulation has been largely improved. Several drive types are now
+	emulated, including their serial transfer characteristics, such as disk drive
+	speed. Note that the original 1050 drive emulation no longer takes disks that
+	are double density or have more sectors than those of the original disk
+	formats. To play such extended disks, select one of the more advanced drive
+	types.
+	- SIO emulation has been reworked to some degree to allow the extended drive
+	types, control the serial speed and allow for proper tape emulation.
+	- Binary disk images now also create a valid disk structure containing the
+	load file as AUTORUN.SYS so it can be loaded from DOS, too.
+	- The math pack patch has been revised and its precision has been inproved
+	by changing the rounding policy slighty. The floating point to ASCII conversion
+	now also follows the convention of the original math pack.
+	- Detection of .BAS (Basic) files as disk images is now handled more carefully,
+	and the emulator will no longer confuse some xfd disk images with basic files.
+	- The built-in monitor supports now symbolic labels. Such label information can
+	be read from a CA65 debug file output, i.e. use --dbgfile on the ca65 command line.
+	The debug file is then read with the new ENVI.S command of the monitor.
+	- The math pack in the built-in Os ROM had a bug in the BCD to ASCII conversion
+	which could not print signed zeros and some denormalized numbers correctly. This
+	got fixed.
+	- The math pack could not handle signed zeros in the BCD to integer conversion,
+	fixed.
+	- The BCD to integer conversion was pretty slow. The new release replaces the
+	algorithm completely, making it a lot faster.
+	
+	

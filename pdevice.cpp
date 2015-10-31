@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pdevice.cpp,v 1.15 2013-03-16 15:08:52 thor Exp $
+ ** $Id: pdevice.cpp,v 1.16 2015/05/21 18:52:41 thor Exp $
  **
  ** In this module: P: emulated device
  **********************************************************************************/

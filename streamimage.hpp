@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: streamimage.hpp,v 1.3 2013-02-23 18:11:01 thor Exp $
+ ** $Id: streamimage.hpp,v 1.5 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image class for any type of files that need to be put on disk
  **********************************************************************************/
@@ -41,6 +41,9 @@ public:
   //
   // Open a disk image from a file given an image stream class.
   virtual void OpenImage(class ImageStream *image);
+  //
+  // Reset the image after turning it on and off.
+  virtual void Reset(void);
   //
   // Return the sector size given the sector offset passed in.
   virtual UWORD SectorSize(UWORD)

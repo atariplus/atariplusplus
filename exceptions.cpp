@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: exceptions.cpp,v 1.25 2009-05-03 16:01:11 thor Exp $
+ ** $Id: exceptions.cpp,v 1.26 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Definition of emulator specific exceptions
  **********************************************************************************/

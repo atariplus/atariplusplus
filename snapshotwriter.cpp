@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: snapshotwriter.cpp,v 1.9 2013-03-16 15:08:53 thor Exp $
+ ** $Id: snapshotwriter.cpp,v 1.10 2015/05/21 18:52:43 thor Exp $
  **
  ** This class implements the snapshot interface for writing a snapshot
  ** out to a file.

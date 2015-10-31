@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filestream.cpp,v 1.6 2007-10-06 11:23:59 thor Exp $
+ ** $Id: filestream.cpp,v 1.7 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Disk image source stream interface towards stdio
  **********************************************************************************/

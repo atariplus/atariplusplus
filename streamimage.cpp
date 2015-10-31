@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: streamimage.cpp,v 1.3 2013-02-05 02:07:11 thor Exp $
+ ** $Id: streamimage.cpp,v 1.5 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image class for any type of files that need to be put on disk
  **********************************************************************************/
@@ -23,6 +23,13 @@ StreamImage::StreamImage(class Machine *mach,const char *name)
 StreamImage::~StreamImage(void)
 {
   delete[] Contents;
+}
+///
+
+/// StreamImage::Reset
+// Reset the image after turning it on and off.
+void StreamImage::Reset(void)
+{
 }
 ///
 

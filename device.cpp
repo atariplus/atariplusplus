@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: device.cpp,v 1.24 2013-04-12 18:46:38 thor Exp $
+ ** $Id: device.cpp,v 1.26 2015/09/22 11:46:33 thor Exp $
  **
  ** In this module: CIO device interface
  **********************************************************************************/
@@ -25,8 +25,13 @@ Device::Device(class Machine *mach,class PatchProvider *p,UBYTE name,UBYTE slot)
 ///
 
 /// Device::SetResult
-void Device::SetResult(class CPU *cpu,UBYTE result)
+void Device::SetResult(class CPU *cpu,class AdrSpace *adr,UBYTE result)
 {
+  //
+  // If break was pressed, revert this to an error 128
+  if (result < 0x80 && adr->ReadByte(0x11) == 0)
+    result = 128;
+  //
   // Set the Y register to the result code.
   cpu->Y() = result;
   if (result >= 0x80) {
@@ -129,15 +134,15 @@ void Device::Open(class CPU *cpu,class AdrSpace *adr)
     result = Open(channel,unit,buf,aux1,aux2);
     //
     // Install the result and return
-    SetResult(cpu,result);
+    SetResult(cpu,adr,result);
   } else {
-    SetResult(cpu,0x86);
+    SetResult(cpu,adr,0x86);
   }
 }
 ///
 
 /// Device::Close
-void Device::Close(class CPU *cpu,class AdrSpace *)
+void Device::Close(class CPU *cpu,class AdrSpace *adr)
 {
   UBYTE channel = UBYTE(cpu->X() >> 4);       // get IOCB address
   UBYTE result;
@@ -147,15 +152,15 @@ void Device::Close(class CPU *cpu,class AdrSpace *)
     result = Close(channel);
     //
     // Install the result and return
-    SetResult(cpu,result);
+    SetResult(cpu,adr,result);
   } else {
-    SetResult(cpu,0x86);
+    SetResult(cpu,adr,0x86);
   }
 }
 ///
 
 /// Device::Get
-void Device::Get(class CPU *cpu,class AdrSpace *)
+void Device::Get(class CPU *cpu,class AdrSpace *adr)
 {
   UBYTE channel = UBYTE(cpu->X() >> 4);       // get IOCB address
   UBYTE result,data;
@@ -165,16 +170,16 @@ void Device::Get(class CPU *cpu,class AdrSpace *)
     result = Get(channel,data);
     //
     // Install the result and return
-    SetResult(cpu,result);
+    SetResult(cpu,adr,result);
     cpu->A() = data;
   } else {
-    SetResult(cpu,0x86);
+    SetResult(cpu,adr,0x86);
   }
 }
 ///
 
 /// Device::Put
-void Device::Put(class CPU *cpu,class AdrSpace *)
+void Device::Put(class CPU *cpu,class AdrSpace *adr)
 {
   UBYTE channel = UBYTE(cpu->X() >> 4);       // get IOCB address
   UBYTE result,data;
@@ -185,15 +190,15 @@ void Device::Put(class CPU *cpu,class AdrSpace *)
     result = Put(channel,data);
     //
     // Install the result and return
-    SetResult(cpu,result);
+    SetResult(cpu,adr,result);
   } else {
-    SetResult(cpu,0x86);
+    SetResult(cpu,adr,0x86);
   }
 }
 ///
 
 /// Device::Status
-void Device::Status(class CPU *cpu,class AdrSpace *)
+void Device::Status(class CPU *cpu,class AdrSpace *adr)
 {
   UBYTE channel = UBYTE(cpu->X() >> 4);       // get IOCB address
   UBYTE result;
@@ -203,9 +208,9 @@ void Device::Status(class CPU *cpu,class AdrSpace *)
     result = Status(channel);
     //
     // Install the result and return
-    SetResult(cpu,result);
+    SetResult(cpu,adr,result);
   } else {
-    SetResult(cpu,0x86);
+    SetResult(cpu,adr,0x86);
   }
 }
 ///
@@ -238,9 +243,9 @@ void Device::Special(class CPU *cpu,class AdrSpace *adr)
     }
     //
     // Install the result and return
-    SetResult(cpu,result);
+    SetResult(cpu,adr,result);
   } else {
-    SetResult(cpu,0x86);
+    SetResult(cpu,adr,0x86);
   }
 }
 ///

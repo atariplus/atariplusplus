@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.hpp,v 1.36 2013/05/31 22:08:00 thor Exp $
+ ** $Id: diskdrive.hpp,v 1.40 2015/08/15 14:52:35 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -59,10 +59,22 @@ class DiskDrive : public SerialDevice {
     FILE                  // Any type of source file
   }                      ImageType;
   //
+  // The type of the drive
+  enum DriveType {
+    Atari1050 = 0,        // single and enhanced density
+    Atari810,             // single density only
+    Atari815,             // single and double density
+    Happy1050,            // 1050 Happy with 10 speed byte, high speed enabled by command 'H'.
+    Happy810,             // 810 Happy Warp Speed, speed byte 16, high speed indicated by bit 5 of CMD
+    Speedy,               // Speedy, speed byte of 9
+    XF551,                // XF551 with high speed mode, high speed sectors indicated by bit 7 of CMD, speed byte 16
+    USTurbo,              // USTurbo with with speed byte 6, high speed indicated by bit 15 of AUX
+    IndusGT               // Like US Turbo with speed byte 6, but the command frame is slow.
+  }                      DriveModel;
+  //
   // Drive number of this drive.
   UBYTE                  DriveId;   // Indicates the drive number: 0..7
   //
-  // 
   class ImageStream     *ImageStream; // where to take the data from.
   class DiskImage       *Disk;        // the inserted disk itself.
   char                  *ImageName;   // path of the disk image.
@@ -78,16 +90,7 @@ class DiskDrive : public SerialDevice {
   // The last sector we accessed.
   ULONG                  LastSector;
   //
-  // Various internal buffers we might possibly need for "Speedy" emulation.
-  // They are not allocated unless used. A future more complete emulation would
-  // possibly add a CPU emulation on top of, but this is currently going over
-  // the edge.
-  UBYTE                 *Bank0000;
-  UBYTE                 *Bank8000;
-  UBYTE                 *BankC000;
-  UBYTE                 *BankE000;
   // For Speedy only: Display control byte and Speed Control Byte
-  UBYTE                  DisplayControl;
   UBYTE                  SpeedControl;
   //  
   // The last command issued. The command type defines how the
@@ -107,14 +110,6 @@ class DiskDrive : public SerialDevice {
     ADR                  Procedure; // what is to be called
   }                      UserCommands[MaxUserCommands];
   //
-  // Configuration options:
-  //
-  // Enable 815 extended commands.
-  bool                   Emulates815; 
-  //
-  // Enable Speedy/Happy commands.
-  bool                   EmulatesSpeedy;
-  //
   // Check whether this device is responsible for the indicated command frame
   // We must overload this method as the disk device exists twice.
   // The AtariSIO also handles the device and wants to get the chance
@@ -128,21 +123,6 @@ class DiskDrive : public SerialDevice {
   }
   //
   // Private methods follow here
-  //
-  // For Happy's only: Install a user definable command
-  // FIXME: This is not yet implemented as it would require
-  // a detailed knowledge of the Happy hardware and a CPU
-  // emulation on top. The latter, at least, would be easy.
-  UBYTE InstallUserCommand(const UBYTE *buffer,int size);
-  //
-  // For speedy only: Return the command type a jump status implements
-  SIO::CommandType JumpStatusType(ADR position,int &datasize);
-  // For Speedy only: Jump to a Happy subroutine returning a status.
-  UBYTE JumpStatus(ADR position,UBYTE *buffer);
-  // For Speedy only: Get the size of a memory bank
-  int SpeedyBankSize(ADR position);
-  // Return the position within the bank
-  UBYTE *SpeedyBank(ADR sector);
   //
   // Read the disk geometry and fill it into the buffer
   // Only for extended drives
@@ -181,6 +161,10 @@ class DiskDrive : public SerialDevice {
   // disk from it.
   void OpenDiskFromStream(void);
   //
+  // Check whether the current disk format is actually supported
+  // by this drive type. If not, return an appropriate warning.
+  const char *CheckDiskCompatibility(void);
+  //
 public:
   // Constructors and destructors
   DiskDrive(class Machine *mach,const char *name,int id);
@@ -189,20 +173,31 @@ public:
   // Methods required by SIO  
   // Check whether this device accepts the indicated command
   // as valid command, and return the command type of it.
-  virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize);
+  virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize,
+					     UWORD speed);
+  //
+  // Acknowledge the command frame. This is called as soon the SIO implementation
+  // in the host system tries to receive the acknowledge function from the
+  // client. Will return 'A' in case the command frame is accepted. Note that this
+  // is only called if CheckCommandFrame indicates already a valid command.
+  virtual UBYTE AcknowledgeCommandFrame(const UBYTE *CommandFrame,UWORD &delay,
+					UWORD &speed);
   //
   // Read bytes from the device into the system.
   virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
-			   int &datasize,UWORD &delay);
+			   int &datasize,UWORD &delay,
+			   UWORD &speed);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error.
   virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
-			    int &datasize,UWORD &delay);
+			    int &datasize,UWORD &delay,
+			    UWORD speed);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay);
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay,
+			   UWORD &speed);
   //
   // Other methods imported by the SerialDevice class:
   //

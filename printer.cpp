@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: printer.cpp,v 1.36 2013-02-05 02:07:11 thor Exp $
+ ** $Id: printer.cpp,v 1.39 2015/05/21 18:52:41 thor Exp $
  **
  ** In this module: Support for printer output.
  **********************************************************************************/
@@ -247,11 +247,11 @@ void Printer::PeriodicPrinter(void)
 /// Printer::CheckCommandFrame
 // Check a SIO command frame for a valid
 // command and return the command type
-SIO::CommandType Printer::CheckCommandFrame(const UBYTE *commandframe,int &datasize)
+SIO::CommandType Printer::CheckCommandFrame(const UBYTE *commandframe,int &datasize,UWORD speed)
 {
   //
   // If the printer is not turned on, return an error here
-  if (!PrinterOn)
+  if (!PrinterOn || speed != SIO::Baud19200)
     return SIO::Off;
   //
   // Otherwise, check the command character
@@ -297,7 +297,7 @@ SIO::CommandType Printer::CheckCommandFrame(const UBYTE *commandframe,int &datas
 // Prepare the indicated command. On read, read the buffer. On
 // write, just check whether the target is write-able. Returns
 // the size of the buffer (= one sector). On error, return 0.
-UBYTE Printer::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &)
+UBYTE Printer::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &,UWORD &speed)
 {
  
   switch (commandframe[1]) {
@@ -308,6 +308,7 @@ UBYTE Printer::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &)
     buffer[1] = 0;
     buffer[2] = 1;
     buffer[3] = 0;
+    speed     = SIO::Baud19200;
     return 'C';
   }  
 
@@ -321,7 +322,7 @@ UBYTE Printer::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &)
 // Execute a write command to the printer->Print some characters
 // Return a SIO error indicator
 UBYTE Printer::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
-			   int &datasize,UWORD &)
+			   int &datasize,UWORD &,UWORD)
 {
   const UBYTE *p = NULL;
   struct PrintNode *node;
@@ -378,7 +379,7 @@ UBYTE Printer::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
 // As the printer knows no status-only commands, nothing happens here
 // except an error. This should actually never be called as we never
 // signal a status command
-UBYTE Printer::ReadStatus(const UBYTE *commandframe,UWORD &)
+UBYTE Printer::ReadStatus(const UBYTE *commandframe,UWORD &,UWORD &)
 {
   machine->PutWarning("Unknown command frame: %02x %02x %02x %02x\n",
 		      commandframe[0],commandframe[1],commandframe[2],commandframe[3]);

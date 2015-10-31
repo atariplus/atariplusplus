@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.hpp,v 1.24 2013/05/31 22:08:00 thor Exp $
+ ** $Id: sio.hpp,v 1.28 2015/09/25 18:50:31 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.
@@ -49,6 +49,11 @@ public:
     FormatCommand            // special timing for format
   };
   //
+  // The regular 19200 baud speed
+  enum SpeedType {
+    Baud19200 = 47           // note that this is in cycles, not in pokey timer values
+  };
+  //
   //
 private:
   //
@@ -60,13 +65,15 @@ private:
   //
   // Definition of the state machine of the SIO interface
   enum SIOStateType {
-    NoFrame,               // not in a command frame
-    ResetFrame,            // SIO starts with this on reset
-    CmdFrame,              // command frame active
-    StatusRead,            // read back status from command frame
-    ReadFrame,             // transfering data from the device into the system
-    WriteFrame,            // transfering data from the system into the device
-    FlushFrame             // SIO waits for a write frame to come back
+    NoState,               // not in a command frame
+    ResetState,            // SIO starts with this on reset
+    CmdState,              // command frame active
+    AcknowledgeState,      // acknowledge from the command frame
+    StatusState,           // read back status from data frame
+    ReadState,             // transfering data from the device into the system
+    WriteState,            // transfering data from the system into the device
+    FlushState,            // SIO waits for a write frame to come back
+    DoneState              // Write is completed, send acknowledge
   }                   SIOState; // the state we are currently in
   //
   // Store the command frame here
@@ -88,6 +95,10 @@ private:
   // Checksum computed so far
   UBYTE               CurrentSum;
   //
+  // The serial transfer speed as Pokey divisor as transmitted by the external
+  // device when reading data.
+  UWORD               InputSpeed;
+  //
   // Flag whether the tape motor is running (or enabled to be running).
   bool                MotorEnabled;
   //
@@ -107,8 +118,6 @@ private:
   //
   // Miscellaneous internal methods
   //
-  // Compute a checksum over a sequence of bytes in the SIO way.
-  UBYTE ChkSum(UBYTE *buffer,int bytes);
   // Given a command frame, identify the device responsible to handle
   // this frame, or NULL if the device is not mounted.
   class SerialDevice *FindDevice(UBYTE commandframe[4]);
@@ -121,6 +130,9 @@ public:
   // constructors and destructors
   SIO(class Machine *mach);
   ~SIO(void);
+  //
+  // Compute a checksum over a sequence of bytes in the SIO way.
+  UBYTE ChkSum(const UBYTE *buffer,int bytes);
   //
   // Register a serial device for handling with SIO.
   void RegisterDevice(class SerialDevice *);
@@ -163,6 +175,7 @@ public:
   // Test whether a serial byte from concurrent mode is available. Return
   // true if so, and return the byte.
   bool ConcurrentRead(UBYTE &data);
+  //
   // Output a serial byte thru concurrent mode over the channel.
   void ConcurrentWrite(UBYTE data);
   //

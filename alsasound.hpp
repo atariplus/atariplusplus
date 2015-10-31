@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.hpp,v 1.13 2011-04-15 17:05:57 thor Exp $
+ ** $Id: alsasound.hpp,v 1.14 2015/03/21 14:31:27 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -85,6 +85,10 @@ class AlsaSound : public Sound {
   // because either te device requires more data, or the audio
   // settings got altered.
   bool                 UpdateBuffer;
+  //
+  // This is set if we have to use polling instead of interrupts.
+  bool                 Polling;
+  //
   // The number of samples we should have generated, but for which we
   // delayed the generation to reduce the overhead.
   ULONG                UpdateSamples;

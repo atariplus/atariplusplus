@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: binaryimage.hpp,v 1.8 2013-02-23 18:11:00 thor Exp $
+ ** $Id: binaryimage.hpp,v 1.11 2015/10/30 17:28:33 thor Exp $
  **
  ** In this module: Disk image class for binary load files
  **********************************************************************************/
@@ -124,12 +124,14 @@ class BinaryImage : public DiskImage, private PatchProvider, private Patch {
   // whenever an ESC (HLT, JAM) code is detected.
   virtual void RunPatch(class AdrSpace *adr,class CPU *cpu,UBYTE code);
   //
-  // Reset this patch. 
-  virtual void Reset(void)
-  {
-    BootStage   = 0;
-    LoaderStage = 0;
-  }
+  // Create the binary boot sector with the loader containing the patch.
+  void CreateBootSector(UBYTE *image);
+  //
+  // Create the VTOC at offset 0x168
+  void CreateVTOC(UBYTE *image,UWORD totalcount);
+  //
+  // Create the directory at offset 0x169
+  void CreateDirectory(UBYTE *image,UWORD sectorcount);
   //
   // Push the indicated return address onto the
   // stack of the emulated CPU to make it call the
@@ -170,7 +172,10 @@ public:
   virtual ~BinaryImage(void);
   //
   // Open a disk image from a file given an image stream class.
-  virtual void OpenImage(class ImageStream *image);
+  virtual void OpenImage(class ImageStream *image); 
+  //
+  // Reset this patch. 
+  virtual void Reset(void);
   //
   // Return the sector size given the sector offset passed in.
   virtual UWORD SectorSize(UWORD sector);

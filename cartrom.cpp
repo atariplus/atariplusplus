@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartrom.cpp,v 1.51 2011-06-24 20:11:17 thor Exp $
+ ** $Id: cartrom.cpp,v 1.52 2015/05/21 18:52:37 thor Exp $
  **
  ** In this module: Administration/loading of cartridges
  **********************************************************************************/

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atximage.cpp,v 1.9 2013-03-14 20:58:50 Administrator Exp $
+ ** $Id: atximage.cpp,v 1.11 2015/07/14 20:01:00 thor Exp $
  **
  ** In this module: Disk image class for .atx images.
  **********************************************************************************/
@@ -37,7 +37,7 @@ ATXImage::ATXImage(class Machine *mach)
   : DiskImage(mach), HBIAction(mach),
     Image(NULL), 
     Protected(false), CRCError(false), LostDataError(false), SectorMissing(false),
-    TrackUnderHead(0),
+    TrackUnderHead(0), HeadPosition(0), 
     TrackList(NULL)
 {
   
@@ -53,6 +53,18 @@ ATXImage::~ATXImage(void)
     TrackList = track->Next;
     delete track;
   }
+}
+///
+
+/// ATXImage::Reset
+// Restore the ATX image to its initial state.
+void ATXImage::Reset(void)
+{
+  CRCError        = false;
+  LostDataError   = false;
+  SectorMissing   = false;
+  TrackUnderHead  = 0;
+  HeadPosition    = 0;
 }
 ///
 

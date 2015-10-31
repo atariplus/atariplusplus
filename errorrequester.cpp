@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: errorrequester.cpp,v 1.11 2008-05-22 13:03:54 thor Exp $
+ ** $Id: errorrequester.cpp,v 1.12 2014/06/01 20:07:53 thor Exp $
  **
  ** In this module: A requester class that prints and logs errors.
  **********************************************************************************/
@@ -12,6 +12,8 @@
 #include "buttongadget.hpp"
 #include "textgadget.hpp"
 #include "listbrowsergadget.hpp"
+#include "machine.hpp"
+#include "display.hpp"
 #include "string.hpp"
 #include "stdio.hpp"
 #include "new.hpp"
@@ -20,7 +22,8 @@
 
 /// ErrorRequester::ErrorRequester
 ErrorRequester::ErrorRequester(class Machine *mach)
-  : Requester(mach), Headline(NULL), OKGadget(NULL), active(false)
+  : Requester(mach), Headline(NULL), OKGadget(NULL), 
+    machine(mach), active(false)
 {
 }
 ///
@@ -193,6 +196,25 @@ int ErrorRequester::Request(const AtariException &except)
     // Go on and request now the requester.... 
     result = Requester::Request();
     active = false;
+  } else {
+    if (machine->hasGUI()) {
+      try {
+	class AtariDisplay *display = machine->Display();
+	if (display) {
+	  display->ActiveBuffer();
+	  // If we go here, the requester came in recursively.
+	  // Test wether the display is the cause and if so,
+	  // do not attempt to re-open the display.
+	  //
+	  // If the code comes here, everything worked.
+	  // and we can attempt to open the display.
+	} else {
+	  return ERQ_Cancel;
+	}
+      } catch(AtariException &aex) {
+	return ERQ_Cancel;
+      }
+    }
   }
   return result;
 }

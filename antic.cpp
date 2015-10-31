@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.cpp,v 1.121 2013-01-17 20:08:18 thor Exp $
+ ** $Id: antic.cpp,v 1.126 2015/05/21 18:30:57 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -381,34 +381,36 @@ void Antic::ModeLine2::Generator(ULONG *ptr,int width,int scanline)
 				    PACK4(GPFF,GPF2,GPFF,GPF2),PACK4(GPFF,GPF2,GPFF,GPFF),
 				    PACK4(GPFF,GPFF,GPF2,GPF2),PACK4(GPFF,GPFF,GPF2,GPFF),
 				    PACK4(GPFF,GPFF,GPFF,GPF2),PACK4(GPFF,GPFF,GPFF,GPFF) };
-  ADR chbase;
   int nchars  = width >> 3;
-  const UBYTE *scan = ScanBuffer;
-  
-  scanline &= 7;
+  const UBYTE *scan = ScanBuffer; 
+  static const UBYTE OffsetNormal[16] = {0,1,2,3,4,5,6,7,8,8,2,3,4,5,6,7};
+  static const UBYTE OffsetLow[16]    = {0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7};
+  static const UBYTE *const LineGenerator[8] = {OffsetNormal,OffsetNormal,OffsetNormal,OffsetLow,
+						OffsetNormal,OffsetNormal,OffsetNormal,OffsetLow};
+ 
+  scanline &= 0x0f;
 
-  if (!CharGen->UpsideDown) {
-    chbase = CharGen->CharBase + scanline;
-  } else {
-    chbase = CharGen->CharBase + 7 - scanline;
-  }
-  
   do {  
-    ADR   chaddr;
+    ADR   chaddr,chline;
     UBYTE chdata,screendata;
     // get screen data from antic buffer
-    screendata = *scan++;  
-    // get character base address
-    chaddr     = chbase + ((screendata & 0x7f) << 3);  
-    // get character data
-    chdata     = UBYTE(CharGen->Ram->ReadByte(chaddr));
+    screendata = *scan++; 
+    chline     = LineGenerator[screendata >> 5][scanline];
+    // Check whether we have a completely blank line. If so, supply zero
+    if (chline >= 8) {
+      chdata = 0;
+    } else {
+      chline ^= CharGen->UpsideDown;
+      chaddr  = CharGen->CharBase + chline + ((screendata & 0x7f) << 3);
+      chdata  = UBYTE(CharGen->Ram->ReadByte(chaddr));
+    }
+    
+    if (screendata & CharGen->BlankMask)
+      chdata  = 0;
     
     if (screendata & CharGen->InvertMask)
       chdata ^= 0xff;
 
-    if (screendata & CharGen->BlankMask)
-      chdata  = 0;
-    
     *ptr++ = Lut[chdata >> 4].l;
     *ptr++ = Lut[chdata & 0x0f].l;
     
@@ -430,41 +432,33 @@ void Antic::ModeLine3::Generator(ULONG *ptr,int width,int scanline)
 				    PACK4(GPFF,GPFF,GPFF,GPF2),PACK4(GPFF,GPFF,GPFF,GPFF) };
   int nchars  = width >> 3;
   const UBYTE *scan = ScanBuffer;
-  static const UBYTE OffsetNormal[10] = {0,1,2,3,4,5,6,7,8,8};
-  static const UBYTE OffsetLow[10]    = {8,8,2,3,4,5,6,7,0,1};
+  static const UBYTE OffsetNormal[16] = {0,1,2,3,4,5,6,7,8,8,2,3,4,5,6,7};
+  static const UBYTE OffsetLow[16]    = {8,8,2,3,4,5,6,7,0,1,2,3,4,5,6,7};
+  static const UBYTE *const LineGenerator[8] = {OffsetNormal,OffsetNormal,OffsetNormal,OffsetLow,
+						OffsetNormal,OffsetNormal,OffsetNormal,OffsetLow};
 
-  if (scanline > 10)
-    scanline &= 7;
+  scanline &= 0x0f;
  
   do {  
     ADR   chaddr,chline;
     UBYTE chdata,screendata;
     // get screen data from antic buffer
-    screendata = *scan++;    
-    if ((screendata & 0x60) == 0x60) {
-      // This is a lowercase character. This means that the first two
-      // scan lines are blank and get mirrored as the last two scan lines
-      chline = OffsetLow[scanline];
-    } else {
-      chline = OffsetNormal[scanline];
-    }
+    screendata = *scan++;
+    chline     = LineGenerator[screendata >> 5][scanline];    
     // Check whether we have a completely blank line. If so, supply zero
     if (chline >= 8) {
       chdata = 0;
     } else {
-      if (!CharGen->UpsideDown) {
-	chaddr = CharGen->CharBase + chline       + ((screendata & 0x7f) << 3);
-      } else {
-	chaddr = CharGen->CharBase + 7 - chline   + ((screendata & 0x7f) << 3);
-      }
-      chdata   = UBYTE(CharGen->Ram->ReadByte(chaddr));
+      chline ^= CharGen->UpsideDown;
+      chaddr  = CharGen->CharBase + chline + ((screendata & 0x7f) << 3);
+      chdata  = UBYTE(CharGen->Ram->ReadByte(chaddr));
     }
     
-     if (screendata & CharGen->InvertMask)
-      chdata ^= 0xff;
-
     if (screendata & CharGen->BlankMask)
       chdata  = 0;
+
+    if (screendata & CharGen->InvertMask)
+      chdata ^= 0xff;
     
     *ptr++ = Lut[chdata >> 4].l;
     *ptr++ = Lut[chdata & 0x0f].l;
@@ -484,17 +478,14 @@ void Antic::ModeLine4::Generator(ULONG *ptr,int width,int scanline)
 				      PACK2(GPF0,GPFB), PACK2(GPF0,GPF0), PACK2(GPF0,GPF1), PACK2(GPF0,GPF3),
 				      PACK2(GPF1,GPFB), PACK2(GPF1,GPF0), PACK2(GPF1,GPF1), PACK2(GPF1,GPF3),
 				      PACK2(GPF3,GPFB), PACK2(GPF3,GPF0), PACK2(GPF3,GPF1), PACK2(GPF3,GPF3) };
+  static const BytePack *const Luts[2] = {LutLo,LutHi};
   ADR chbase;
   int nchars  = width >> 3;
   const UBYTE *scan = ScanBuffer;
 
-  scanline &= 7;
-  
-  if (!CharGen->UpsideDown) {
-    chbase = CharGen->CharBase + scanline;
-  } else {
-    chbase = CharGen->CharBase + 7 - scanline;
-  }
+  scanline &= 7; 
+  scanline ^= CharGen->UpsideDown;
+  chbase    = CharGen->CharBase + scanline;
   
   do {  
     ADR   chaddr;
@@ -507,9 +498,7 @@ void Antic::ModeLine4::Generator(ULONG *ptr,int width,int scanline)
     chaddr     = chbase + ((screendata & 0x7f) << 3);  
     // get character data
     chdata     = CharGen->Ram->ReadByte(chaddr);
-    
-    lut        = (screendata & 0x80)?(LutHi):(LutLo);
-    
+    lut        = Luts[screendata >> 7];
     *ptr++     = lut[chdata >> 4].l;
     *ptr++     = lut[chdata & 0x0f].l;
   } while(--nchars);
@@ -528,15 +517,14 @@ void Antic::ModeLine5::Generator(ULONG *ptr,int width,int scanline)
 				      PACK2(GPF0,GPFB), PACK2(GPF0,GPF0), PACK2(GPF0,GPF1), PACK2(GPF0,GPF3),
 				      PACK2(GPF1,GPFB), PACK2(GPF1,GPF0), PACK2(GPF1,GPF1), PACK2(GPF1,GPF3),
 				      PACK2(GPF3,GPFB), PACK2(GPF3,GPF0), PACK2(GPF3,GPF1), PACK2(GPF3,GPF3) };
+  static const BytePack *const Luts[2] = {LutLo,LutHi};
   ADR chbase;
   int nchars  = width >> 3;
   const UBYTE *scan = ScanBuffer;
   
-  if (!CharGen->UpsideDown) {
-    chbase = CharGen->CharBase + (scanline >> 1);
-  } else {
-    chbase = CharGen->CharBase + 7 - (scanline >> 1);
-  }
+  scanline >>= 1;
+  scanline  ^= CharGen->UpsideDown;
+  chbase     = CharGen->CharBase + scanline;
   
   do {  
     ADR   chaddr;
@@ -549,9 +537,7 @@ void Antic::ModeLine5::Generator(ULONG *ptr,int width,int scanline)
     chaddr     = chbase + ((screendata & 0x7f) << 3);  
     // get character data
     chdata     = CharGen->Ram->ReadByte(chaddr);
-    
-    lut        = (screendata & 0x80)?(LutHi):(LutLo);
-    
+    lut        = Luts[screendata >> 7];
     *ptr++     = lut[chdata >> 4].l;
     *ptr++     = lut[chdata & 0x0f].l;
   } while(--nchars);
@@ -572,12 +558,8 @@ void Antic::ModeLine6::Generator(ULONG *ptr,int width,int scanline)
   const UBYTE *scan = ScanBuffer;
 
   scanline &= 7;
-  
-  if (!CharGen->UpsideDown) {
-    chbase = CharGen->CharBase + scanline;
-  } else {
-    chbase = CharGen->CharBase + 7 - scanline;
-  }
+  scanline ^= CharGen->UpsideDown;
+  chbase    = CharGen->CharBase + scanline;
   
   do {  
     const BytePack *lut;
@@ -592,12 +574,11 @@ void Antic::ModeLine6::Generator(ULONG *ptr,int width,int scanline)
     chdata     = CharGen->Ram->ReadByte(chaddr);
     // get cell color
     lut        = Luts[screendata >> 6];
-
-    ptr[3] = lut[chdata & 0x03].l,chdata >>= 2;
-    ptr[2] = lut[chdata & 0x03].l,chdata >>= 2;
-    ptr[1] = lut[chdata & 0x03].l,chdata >>= 2;
-    ptr[0] = lut[chdata].l;
-    ptr   += 4;
+    ptr[3]     = lut[chdata & 0x03].l,chdata >>= 2;
+    ptr[2]     = lut[chdata & 0x03].l,chdata >>= 2;
+    ptr[1]     = lut[chdata & 0x03].l,chdata >>= 2;
+    ptr[0]     = lut[chdata].l;
+    ptr       += 4;
 
   } while(--nchars);
 }
@@ -616,11 +597,9 @@ void Antic::ModeLine7::Generator(ULONG *ptr,int width,int scanline)
   int nchars  = width >> 4;
   const UBYTE *scan = ScanBuffer;
   
-  if (!CharGen->UpsideDown) {
-    chbase = CharGen->CharBase +     (scanline >> 1);
-  } else {
-    chbase = CharGen->CharBase + 7 - (scanline >> 1);
-  }
+  scanline >>= 1;
+  scanline  ^= CharGen->UpsideDown;
+  chbase     = CharGen->CharBase + scanline;
   
   do {  
     const BytePack *lut;
@@ -937,21 +916,22 @@ void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
   //
   // Note that the test for "end of mode" is done here again
   // and that this decision depends on a potentially updated version
-  // of VScroll.
-  while(scanline <= ((vertscroll == 1)?(VScroll):(nlines)) && YPos <= DisplayHeight) {
-    int firstcycle;
-    //
+  // of VScroll. Note that VScroll must be sampled at the start of the line
+  // for computing the first line, but not the last line.
+  scanline = (vertscroll == 2)?(VScroll):0;
+  while(islast == false && YPos <= DisplayHeight) {
     // First reserve P/M DMA slots. They appear first because
     // The CPU needs to see them before the DLI triggers in.
     if (YPos < DisplayHeight) {
-      switch (DMACtrl & 0x0c) {      
-      case 0x08: // Player DMA
-      case 0x0c: // Missile DMA is for free if player DMA is turned on.
+      if (DMACtrl & 0x08) {
+	// Player DMA is enabled. Steal both the player DMA cycle
+	// as well as the missle DMA cycle, no matter whether
+	// missile DMA is on.
 	Cpu->StealCycles(PlayerFetchSlot);
-	// runs intentionally into the missile fetch
-      case 0x04: // Missile DMA
 	Cpu->StealCycles(MissileFetchSlot);
-	break;
+      } else if (DMACtrl & 0x04) {
+	// Missle DMA only.
+	Cpu->StealCycles(MissileFetchSlot);
       }
       // Fetch now the P/M data for GTIA (or not).
       FetchPlayerMissiles();
@@ -959,23 +939,22 @@ void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
     //
     // Advance the CPU for a couple of cycles before the DLI is triggered (Jetboot Jack)
     // and before the DMA settings become active.
-    Cpu->Go(6); 
+    Cpu->Go(6);
     //
-    if (isfirst && vertscroll == 2) {
-      // This is the first vertical scrolling line, last was regular
-      // Hence, delay the first line.
-      scanline = VScroll;
-      if (scanline > nlines)
-	scanline -= 16;
-    } 
+    // While the vertical line start is sampled at the start of the 
+    // scanline, the end of the modeline is sampled later.
+    // Moving this earlier breaks the acid test, moving the vscroll
+    // start breaks numen.
+    int last = (vertscroll == 1)?(VScroll):(nlines);
     //
     // Check whether this is the last line of the mode and we should
-    // possibly generate a DLI.
-    if (scanline == ((vertscroll == 1)?(VScroll):(nlines)))
+    // possibly generate a DLI. This is more elegant than the
+    // previous counter adjustment.
+    if (((scanline ^ last) & 0x0f) == 0)
       islast = true;
     // 
     // Advance to the DLI-generation step of ANTIC.
-    Cpu->Step(); 
+    Cpu->Step();
     //
     // If this is the last scanline and the "generate DLI" bit of the
     // instruction is set, and DLIs are allowed, signal that we need
@@ -998,14 +977,12 @@ void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
       NMIStat = (YPos == VBIStart)?(0x40):(0x80);
       //
       // But the CPU can enable the NMI.
-      if ((NMIEnable & NMIStat) & 0xc0) {
+      if (((NMIEnable & NMIStat) & 0xc0) && (nmi == false)) {
 	// Generate now if NMI is not yet active, but again give the CPU some time.
-	if (!nmi) {
-	  Cpu->Step();
-	  nmi = true;
-	}
+	Cpu->Step();
+	nmi = true;
+	// Note that the extra step taken here is compensated below.
       }
-      //
       Cpu->Go(2);
       //
       if (nmi) {
@@ -1015,7 +992,7 @@ void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
     }
     //
     // Compute the number of clocks to the start of the display - DMA.
-    firstcycle       = GTIAStart; // At worst here because then GTIA starts.
+    int firstcycle   = GTIAStart; // At worst here because then GTIA starts.
     if (ir & 0x10) {
       dmadelta       = HScroll >> 1;
       dma            = &(ActiveDMATiming->Scrolled);
@@ -1127,9 +1104,19 @@ void Antic::Modeline(int ir,int vertscroll,int nlines,struct ModeLine *gen)
     // Run now the display generator.
     // Antic has a bug here that it even drives GTIA (and does not generate a sync pulse)
     // if the last line is a hires line.
-    if (YPos < DisplayHeight || wasfiddled)
+    if (YPos < DisplayHeight || wasfiddled) {
+      // Create the GTIA output, player/missile, priority logic
+      // plus GTIA mode processing. This also runs the CPU for the
+      // remaining cycles in the playfield.
       Gtia->TriggerGTIAScanline(LineBuffer + FillInOffset - shift,PlayerData,
 				DisplayModulo - FillInOffset,gen->Fiddling);
+    } else {
+      // Otherwise, dry-run of the CPU. Note that if there are more cycles
+      // requested here than fit into the horizonal line, the remaining
+      // cycles are no-ops. The CPU is not advanced for these extra cycles
+      // and the machine state is not advanced.
+      Cpu->Go((DisplayModulo - FillInOffset) >> 2);
+    }
     //
     // We are now on the next line.
     YPos++;
@@ -1367,7 +1354,7 @@ void Antic::ChCtrlWrite(UBYTE val)
   CharCtrl = val;
   //
   // Set individual properties in the character generator
-  Char20.UpsideDown = Char40.UpsideDown = (val & 0x04)?(true):(false);
+  Char20.UpsideDown = Char40.UpsideDown = (val & 0x04)?(0x07):(0x00);
   Char20.InvertMask = Char40.InvertMask = (val & 0x02)?(0x80):(0x00);
   Char20.BlankMask  = Char40.BlankMask  = (val & 0x01)?(0x80):(0x00);  
   //

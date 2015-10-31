@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: string.hpp,v 1.6 2013-03-16 15:08:53 thor Exp $
+ ** $Id: string.hpp,v 1.10 2015/11/07 18:53:12 thor Exp $
  **
  ** In this module: Os compatibility layer for string management.
  ** This file takes definitions from "types.h" build by autoconf/configure
@@ -105,6 +105,26 @@ inline static int strcasecmp(const char *s1, const char *s2) throw()
     d = toupper(*s1) - toupper(*s2); // this is possibly naive for some languages...
     if (d) return d;
     s1++,s2++;
+  }
+  return *s2;
+}
+#endif
+///
+
+/// Check for the availability of strncasecmp and implement itif it does not exist.
+#ifdef _WIN32
+# define strncasecmp(a,b,n) _strnicmp((a),(b),(n))
+#endif
+#if !HAVE_STRNCASECMP
+#include <ctype.h>
+inline static int strncasecmp(const char *s1, const char *s2,size_t l) throw()
+{
+  int d;
+  
+  while(l && *s1) {
+    d = toupper(*s1) - toupper(*s2); // this is possibly naive for some languages...
+    if (d) return d;
+    s1++,s2++,l--;
   }
   return *s2;
 }

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: flashpage.hpp,v 1.2 2012-12-31 14:34:59 thor Exp $
+ ** $Id: flashpage.hpp,v 1.4 2015/10/25 09:11:23 thor Exp $
  **
  ** In this module: Definition of a page of an AMD FlashROM
  **********************************************************************************/
@@ -79,8 +79,7 @@ public:
     return romimage[mem & PAGE_MASK];
   }
   //
-  // Write a byte to a page, return the "vsync" flag to indicate whether the
-  // CPU should wait to the end of the scan line
+  // Write a byte to a page. Nothing happens here.
   void WriteByte(ADR,UBYTE)
   {
   }

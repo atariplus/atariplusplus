@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.81 2013/05/23 19:12:40 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.93 2015/11/07 18:53:12 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -85,9 +85,7 @@ static const struct DriveLayout {
 
 /// DiskDrive::DiskDrive
 DiskDrive::DiskDrive(class Machine *mach,const char *name,int id)
-  : SerialDevice(mach,name,'1'+id), DriveId(id),
-    Bank0000(NULL), Bank8000(NULL),
-    BankC000(NULL), BankE000(NULL)
+  : SerialDevice(mach,name,'1'+id), DriveId(id)
 {
   DiskStatus       = None;
   // Default is to turn only drive #1 on
@@ -97,17 +95,15 @@ DiskDrive::DiskDrive(class Machine *mach,const char *name,int id)
   Disk             = NULL;
   ImageName        = NULL;
   ImageToLoad      = NULL;
-  DisplayControl   = 0;
-  SpeedControl     = 9; // speedy default speed, whatever this means...
+  SpeedControl     = 40; // speedy default speed: that of a 1050 (in pokey timers, must add 7)
   //
   // Install drive default settings: 128 byte sectors, 720 of them.
   SectorSize       = 128;
   SectorCount      = 720;
   SectorsPerTrack  = 18;
+  DriveModel       = Atari1050;
   //
   // Provide default configuration.
-  Emulates815      = true;
-  EmulatesSpeedy   = true;
   LastFDCCommand   = FDC_Reset;
   RunningTest      = 0xff; // none
   LastSector       = 1;
@@ -121,10 +117,6 @@ DiskDrive::~DiskDrive(void)
   delete Disk;
   delete[] ImageName;
   delete[] ImageToLoad;
-  delete[] Bank0000;
-  delete[] Bank8000;
-  delete[] BankC000;
-  delete[] BankE000;
 }
 ///
 
@@ -132,6 +124,11 @@ DiskDrive::~DiskDrive(void)
 void DiskDrive::ColdStart(void)
 {
   LastFDCCommand = FDC_Reset;
+
+  //
+  // The disk image may require a reset signal to restore to its initial state.
+  if (Disk)
+    Disk->Reset();
 }
 ///
 
@@ -143,168 +140,6 @@ void DiskDrive::WarmStart(void)
 }
 ///
 
-/// DiskDrive::InstallUserCommand
-// For Happy's only: Install a user definable command
-// FIXME: This is not yet implemented as it would require
-// a detailed knowledge of the Happy hardware and a CPU
-// emulation on top. The latter, at least, would be easy.
-UBYTE DiskDrive::InstallUserCommand(const UBYTE *buffer,int)
-{
-  struct FloppyCmd *fcmd = UserCommands;
-  int i;
-  bool found = false;
-  
-  //  
-  // Check whether the command to be defined is already defined
-  for (i=0;i<MaxUserCommands;i++,fcmd++) {
-    if (fcmd->CmdChar == buffer[0]) {
-      found = true;
-      break;
-    }
-  }
-
-  // 
-  if (found) {
-    if (buffer[2] | buffer[3]) {
-      // Define the user function now
-      fcmd->Procedure = buffer[2] | (buffer[3] << 8);
-      return 'C'; // worked
-    } else {
-      // erase it otherwise
-      fcmd->Procedure = 0;
-      fcmd->CmdChar   = 0;
-      return 'C';
-    }
-  }
-
-  // Otherwise, seek for a free slot and insert it
-  if (buffer[2] | buffer[3]) {
-    fcmd = UserCommands;
-    for(i=0;i<MaxUserCommands;i++,fcmd++) {
-      if (fcmd->Procedure == 0) {
-	// Ok, use this slot and let it go.
-	fcmd->CmdChar   = buffer[0];
-	fcmd->Procedure = buffer[2] | (buffer[3] << 8);
-	return 'C';
-      }
-    }
-    return 'E'; // did not...
-  }
-  
-  return 'C';
-}
-///
-
-/// DiskDrive::JumpStatusType
-// For Happy only: Jump to a Happy subroutine returning a status
-// and identify the command type ("the serial frame") it uses.
-SIO::CommandType DiskDrive::JumpStatusType(ADR address,int &datasize)
-{
-  switch (address) {
-  case 0xff0f:   // This is probably a plain drive reset
-    break;
-  case 0xffa5:   // No idea what this is
-    break;
-  case 0xffb4:   // This is probably a RAM test.
-    datasize = 2;
-    return SIO::ReadCommand;
-  case 0xffba:   // This is probably a motor test. Should return 288 RPM
-    datasize = 2;
-    return SIO::ReadCommand;
-  case 0xffb7:   // This is probably a ROM test.
-    break;
-  case 0x9e00:   // This sets the drive display. We ignore this
-    datasize = 3;
-    return SIO::WriteCommand;
-  default:
-    machine->PutWarning("Unknown floppy entry point %4x.\n",address);
-  }
-  return SIO::StatusCommand;
-}
-///
-
-/// DiskDrive::JumpStatus
-// For Happy only: Jump to a Happy subroutine returning a status.
-UBYTE DiskDrive::JumpStatus(ADR address,UBYTE *buffer)
-{
-  switch (address) {
-  case 0xff0f:   // This is probably a plain drive reset
-    return 'C';
-  case 0xffa5:   // No idea what this is
-    return 'C';
-  case 0xffb4:   // This is probably a RAM test.
-    buffer[0] = 0;
-    buffer[1] = 0;
-    return 'C';
-  case 0xffba:   // This is probably a motor test. Should return 288 RPM
-    buffer[0] = 40;
-    buffer[1] = 1;
-    return 'C';
-  case 0xffb7:   // This is probably a ROM test.
-    return 'C';
-  case 0x9e00:   // This sets the drive display. We ignore this
-    return 'C';
-  default:
-    machine->PutWarning("Unknown floppy entry point %4x.\n",address);
-  }
-  return 0;
-}
-///
-
-/// DiskDrive::SpeedyBankSize
-// Get the size of a speedy RAM/ROM bank and return its size.
-// return zero if the sector corresponds to a true hardware 
-// floppy sector on disk, or if we don't know.
-int DiskDrive::SpeedyBankSize(ADR sector)
-{
-  if (EmulatesSpeedy) {
-    if (sector == 0) {
-      return 128; // Zero page
-    } else if (sector>=0x8000 && sector<=0x9fff && ((sector & 0xff) == 0)) {
-      return 256;
-    } else if (sector>=0xc000 && sector<=0xc0ff && ((sector & 0xff) == 0)) {
-      return 256;
-    } else if (sector>=0xe000 && sector<=0xffff && ((sector & 0x7f) == 0)) {
-      return 128;
-    } 
-  }
-  return 0;
-}
-///
-
-/// DiskDrive::SpeedyBank
-// Return a pointer to the speedy bank in question.
-UBYTE *DiskDrive::SpeedyBank(ADR sector)
-{
-  if (sector == 0) {
-    if (Bank0000 == NULL) {
-      // Ok, rebuild bank zero and clear it.
-      Bank0000 = new UBYTE[0x080];
-      memset(Bank0000,0,0x80);
-    }
-    return Bank0000;
-  } else if (sector>=0x8000 && sector<=0x9fff && ((sector & 0xff) == 0)) {
-    if (Bank8000 == NULL) {
-      Bank8000 = new UBYTE[0x2000];
-      memset(Bank8000,0,0x2000);
-    }
-    return Bank8000 + (sector - 0x8000);
-  } else if (sector>=0xc000 && sector<=0xc0ff && ((sector & 0xff) == 0)) {
-    if (BankC000 == NULL) {
-      BankC000 = new UBYTE[0x0100];
-      memset(BankC000,0,0x0100);
-    }
-    return BankC000 + (sector - 0xc000);
-  } else if (sector>=0xe000 && sector<=0xffff && ((sector & 0x7f) == 0)) {
-    if (BankE000 == NULL) {
-      BankE000 = new UBYTE[0x2000];
-      memset(BankE000,0,0x2000);
-    }
-    return BankE000 + (sector - 0xe000);
-  } 
-  return NULL;
-}
-///
 
 /// DiskDrive::WriteStatusBlock
 // Define some disk drive geometry data here
@@ -647,11 +482,13 @@ void DiskDrive::LoadImage(const char *filename)
       //
       // FIXME: Need to open it.
       Throw(NotImplemented,"DiskDrive::LoadImage",".zip files are not yet supported");
-    } else if (buffer[0] == 'F' && buffer[1] == 'U' && buffer[2] == 'J' && buffer[3] == 'I') {
-      // This is a CAS archive stream.
+    } else if ((buffer[0] == 'F' && buffer[1] == 'U' && buffer[2] == 'J' && buffer[3] == 'I') ||
+	       (buffer[0] == 'R' && buffer[1] == 'I' && buffer[2] == 'F' && buffer[3] == 'F')) {
+      // This is a CAS archive stream. Or a tape image that still requires decoding.
+      // Both can be done through the CASStream which again builds on top of a tape image.
       delete ImageStream;
       ImageStream = NULL;
-      ImageStream = new class CASStream;
+      ImageStream = new class CASStream(machine);
       ImageStream->OpenImage(filename);
       OpenDiskFromStream();
     } else {
@@ -673,7 +510,8 @@ void DiskDrive::LoadImage(const char *filename)
 // disk from it.
 void DiskDrive::OpenDiskFromStream(void)
 {  
-  UBYTE buffer[2];
+  UBYTE buffer[32];
+  UWORD vtable[8];
 #if CHECK_LEVEL > 0
   // Check whether the disk is currently unloaded.
   if (Disk)
@@ -682,7 +520,7 @@ void DiskDrive::OpenDiskFromStream(void)
   //
   // Read the first two bytes to identify the type of the image.
   errno = 0;
-  if (ImageStream->Read(0,buffer,2)) {
+  if (ImageStream->Read(0,buffer,16)) {
     // Check for the type of the file here now.
     if (buffer[0] == 0x96 && buffer[1] == 0x02) {
       // This is an ATR image. Open it from here.
@@ -699,9 +537,17 @@ void DiskDrive::OpenDiskFromStream(void)
       Disk = new class BinaryImage(machine);
       Disk->OpenImage(ImageStream);
       ImageType   = CMD;
-    } else if (buffer[0] == 0x00 && buffer[1] == 0x00) {
+    } else if (buffer[0] == 0x00 && buffer[1] == 0x00 &&
+	       ((vtable[1] = buffer[ 2] | (buffer[ 3] << 8)),
+		(vtable[2] = buffer[ 4] | (buffer[ 5] << 8)),
+		(vtable[3] = buffer[ 6] | (buffer[ 7] << 8)),
+		(vtable[4] = buffer[ 8] | (buffer[ 9] << 8)),
+		(vtable[5] = buffer[10] | (buffer[11] << 8)),
+		(vtable[6] = buffer[12] | (buffer[13] << 8))) &&
+	       vtable[1] > 0 && vtable[2] >= vtable[1] && vtable[3] >= vtable[2] &&
+	       vtable[4] >= vtable[3] && vtable[5] >= vtable[4] && vtable[6] >= vtable[5]) {
       // This is a basic file.
-      Disk = new class StreamImage(machine,"PROGRAM.BAS");
+      Disk = new class StreamImage(machine,"AUTORUN.BAS");
       Disk->OpenImage(ImageStream);
       ImageType   = FILE;
     } else if (buffer[0] == 0xfe && buffer[1] == 0xfe) {
@@ -775,81 +621,128 @@ void DiskDrive::OpenDiskFromStream(void)
 }
 ///
 
+/// DiskDrive::CheckDiskCompatibility
+// Check whether the current disk format is actually supported
+// by this drive type. If not, warn and eject the disk.
+// Returns an appropriate warning if not compatible.
+const char *DiskDrive::CheckDiskCompatibility(void)
+{
+  const char *warning = NULL;
+
+  if (ProtectionStatus == ReadOnly || ProtectionStatus == ReadWrite) {
+    switch(DriveModel) {
+    case Atari810:
+      if (SectorSize > 128) {
+	warning = "The Atari 810 does not support double or high density disks";
+      } else if (SectorCount > 720) {
+	warning = "Atari 810 disks cannot hold more than 720 sectors";
+      }
+      break;
+    case Atari815:
+      if (SectorSize > 256) {
+	warning = "The Atari 810 does not support high density disks";
+      } else if (SectorCount > 720) {
+	warning = "Atari 815 disks cannot hold more than 720 sectors";
+      }
+      break;
+    case Atari1050:
+      if (SectorSize > 128) {
+	warning = "The Atari 1050 does not support double or high density disks";
+      } else if (SectorCount > 1040) {
+	warning = "Atari 1050 disks cannot hold more than 1040 sectors";
+      }
+      break;
+    default:
+      // No further checks.
+      break;
+    }
+  }
+
+  return warning;
+}
+///
+
 /// DiskDrive::CheckCommandFrame
 // Test whether a given command frame is acceptable and if so,
 // return the type of the command. Return the size of its data frame.
-SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &datasize)
+SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &datasize,UWORD speed)
 {
   UWORD sector = UWORD(commandframe[2] | (commandframe[3] << 8));
   // If we are turned off, signal this.
   if (ProtectionStatus == Off)
     return SIO::Off;
+  //
+  // Ok, check the transfer speed. Some drives do not react on all speeds.
+  switch(DriveModel) {
+  case Atari810:
+  case Atari815:
+  case Atari1050:
+  case Happy810:  // The 1050 happy also only reacts on standard speed in the command frame.
+  case IndusGT:
+    // Only the standard speed.
+    if (speed != SIO::Baud19200)
+      return SIO::Off; // Do not react.
+    break;
+  default:
+    // Only the standard speed, and the current speed.
+    if (speed != SIO::Baud19200 && speed != SpeedControl + 7)
+      return SIO::Off; // Do not react.
+  }
+  //
   // We just check the command here.
   switch(commandframe[1]) {
   case 0x3f:  // Read speed byte (extended)
-//this command is not exclusive to speedy (KMK)
-//    if (EmulatesSpeedy) {
+    if (DriveModel == Happy1050 || DriveModel == Speedy) {
       datasize = 1;
       return SIO::ReadCommand;
-//    } else {
-//      return SIO::InvalidCommand;
-//    }
-  case 0x41:  // Set user definable command (extended)
-    if (EmulatesSpeedy) {
-      datasize = 3;  // three bytes: Command, address (lo,hi);
-      return SIO::WriteCommand;
     } else {
+      // The remaining cannot....
       return SIO::InvalidCommand;
     }
-  case 0x44:  // set display control byte (extended)
-    if (EmulatesSpeedy) {
-      return SIO::StatusCommand; // wierd enough
-    } else {
-      return SIO::InvalidCommand;
-    }
-  case 0x4b:  // set speed control byte (extended)
-    if (EmulatesSpeedy) {
+  case 0x44:  // set display control byte
+    if (Speedy == Happy810) {
       return SIO::StatusCommand;
     } else {
       return SIO::InvalidCommand;
     }
-  case 0x4c:  // jump w/o status (extended)
-  case 0x4d:  // jump with status (extended)
-    if (EmulatesSpeedy) {
-      return JumpStatusType(sector,datasize);
+  case 0x4b:  // set speed control byte (extended)
+    if (Speedy == Happy810) {
+      return SIO::StatusCommand;
     } else {
       return SIO::InvalidCommand;
     }
   case 0x4e:  // read geometry (extended)
-    if (Emulates815) {
+    if (DriveModel >= Happy1050 || DriveModel == Atari815) {
       datasize = 12;
       return SIO::ReadCommand;
     } else {
       return SIO::InvalidCommand;
     }
   case 0x4f:  // write geometry (extended)
-    if (Emulates815) {
+    if (DriveModel >= Happy1050 || DriveModel == Atari815) {
       datasize = 12;
       return SIO::WriteCommand;
     } else {
       return SIO::InvalidCommand;
     }   
-  case 0x51:  // write back cache (extended)
-    if (EmulatesSpeedy) {
+  case 0x51:  // write back cache (extended) Unclear which drives support this.
+    if (DriveModel == Happy1050 || DriveModel == Speedy) {
       return SIO::StatusCommand;
     } else {
       return SIO::InvalidCommand;
     } 
   case 0xd0:
-  case 0xd7:  // doubler fast write?  
-    if (!EmulatesSpeedy) {
-      return SIO::InvalidCommand;
-    }
-    // Runs into the following...
+  case 0xd7:  // XF551 fast write
+  case 0x70:
+  case 0x77:  // Warp Speed fast write
   case 0x50:  // write w/o verify
   case 0x57:  // write with verify   
-    if ((datasize = SpeedyBankSize(sector)))
-      return SIO::WriteCommand;
+    if ((commandframe[1] & 0x80) && DriveModel != XF551 && DriveModel != IndusGT)
+      return SIO::InvalidCommand;
+    if ((commandframe[1] & 0x20) && DriveModel != Happy810)
+      return SIO::InvalidCommand; 
+    if (DriveModel == USTurbo)
+      sector &= 0x7fff; // remove high speed indicator.
     // True hardware sector size: Ask the disk otherwise.
     LastFDCCommand = FDC_Write;
     // If no disk, leave at zero.
@@ -859,49 +752,124 @@ SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &dat
       datasize = SectorSize; // 128;
     }
     return SIO::WriteCommand;
-  case 0x21:  // format single density
-    datasize       = SectorSize; // Keep as defined by the status command
-    // (DiskStatus == Double)?256:128; // This looks wierd, but seems to be correct!
-    LastFDCCommand = FDC_WriteTrack;
-    return SIO::FormatCommand;  
-  case 0x22:  // format enhanced density  
-    datasize       = 128;
-    LastFDCCommand = FDC_WriteTrack;
-    return SIO::FormatCommand;
-  case 0x23:  // Start drive test
-    datasize       = 128;
-    LastFDCCommand = FDC_Seek;
-    return SIO::WriteCommand;
-  case 0x24:  // Stop drive test, deliver the results.
-    datasize      = 128;
-    return SIO::ReadCommand;
-  case 0xd2:  // doubler fast read?
-  case 0x55:  // happy fast read? 
-    if (!EmulatesSpeedy) {
+  case 0x20:  // Format auto. Speedy only.
+    if (DriveModel == Speedy) {
+      datasize       = SectorSize;
+      LastFDCCommand = FDC_WriteTrack;
+      return SIO::FormatCommand;
+    } else {
       return SIO::InvalidCommand;
     }
-    // Runs into the following...
-  case 0x52:  // read
-    if ((datasize = SpeedyBankSize(sector)))
+  case 0xa1:
+  case 0x21:  // format single density, supported by all drives. 
+    if ((commandframe[1] & 0x80) && DriveModel != XF551 && DriveModel != IndusGT)
+      return SIO::InvalidCommand;
+    datasize       = SectorSize; // Keep as defined by the status command
+    LastFDCCommand = FDC_WriteTrack;
+    return SIO::FormatCommand;  
+  case 0xa2:
+  case 0x22:  // format enhanced density  
+    if ((commandframe[1] & 0x80) && DriveModel != XF551 && DriveModel != IndusGT)
+      return SIO::InvalidCommand;
+    if (DriveModel >= Atari1050) {
+      datasize       = 128;
+      LastFDCCommand = FDC_WriteTrack;
+      return SIO::FormatCommand;
+    } else {
+      return SIO::InvalidCommand;
+    }
+  case 0x23:  
+    // Start drive test: 1050 only. 
+    // Maybe the diags are supported by other drive types as well?
+    if (DriveModel == Atari1050) {
+      datasize       = 128;
+      LastFDCCommand = FDC_Seek;
+      return SIO::WriteCommand;
+    } else if (DriveModel == XF551 || DriveModel == IndusGT) {
+      // Very smart to use the diag command to format a disk.... Oh well.
+      datasize       = SectorSize;
+      LastFDCCommand = FDC_WriteTrack;
+      return SIO::FormatCommand;  
+    } else {
+      return SIO::InvalidCommand;
+    }
+  case 0x24:  
+    // Stop drive test, deliver the results: 
+    // Also 1050 only, maybe supported by some other drives?
+    if (DriveModel == Atari1050) {
+      datasize      = 128;
       return SIO::ReadCommand;
+    } else {
+      return SIO::InvalidCommand;
+    }
+  case 0xd2:  // doubler fast read
+  case 0x72:  // Warp fast read
+  case 0x52:  // regular read
+    if ((commandframe[1] & 0x80) && DriveModel != XF551 && DriveModel != IndusGT)
+      return SIO::InvalidCommand;
+    if ((commandframe[1] & 0x20) && DriveModel != Happy810)
+      return SIO::InvalidCommand;
+    if (DriveModel == USTurbo)
+      sector &= 0x7fff; // remove high speed indicator.
     LastFDCCommand = FDC_Read;
     if (Disk && ProtectionStatus != UnLoaded) {
       datasize = Disk->SectorSize(sector);
     } else {
-      datasize = SectorSize; //128;
+      datasize = SectorSize;
     }
     return SIO::ReadCommand;
-  case 0xd3:  // doubler fast status? 
-    if (!EmulatesSpeedy) {
+  case 0xd3:
+  case 0x73:
+  case 0x53: // all variations of the status command
+    if ((commandframe[1] & 0x80) && DriveModel != XF551 && DriveModel != IndusGT)
       return SIO::InvalidCommand;
-    }
-    // Runs into the following...
-  case 0x53:  // Read Status
+    if ((commandframe[1] & 0x20) && DriveModel != Happy810)
+      return SIO::InvalidCommand;
     datasize = 4;
     return SIO::ReadCommand;
+  case 0x48: // Happy enable high speed mode.
+    if (DriveModel == Happy1050 || DriveModel == Happy810) {
+      return SIO::StatusCommand;
+    } else {
+      return SIO::InvalidCommand;
+    }
   }
+  // TODO: Implement the double-sided mode ("set large mode") of the 1450XLD,
+  // and the corresponding SetSmallMode. Commands 1,2, respectively.
+  // Implement custom format of the US Doubler (0x66). Data is the PERCOM block
+  // plus the sector skew table.
 
   return SIO::InvalidCommand;
+}
+///
+
+/// DiskDrive::AcknowledgeCommandFrame
+// Acknowledge the command frame. This is called as soon the SIO implementation
+// in the host system tries to receive the acknowledge function from the
+// client. Will return 'A' in case the command frame is accepted. Note that this
+// is only called if CheckCommandFrame indicates already a valid command.
+UBYTE DiskDrive::AcknowledgeCommandFrame(const UBYTE *,UWORD &,UWORD &speed)
+{
+  UWORD cur = speed;
+  // USTurbo responds in high speed, so does the Happy1050. Everything
+  // else requires standard speed.
+  switch(DriveModel) {
+  case USTurbo:
+    speed = SpeedControl + 7;
+    if (cur != speed)
+      return 'N';
+    return 'A';
+    break;
+  case Happy1050: 
+  case Speedy:
+    // Both works!
+    return 'A';
+  default:
+    speed = SIO::Baud19200;
+    if (cur != speed)
+      return 'N';
+    return 'A';
+  }
 }
 ///
 
@@ -911,16 +879,26 @@ SIO::CommandType DiskDrive::CheckCommandFrame(const UBYTE *commandframe,int &dat
 // Does not alter the size passed in since we work on the full
 // buffer.
 UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
-			     int &size,UWORD &delay)
+			     int &size,UWORD &delay,UWORD speed)
 {
   UWORD  sector = UWORD(commandframe[2] | (commandframe[3] << 8));
-  
+  //
+  // Ok, check the transfer speed. Some drives do not react on all speeds.
+  switch(DriveModel) {
+  case Atari810:
+  case Atari815:
+  case Atari1050:
+    // Only the standard speed.
+    if (speed != SIO::Baud19200)
+      return SIO::Off; // Do not react.
+    break;
+  default:
+    // Only the standard speed, and the current speed.
+    if (speed != SIO::Baud19200 && speed != SpeedControl + 7)
+      return SIO::Off; // Do not react.
+  } 
+  //
   switch (commandframe[1]) { 
-  case 0x41 :  
-    return InstallUserCommand(buffer,size);
-  case 0x4c:
-  case 0x4d:  // These two are ignored here: We do not care about write jumped bytes
-    return 'C';
   case 0x4f:  // Write Status Block
     return WriteStatusBlock(buffer,size);
   case 0x23:  // Start drive test.
@@ -951,30 +929,21 @@ UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
   case 0x57: // Write with and without verify
   case 0xd0:
   case 0xd7: // Doubler commands
-    // We check here special sector counts for the Speedy CPU RAM
-    // access.
-    {
-      size_t sectorsize,sz = size;
-      sectorsize = SpeedyBankSize(sector);
-      if (sectorsize == 0) {
-	// Ok, here we are dealing with a true disk sector. Perform the write.
-	if (Disk && ProtectionStatus == ReadWrite) {
-	  LastSector  = sector;
-	  sectorsize  = Disk->SectorSize(sector);
-	  if (sectorsize == sz) {
-	    return Disk->WriteSector(sector,buffer,delay);
-	  }
-	}
-	// Signal an error in all other cases.
-	return 'E';
-      } else if (sectorsize == sz) {
-	// Write into a speedy bank
-	UBYTE *bank = SpeedyBank(sector);
-	memcpy(bank,buffer,sectorsize);
-	return 'C';
+  case 0x70:
+  case 0x77:
+    if (DriveModel == USTurbo)
+      sector &= 0x7fff; // remove high speed indicator.
+    if (Disk && ProtectionStatus == ReadWrite) {
+      UWORD sectorsize  = Disk->SectorSize(sector);
+      LastSector  = sector;
+      if (sectorsize == size) {
+	return Disk->WriteSector(sector,buffer,delay);
       }
     }
-  }  
+    // Signal an error in all other cases.
+    return 'E';
+  }
+  
   machine->PutWarning("Unknown command frame: %02x %02x %02x %02x\n",
 		      commandframe[0],commandframe[1],commandframe[2],commandframe[3]);
 
@@ -988,47 +957,66 @@ UBYTE DiskDrive::WriteBuffer(const UBYTE *commandframe,const UBYTE *buffer,
 // byte which is computed for us by the SIO.
 // We do not alter the size passed in since we read the command
 // completely.
-UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &delay)
+UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD &delay,UWORD &speed)
 {
   UWORD sector = UWORD(commandframe[2] | (commandframe[3] << 8));
-  
+  //
+  // Ok, check the transfer speed. Some drives do not react on all speeds.
+  switch(DriveModel) {
+  case Atari810:
+  case Atari815:
+  case Atari1050:
+    // Only the standard speed.
+    speed = SIO::Baud19200;
+    break;
+  default:
+    // Only the standard speed, and the current speed.
+    break;
+  } 
+  //  
   switch (commandframe[1]) {
   case 0x3f: // Read Speed Byte
     buffer[0]      = SpeedControl;
     return 'C';
-  case 0x4c:
-  case 0x4d:
-    // This is "jump with status". We only emulate it partially.
-    return JumpStatus(sector,buffer);
   case 0x4e: // Read Status
     return ReadStatusBlock(buffer);
+  case 0x72:
+  case 0xd2: // doubler fast read
+    speed = SpeedControl + 7;
   case 0x52: // Read (read command)  
-  case 0x55: // happy fast read?
-  case 0xd2: // doubler fast read?
-    {
-      size_t sectorsize = SpeedyBankSize(sector);
-      if (sectorsize == 0) {
-	// Is not a speedy bank, ask usual floppy
-	if (Disk) {
-	  LastSector  = sector;
-	  return Disk->ReadSector(sector,buffer,delay);
-	}
-	// Return an error otherwise.
-	return 'E';
-      } else {
-	// Otherwise copy the contents from the Speedy bank over
-	UBYTE *bank = SpeedyBank(sector);
-	memcpy(buffer,bank,sectorsize);
-	return 'C';
-      }
+    if (DriveModel == USTurbo && (sector & 0x8000)) {
+      sector &= 0x7fff; // remove high speed indicator.
+      speed   = SpeedControl + 7;
     }
-  case 0x53: // Status (read command)
+    if (Disk) {
+      LastSector  = sector;
+      return Disk->ReadSector(sector,buffer,delay);
+    }
+    // Return an error otherwise.
+    return 'E';
   case 0xd3: // Doubler fast read?
+  case 0x73:
+    speed = SpeedControl + 7;
+  case 0x53: // Status (read command)
     return DriveStatus(buffer);
+  case 0xa1:
+    speed = SpeedControl + 7;
   case 0x21 : // single density format
+  case 0x20 : // Speedy format auto.
+  case 0x23 : // Indus and XF551 format with sector skew command.
+    if (DriveModel == USTurbo && (sector & 0x8000)) {
+      sector &= 0x7fff; // remove high speed indicator.
+      speed   = SpeedControl + 7;
+    }
     LastSector = 1;
     return FormatSingle(buffer,sector);
+  case 0xa2:
+    speed = SpeedControl + 7;
   case 0x22:
+    if (DriveModel == USTurbo && (sector & 0x8000)) {
+      sector &= 0x7fff; // remove high speed indicator.
+      speed   = SpeedControl + 7;
+    }
     LastSector = 1;
     return FormatEnhanced(buffer,sector);
   case 0x24: // Return drive test results.
@@ -1068,21 +1056,34 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD 
 /// DiskDrive::ReadStatus
 // Execute a status-only command that does not read or write any data except
 // the data that came over AUX1 and AUX2
-UBYTE DiskDrive::ReadStatus(const UBYTE *commandframe,UWORD &)
-{
+UBYTE DiskDrive::ReadStatus(const UBYTE *commandframe,UWORD &,UWORD &speed)
+{ 
+  // Ok, check the transfer speed. Some drives do not react on all speeds.
+  switch(DriveModel) {
+  case Atari810:
+  case Atari815:
+  case Atari1050:
+    // Only the standard speed.
+    speed = SIO::Baud19200;
+    break;
+  default:
+    // Only the standard speed, and the current speed.
+    break;
+  } 
+  //
   switch(commandframe[1]) {  
-  case 0x44: // Set Display control. This is a read command (Yuck!)
-    DisplayControl = commandframe[2];
-    return 'C';
-  case 0x4b:  // set speed control byte (extended)
-    SpeedControl   = commandframe[2];
-    return 'C'; // does nothing
-  case 0x4c:    // jump w/o status (extended)
-    return 'C';
-  case 0x4d:  // this command *may* send no return
+  case 0x44:  // Set Display control.
     return 'C';
   case 0x51:  // write back cache (extended)
     return 'C'; // does nothing, there is no cache.
+  case 0x48:  // Enable high speed mode.
+    return 'C';
+  case 0x4b:  // Happy slow/fast config.
+    return 'C';
+  case 0x55:  // Motor on
+    return 'C';
+  case 0x56:  // Verify sector
+    return 'C';
   }
   machine->PutWarning("Unknown command frame: %02x %02x %02x %02x\n",
 		      commandframe[0],commandframe[1],commandframe[2],commandframe[3]);
@@ -1136,7 +1137,7 @@ void DiskDrive::EjectDisk(void)
 // have one.
 void DiskDrive::InsertDisk(bool protect)
 {
-  if (ImageToLoad) {
+  if (ImageToLoad && *ImageToLoad) {
     LoadImage(ImageToLoad);
 #if CHECK_LEVEL > 0
     if (ImageName)
@@ -1153,6 +1154,8 @@ void DiskDrive::InsertDisk(bool protect)
       // This should hopefully work now.
       ProtectionStatus = (Disk->Status() & DiskImage::Protected)?(ReadOnly):(ReadWrite);
     }
+  } else {
+    EjectDisk();
   }
 }
 ///
@@ -1161,35 +1164,94 @@ void DiskDrive::InsertDisk(bool protect)
 // Argument parser stuff: Parse off command line args
 void DiskDrive::ParseArgs(class ArgParser *args)
 {  
-  char enableoption[32],imageoption[32],protectoption[32],drivemenu[32],ejectoption[32];
-  char speedyoption[32],doubleoption[32];
-  bool protect = (ProtectionStatus == ReadOnly);
-  bool onoff   = (ProtectionStatus != Off);
-  bool eject   = false;
+  static const struct ArgParser::SelectionVector drivetypevector[] =
+    { {"1050",           Atari1050 },
+      {"810",            Atari810  },
+      {"815",            Atari815  },
+      {"Happy1050",      Happy1050 },
+      {"WarpSpeed810",   Happy810  },
+      {"Speedy",         Speedy    },
+      {"XF551",          XF551     },
+      {"USTurbo",        USTurbo   },
+      {"IndusGT",        IndusGT   },
+      {NULL,             0         }
+    };
+  char enableoption[32],imageoption[32],protectoption[32],drivemenu[32];
+  char typeoption[32];
+  char speedoption[32];
+  bool protect   = (ProtectionStatus == ReadOnly);
+  bool onoff     = (ProtectionStatus != Off);
+  LONG drivetype = DriveModel;
+  LONG speed     = SpeedControl;
+  LONG newspeed  = -1;
+  const char *warning = NULL;
 
   // generate the appropriate options now
   sprintf(enableoption,"Enable.%d",DriveId+1);
   sprintf(imageoption,"Image.%d",DriveId+1);
   sprintf(protectoption,"Protect.%d",DriveId+1);
-  sprintf(ejectoption,"Eject.%d",DriveId+1);
   sprintf(drivemenu,"Drive.%d",DriveId+1);
-  sprintf(speedyoption,"Happy.%d",DriveId+1);
-  sprintf(doubleoption,"Emul815.%d",DriveId+1);
+  sprintf(typeoption,"DriveModel.%d",DriveId+1);
 
   if (DriveId == 0) {
     args->DefineTitle("DiskDrive");
     args->OpenSubItem("Disks");
   }
-  if (ImageToLoad && *ImageToLoad && ProtectionStatus == UnLoaded) {
-    eject = true;
-  } 
   args->OpenSubItem(drivemenu);
+  args->DefineFile(imageoption,"load the drive with the specified image",ImageToLoad,true,true,false);
   args->DefineBool(enableoption,"power the drive on",onoff);
   args->DefineBool(protectoption,"write protect the image file",protect); 
-  args->DefineBool(ejectoption,"eject disk in the specified drive",eject);
-  args->DefineBool(doubleoption,"enable 815 double density drive",Emulates815);
-  args->DefineBool(speedyoption,"enable Speedy emulation",EmulatesSpeedy);
-  args->DefineFile(imageoption,"load the drive with the specified image",ImageToLoad,true,true,false);
+  args->DefineSelection(typeoption,"disk drive type and features",drivetypevector,drivetype);
+  if (drivetype != LONG(DriveModel)) {
+    //
+    // Reset the speed to the default speed
+    switch(drivetype) {
+    case Atari810:
+    case Atari815:
+    case Atari1050:
+      newspeed = 40;
+      break;
+    case Happy1050:
+      newspeed = 10;
+      break;
+    case Speedy:
+      newspeed = 9;
+      break;
+    case Happy810:
+    case XF551:
+      newspeed = 16;
+      break;
+    case USTurbo:
+    case IndusGT:
+      newspeed = 6;
+      break;
+    }
+    speed = SpeedControl = UBYTE(newspeed);
+  }
+  switch(drivetype) {
+  case Happy1050:
+  case Happy810:
+  case Speedy:
+  case XF551:
+  case USTurbo:
+  case IndusGT:
+    sprintf(speedoption,"%sSpeed.%d",drivetypevector[drivetype].Name,DriveId+1);
+    args->DefineLong(speedoption,"serial transfer speed",2,40,speed);
+    break;
+  default:
+    // These drives are not configurable. The speed is fixed at the classical pokey divisor of 40
+    speed = 40;
+    break;
+  }
+  args->CloseSubItem();  
+  if (newspeed >= 0) {
+    speed = SpeedControl = UBYTE(newspeed);
+    args->SignalBigChange(ArgParser::Reparse);
+  }
+  // The next "DefineTitle" opens a new root item anyhow, no need to 
+  // close this explicitly.
+  DriveModel   = DriveType(drivetype);
+  SpeedControl = UBYTE(speed);
   
   if (onoff == false) {
     SwitchPower(false);
@@ -1198,23 +1260,20 @@ void DiskDrive::ParseArgs(class ArgParser *args)
     if (ProtectionStatus == Off)
       ProtectionStatus = UnLoaded;
   }
-  if ((eject || (ImageToLoad && *ImageToLoad)) && ProtectionStatus != Off) {
-    // Avoid disk changes if possible.
-    if (eject) {
-      if (ImageName) {
-	EjectDisk();
-      }
-    } else {
-      if (ImageName == NULL || ImageToLoad      == NULL || strcmp(ImageToLoad,ImageName) ||
-	  (protect  ==true  && ProtectionStatus == ReadWrite) ||
-	  (protect  ==false && ProtectionStatus == ReadOnly)) {
-	InsertDisk(protect);
-      }
+  if (ProtectionStatus != Off) {
+    if (ImageName == NULL || ImageToLoad      == NULL || strcmp(ImageToLoad,ImageName) ||
+	(protect  ==true  && ProtectionStatus == ReadWrite) ||
+	(protect  ==false && ProtectionStatus == ReadOnly)) {
+      InsertDisk(protect);
     }
   }
-  args->CloseSubItem();
-  // The next "DefineTitle" opens a new root item anyhow, no need to 
-  // close this explicitly.
+
+  warning = CheckDiskCompatibility();
+  if (warning) {
+    //machine->PutWarning("Disk format is not supported natively: %s",warning);
+    EjectDisk();
+    throw AtariException("unsupported disk format","DiskDrive::ParseArgs","%s",warning);
+  }
 }
 ///   
 
@@ -1266,7 +1325,7 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
   }
 
   if (ProtectionStatus == ReadWrite || ProtectionStatus == ReadOnly) {
-    const char *disktype,*imagetype;
+    const char *disktype,*imagetype,*drivetype;
     // There is more to print
     switch(DiskStatus) {
     case None:
@@ -1312,14 +1371,47 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
     default:
       imagetype = "Undefined";
     }
+    switch(DriveModel) {
+    case Atari810:
+      drivetype = "Atari 810";
+      break;
+    case Atari815:
+      drivetype = "Atari 815";
+      break;
+    case Atari1050:
+      drivetype = "Atari 1050";
+      break;
+    case Happy1050:
+      drivetype = "Happy 1050";
+      break;
+    case Happy810:
+      drivetype = "Warp Speed 810";
+      break;
+    case Speedy:
+      drivetype = "Speedy";
+      break;
+    case XF551:
+      drivetype = "XF551";
+      break;
+    case USTurbo:
+      drivetype = "US Turbo";
+      break;
+    case IndusGT:
+      drivetype = "Indus GT";
+      break;
+    default:
+      drivetype = "Invalid";
+      break;
+    }
     //
-    mon->PrintStatus("\tImage file       : %s\n"
+    mon->PrintStatus("\tDrive model      : %s\n"
+		     "\tImage file       : %s\n"
 		     "\tDisk format      : %s\n"
 		     "\tImage file format: %s\n"
 		     "\tSectors          : " LU "\n"
 		     "\tSector size      : %d\n"
 		     "\tSectors per track: " LU "\n",
-		     ImageName,disktype,imagetype,SectorCount,SectorSize,SectorsPerTrack);
+		     drivetype,ImageName,disktype,imagetype,SectorCount,SectorSize,SectorsPerTrack);
   }
   mon->PrintStatus("\n");
 }

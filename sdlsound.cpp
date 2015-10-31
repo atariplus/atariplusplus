@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlsound.cpp,v 1.31 2008-05-22 13:03:54 thor Exp $
+ ** $Id: sdlsound.cpp,v 1.33 2015/09/25 09:33:26 thor Exp $
  **
  ** In this mdoule: This class implements audio output thru the SDL library
  ** as available.
@@ -32,7 +32,7 @@ SDLSound::SDLSound(class Machine *mach)
     FragSize(9), NumFrags(6),
     CycleCarry(0), ConsoleVolume(32), BufferedSamples(0), UpdateSamples(0)
 {
-#if defined _WIN32
+#if defined _WIN32 || defined OS2
   // Windows DirectSound/WaveOut doesn't seem to be able
   // to catch up with higher frequencies...
   FragSize     = 10;
@@ -213,7 +213,7 @@ void SDLSound::UpdateSound(class Timer *delay)
       }    
       SDL_UnlockAudio();
     }
-  } else {
+  } else if (delay) {
     // No sound enabled, just wait.
     delay->WaitForEvent();
   }

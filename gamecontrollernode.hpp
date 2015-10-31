@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gamecontrollernode.hpp,v 1.4 2010-04-25 20:30:43 thor Exp $
+ ** $Id: gamecontrollernode.hpp,v 1.5 2015/05/21 18:52:39 thor Exp $
  **
  ** In this module: Definition of the interface towards game controller inputs
  **                 This defines the class that keeps and collects the input from

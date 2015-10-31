@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_displaybuffer.cpp,v 1.43 2008-03-22 23:05:20 thor Exp $
+ ** $Id: x11_displaybuffer.cpp,v 1.45 2015/10/18 16:48:16 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -128,7 +128,7 @@ void X11_DisplayBuffer::MousePosition(LONG &x,LONG &y,bool &button)
   int rootx,rooty;
   int winx,winy;
   unsigned int mask;
-  Window activeroot,activechild;
+  Window activeroot = 0,activechild = 0;
   //  
   // Ok, query the mouse state from the X server now
   if (XQueryPointer(display,window,&activeroot,&activechild,

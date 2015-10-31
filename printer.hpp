@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: printer.hpp,v 1.14 2013-02-05 02:07:11 thor Exp $
+ ** $Id: printer.hpp,v 1.16 2014/03/16 14:54:08 thor Exp $
  **
  ** In this module: Support for printer output.
  **********************************************************************************/
@@ -87,21 +87,22 @@ public:
   // and have to be implemented in order to make this work:
   // Check whether this device accepts the indicated command
   // as valid command, and return the command type of it.
-  virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize);
+  virtual SIO::CommandType CheckCommandFrame(const UBYTE *CommandFrame,int &datasize,
+					     UWORD speed);
   //
   // Read bytes from the device into the system. Returns the number of
   // bytes read.
   virtual UBYTE ReadBuffer(const UBYTE *CommandFrame,UBYTE *buffer,
-			   int &datasize,UWORD &delay);
+			   int &datasize,UWORD &delay,UWORD &speed);
   //  
   // Write the indicated data buffer out to the target device.
   // Return 'C' if this worked fine, 'E' on error.
   virtual UBYTE WriteBuffer(const UBYTE *CommandFrame,const UBYTE *buffer,
-			    int &datasize,UWORD &delay);
+			    int &datasize,UWORD &delay,UWORD speed);
   //
   // Execute a status-only command that does not read or write any data except
   // the data that came over AUX1 and AUX2
-  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay);
+  virtual UBYTE ReadStatus(const UBYTE *CommandFrame,UWORD &delay,UWORD &speed);
   //
   // Other methods imported by the SerialDevice class:
   //

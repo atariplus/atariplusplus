@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlanalog.cpp,v 1.9 2009-05-16 20:00:28 thor Exp $
+ ** $Id: sdlanalog.cpp,v 1.10 2015/05/21 18:52:42 thor Exp $
  **
  ** In this module: SDL analog joystick interface
  **********************************************************************************/
