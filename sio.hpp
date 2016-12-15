@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.hpp,v 1.28 2015/09/25 18:50:31 thor Exp $
+ ** $Id: sio.hpp,v 1.29 2016/12/04 17:30:54 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.
@@ -114,6 +114,7 @@ private:
   LONG                Write_Done_Delay; // typical delay to accept a write frame
   LONG                Read_Done_Delay;  // typical time to complete a read command
   LONG                Format_Done_Delay;// typical time to complete a format command
+  LONG                Read_Deliver_Delay; // delay from the ok of the read to the delivery of the data
   //
   //
   // Miscellaneous internal methods

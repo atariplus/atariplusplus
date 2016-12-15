@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.hpp,v 1.69 2015/05/21 18:52:40 thor Exp $
+ ** $Id: gtia.hpp,v 1.70 2015/12/11 16:27:36 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -564,6 +564,7 @@ private:
   // GTIA Settings
   bool ColPF1FiddledArtifacts; // If true, then emulate color artifacts.
   bool NTSC;                   // If true, we are running an NTSC GTIA
+  bool isAuto;                 // If true, the video mode comes from the machine.
   LONG PMReaction;             // Number of half-color clocks required as pre-fetch for the Player logic.
   LONG PMResize;               // Ditto for resizing the channel.
   LONG PMShape;                // Ditto for writing the graphics register.

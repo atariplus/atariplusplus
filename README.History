@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.96 2015/10/30 17:28:33 thor Exp $
+# $Id: README.History,v 1.97 2016/12/15 13:02:29 thor Exp $
 #
 
 Atari++ 1.00:
@@ -1006,4 +1006,16 @@ Atari++ 1.80
 	- The BCD to integer conversion was pretty slow. The new release replaces the
 	algorithm completely, making it a lot faster.
 	
+
+Atari++ 1.81
+	- Fixed a bug in SIO that prevented correct emulation with the SIO patch enabled.
+	- Fixed a timing issue in the SIO emulation that sometimes returned a command
+	  acknowledge too early for the ROM codes to react.
+	- Fixed a minor bug in the Pokey SIO sound emulation of SIO.
+	- Fixed the command handling of the USDoubler disk drive emulation.
+	- Updated Os++, the build-in operating system. A bug in the screen-handler
+	  prevented that the screen goes back to the editor in case an already established
+	  text window is closed by a screen-open command.
+	- Minor cleanup in the command line of the built-in Dos of Os++.
+	- Updated Basic++ to the latest version 1.06.
 	

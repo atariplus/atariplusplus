@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.138 2015/11/07 18:53:12 thor Exp $
+ ** $Id: pokey.cpp,v 1.142 2016/12/05 21:04:20 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -136,6 +136,7 @@ Pokey::Pokey(class Machine *mach,int unit)
   AllPot           = 0x00;
   // PAL operation
   NTSC             = false;
+  isAuto           = true;
   SIOSound         = true;
   CycleTimers      = false;
   Outcnt           = 0;
@@ -588,7 +589,7 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
       bool bit   = true;
       //
       if (SkCtrl & 0x10) {
-	if (SerIn_Counter > 0 && SerInBuffer && SerInRate > 0) {
+	if (SerIn_Counter > 0 && SerInBuffer && SerInRate > 0 && SerInBytes > 0) {
 	  int bitposition   = (SerIn_Counter + SerInRate - 1) / SerInRate; // "half-bits"
 	  //
 	  if (bitposition == 20 || bitposition == 19) { 
@@ -604,7 +605,7 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
 	if (bit)
 	  Ch[3].AudioV = (Ch[3].AudioV * 3) >> 2;
       }
-      if (sio->isMotorEnabled()) {
+      if (sio && sio->isMotorEnabled()) {
 	class Tape *tape = machine->Tape();
 	if (tape && tape->isPlaying() && tape->isRecording() == false) {
 	  // Misuse channel 3 to generate the sound. It is actually the serial counter.
@@ -759,7 +760,7 @@ void Pokey::ComputeSamples(struct AudioBufferBase *to,int size,int dspsamplerate
       if (SkCtrl & 0x08) {
 	switch(next_event) {
 	case 1: // Channel 1 syncs channel 0 always.
-	  Ch[0].DivNCnt = Ch[0].DivNMax;
+	  Ch[0].DivNCnt   = Ch[0].DivNMax;
 	  break;
 	case 0: // Channel 0 syncs channel 1 if the serial register is set.
 	  if ((SerOut_Register & 0x01) && (SkCtrl & 0x80) == 0)
@@ -890,6 +891,7 @@ void Pokey::GoNSteps(int steps)
     //
     // Check for serial input done.
     if (SerIn_Counter > 0) {
+      bool update = (SerInBytes && SerIn_Counter > SerIn_Delay)?true:false;
       if ((SerIn_Counter -= steps) <= 0) {  
 	// If we parsed the line manually, check whether
 	// the stop bit was parsed as well. If so, the data
@@ -917,6 +919,8 @@ void Pokey::GoNSteps(int steps)
 	  }
 	}
       }
+      if (update && SerInBytes && SerIn_Counter <= SerIn_Delay && SIOSound)
+	UpdateSound(0x0c);
     }
     //
     // Check whether there is some output from the serial register.
@@ -1852,8 +1856,9 @@ void Pokey::DisplayStatus(class Monitor *mon)
 void Pokey::ParseArgs(class ArgParser *args)
 {  
   static const struct ArgParser::SelectionVector palvector[] = 
-    { {"PAL"          ,false},
-      {"NTSC"         ,true },
+    { {"Auto"         ,2    },
+      {"PAL"          ,0    },
+      {"NTSC"         ,1    },
       {NULL           ,0}
     };
   LONG ntsc;
@@ -1861,11 +1866,13 @@ void Pokey::ParseArgs(class ArgParser *args)
   bool saprecording = EnableSAP;
   //
   //
-  ntsc = LONG(NTSC);
+  ntsc = NTSC?1:0;
+  if (isAuto)
+    ntsc = 2;
   args->DefineTitle((Unit)?"ExtraPokey":"Pokey");
   args->DefineLong("Volume","set Pokey volume in percent",0,300,Volume);
   args->DefineLong("Gamma","set Pokey output linearity in percent",50,150,Gamma);
-  args->DefineSelection("VideoMode","set POKEY base frequency",palvector,ntsc);
+  args->DefineSelection("PokeyTimeBase","set POKEY base frequency",palvector,ntsc);
   args->DefineBool("SIOSound","emulate serial transfer sounds",SIOSound);
   args->DefineBool("CyclePrecise","cycle precise pokey timers",cycle);
   args->DefineLong("FilterConstant","set high-pass filtering constant",0,1024,DCFilterConstant);
@@ -1910,9 +1917,16 @@ void Pokey::ParseArgs(class ArgParser *args)
     CycleTimers = cycle;
   }
   //
+  // For the auto selection, get the video mode from the machine.
+  if (ntsc == 2) {
+    ntsc   = machine->isNTSC();
+    isAuto = true;
+  } else {
+    isAuto = false;
+  }
+  //
   // If the video mode changed, ensure that the sound-subsystem is restarted.
   if (ntsc != LONG(NTSC)) {
-    NTSC = (ntsc)?(true):(false);
     args->SignalBigChange(ArgParser::Reparse);
   }
   // The global sound might have been redefined. Re-read here.

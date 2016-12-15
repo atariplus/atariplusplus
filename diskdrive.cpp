@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.93 2015/11/07 18:53:12 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.94 2016/12/04 17:30:53 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -95,7 +95,7 @@ DiskDrive::DiskDrive(class Machine *mach,const char *name,int id)
   Disk             = NULL;
   ImageName        = NULL;
   ImageToLoad      = NULL;
-  SpeedControl     = 40; // speedy default speed: that of a 1050 (in pokey timers, must add 7)
+  SpeedControl     = SIO::Baud19200 - 7; // speedy default speed: that of a 1050 (in pokey timers, must add 7)
   //
   // Install drive default settings: 128 byte sectors, 720 of them.
   SectorSize       = 128;
@@ -855,11 +855,6 @@ UBYTE DiskDrive::AcknowledgeCommandFrame(const UBYTE *,UWORD &,UWORD &speed)
   // else requires standard speed.
   switch(DriveModel) {
   case USTurbo:
-    speed = SpeedControl + 7;
-    if (cur != speed)
-      return 'N';
-    return 'A';
-    break;
   case Happy1050: 
   case Speedy:
     // Both works!

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.hpp,v 1.76 2015/10/17 18:45:12 thor Exp $
+ ** $Id: machine.hpp,v 1.77 2015/12/11 16:27:36 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -570,7 +570,9 @@ public:
   //
   // Rebuild the display manually from the user interface
   void RefreshDisplay(void);
-
+  //
+  // Return true in case this is an NTSC machine.
+  bool isNTSC(void) const;
 };
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.101 2015/11/07 18:53:12 thor Exp $
+ ** $Id: monitor.cpp,v 1.103 2016/11/10 20:12:53 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -25,6 +25,15 @@
 
 #include <stdarg.h>
 #include <ctype.h>
+///
+
+/// Defines
+// The OS/2 implementation of ncurses doesn't seem handle the switch from
+// the SDL window well.
+// So for now, we deactivate it.
+#if defined(USE_CURSES) && defined(OS2)
+#undef USE_CURSES
+#endif
 ///
 
 /// Statics
@@ -2888,8 +2897,11 @@ void Monitor::Envi::Apply(char e)
   case 'S':
     token = NextToken();
     if (token) {
-      if (monitor->ParseSymbolTable(token))
+      if (monitor->ParseSymbolTable(token)) {
 	Print("Symbols from %s added to the symbol table.\n",token);
+      } else {
+	Print("No symbols found in %s.\n",token);
+      }
     }
     break;
   case 'L':

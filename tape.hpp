@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: tape.hpp,v 1.11 2015/10/17 18:45:13 thor Exp $
+ ** $Id: tape.hpp,v 1.12 2015/12/11 16:27:36 thor Exp $
  **
  ** In this module: Support for the dump tape.
  **********************************************************************************/
@@ -63,6 +63,9 @@ class Tape : public SerialDevice, private VBIAction {
   //
   // The timing flag - PAL or NTSC
   bool             NTSC;
+  //
+  // This flag is set in case the video mode comes from the machine.
+  bool             isAuto;
   //
   // Inter-gap counter - measures the delay.
   LONG             IRGCounter;

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: machine.cpp,v 1.106 2015/10/17 18:45:12 thor Exp $
+ ** $Id: machine.cpp,v 1.107 2015/12/11 16:27:36 thor Exp $
  **
  ** In this module: Machine/Architecture specific settings
  **********************************************************************************/
@@ -1070,5 +1070,15 @@ void Machine::RefreshDisplay(void)
     Display()->EnforceFullRefresh();
     VBI(&dummy,false,true);
   }
+}
+///
+
+/// Machine::isNTSC
+// Return true in case this is an NTSC machine.
+bool Machine::isNTSC(void) const
+{
+  if (atari)
+    return atari->isNTSC();
+  return false;
 }
 ///

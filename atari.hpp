@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atari.hpp,v 1.8 2015/05/21 18:52:35 thor Exp $
+ ** $Id: atari.hpp,v 1.9 2015/12/11 16:27:35 thor Exp $
  **
  ** In this module: Main loop of the emulator
  **********************************************************************************/
@@ -74,6 +74,12 @@ public:
   //
   // Scale the given frequency to the current base frequency.
   int ScaleFrequency(int freq);
+  //
+  // Return true in case this is NTSC.
+  bool isNTSC(void) const
+  {
+    return NTSC;
+  }
 };
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.cpp,v 1.126 2015/05/21 18:30:57 thor Exp $
+ ** $Id: antic.cpp,v 1.127 2015/12/11 16:27:35 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -178,6 +178,7 @@ Antic::Antic(class Machine *mach)
   YPos                = 0;
   //
   NTSC                = false;
+  isAuto              = true;
   TotalLines          = PALTotal;
   PreviousIR          = 0x0; // Blank lines
   //
@@ -1580,16 +1581,32 @@ void Antic::ComplexWrite(ADR mem,UBYTE val)
 void Antic::ParseArgs(class ArgParser *args)
 {  
   static const struct ArgParser::SelectionVector videovector[] = 
-    { {"PAL" ,false},
-      {"NTSC",true },
+    { {"Auto",2    },
+      {"PAL" ,0    },
+      {"NTSC",1    },
       {NULL ,0}
     };
   LONG val;
 
-  val = NTSC;
+  val = NTSC?1:0;
+  if (isAuto)
+    val = 2;
   args->DefineTitle("ANTIC");
-  args->DefineSelection("VideoMode","sets ANTIC video mode",videovector,val);
-  NTSC = (val)?(true):(false);
+  args->DefineSelection("ANTICVideoMode","sets ANTIC video mode",videovector,val);
+  switch(val) {
+  case 0:
+    NTSC   = false;
+    isAuto = false;
+    break;
+  case 1:
+    NTSC   = true;
+    isAuto = false;
+    break;
+  case 2:
+    NTSC   = machine->isNTSC();
+    isAuto = true;
+    break;
+  }
   /*args->DefineLong("BeforeDLICycles",
     "set position of DLI in CPU cycles",2,11,BeforeDLICycles);*/
   /*args->DefineLong("YPosIncCycle",

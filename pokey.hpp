@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.hpp,v 1.61 2015/11/07 18:53:12 thor Exp $
+ ** $Id: pokey.hpp,v 1.62 2015/12/11 16:27:36 thor Exp $
  **
  ** In this module: Pokey emulation
  **
@@ -219,6 +219,7 @@ class Pokey : public Chip, public Page, public Saveable, private VBIAction, priv
   LONG  Gamma;              // gamma value for audio output mapping in percent (100% => gamma = 1.0)
   LONG  Volume;             // volume gain for output mapping in percent (100% => full volume)
   bool  NTSC;               // PAL/NTSC switch, true for NTSC
+  bool  isAuto;             // true in case the video mode comes from the machine.
   bool  SIOSound;           // Enable emulation of serial transfer sound
   bool  CycleTimers;        // Pokey timers are cycle-precise.
   //

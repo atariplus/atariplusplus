@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.cpp,v 1.128 2015/05/21 18:52:39 thor Exp $
+ ** $Id: gtia.cpp,v 1.129 2015/12/11 16:27:35 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -62,6 +62,7 @@ GTIA::GTIA(class Machine *mach)
   //
   ColPF1FiddledArtifacts = false;
   NTSC                   = false;
+  isAuto                 = true;
   Speaker                = false;  
   PALColorBlur           = false;
   AntiFlicker            = false;
@@ -2555,8 +2556,9 @@ void GTIA::ParseArgs(class ArgParser *args)
   char cmaskname[64];
   int i;
   static const struct ArgParser::SelectionVector videovector[] = 
-    { {"PAL"          ,false},
-      {"NTSC"         ,true },
+    { {"Auto"         ,2    },
+      {"PAL"          ,0    },
+      {"NTSC"         ,1    },
       {NULL           ,0}
     };
   static const struct ArgParser::SelectionVector playervector[] =
@@ -2580,10 +2582,12 @@ void GTIA::ParseArgs(class ArgParser *args)
       {NULL              ,0}
     };
 
-  val = NTSC;
+  val = NTSC?1:0;
+  if (isAuto)
+    val = 2;
   gen = ChipGeneration;
   args->DefineTitle("GTIA");
-  args->DefineSelection("VideoMode","set GTIA video mode",videovector,val);
+  args->DefineSelection("GTIAVideoMode","set GTIA video mode",videovector,val);
   args->DefineSelection("ChipGeneration","set GTIA chip revision",generationvector,gen);
   args->DefineBool("Artifacts","enable COLPF1 artifacts",ColPF1FiddledArtifacts);
   args->DefineBool("PALColorBlur","enable color blur between adjacent lines",PALColorBlur);
@@ -2597,7 +2601,20 @@ void GTIA::ParseArgs(class ArgParser *args)
     // of the palette
     args->SignalBigChange(ArgParser::Reparse);
   }
-  NTSC     = (val)?(true):(false);
+  switch(val) {
+  case 0:
+    NTSC   = false;
+    isAuto = false;
+    break;
+  case 1:
+    NTSC   = true;
+    isAuto = false;
+    break;
+  case 2:
+    NTSC   = machine->isNTSC();
+    isAuto = true;
+    break;
+  }
   switch(gen) {
   case CTIA:
     ChipGeneration = CTIA;

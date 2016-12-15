@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: tape.cpp,v 1.12 2015/11/07 18:53:12 thor Exp $
+ ** $Id: tape.cpp,v 1.13 2015/12/11 16:27:36 thor Exp $
  **
  ** In this module: Support for the dump tape.
  **********************************************************************************/
@@ -25,7 +25,7 @@ Tape::Tape(class Machine *mach,const char *name)
   : SerialDevice(mach,name,0x60), VBIAction(mach),
     Pokey(NULL), SIO(NULL), TapeImg(NULL), File(NULL),
     Playing(false), Recording(false), RecordAsWav(false), ReadNextRecord(false), RecordSize(0),
-    NTSC(false), IRGCounter(0), MotorOffCounter(0), EOFGap(3000), TicksPerFrame(0), 
+    NTSC(false), isAuto(true), IRGCounter(0), MotorOffCounter(0), EOFGap(3000), TicksPerFrame(0), 
     ImageToLoad(NULL), ImageName(NULL), SIODirect(false)
 {
   // Actually, even the SIO-ID is just a dummy and not used at all, except
@@ -464,19 +464,22 @@ void Tape::ParseArgs(class ArgParser *args)
   bool oldplay   = Playing;
   bool oldrecord = Recording;
   static const struct ArgParser::SelectionVector videovector[] =
-    { {"PAL" ,false},
-      {"NTSC",true },
+    { {"Auto",2    },
+      {"PAL" ,0    },
+      {"NTSC",1    },
       {NULL ,0}
     };
   LONG val;
 
-  val = NTSC;
+  val = (NTSC)?(1):(0);
+  if (isAuto)
+    val = 2;
 
   if (ImageToLoad && *ImageToLoad)
     eject = false;
 
   args->DefineTitle("Tape");
-  args->DefineSelection("VideoMode","sets the video mode for timing the tape",videovector,val);
+  args->DefineSelection("TapeTimeBase","sets the timing basis for the tape",videovector,val);
   args->DefineLong("MotorOffEOFGap","time in ms after which a motor stop will be detected as EOF",20,10000,EOFGap);
   args->DefineFile("Image","sets the CAS file to load into the tape recorder",ImageToLoad,true,true,false);
   args->DefineBool("Play","press the play button on the tape recorder",Playing);
@@ -484,8 +487,21 @@ void Tape::ParseArgs(class ArgParser *args)
   args->DefineBool("Eject","unload the tape from the recorder",eject);
   args->DefineBool("RecordAsWav","write tape output as WAV file",RecordAsWav);
 
-  NTSC = (val)?(true):(false);
-
+  switch(val) {
+  case 0:
+    NTSC   = false;
+    isAuto = false;
+    break;
+  case 1:
+    NTSC   = true;
+    isAuto = false;
+    break;
+  case 2:
+    NTSC   = machine->isNTSC();
+    isAuto = true;
+    break;
+  }
+  
   if (NTSC) {
     TicksPerFrame = 262;
   } else {

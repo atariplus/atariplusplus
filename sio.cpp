@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sio.cpp,v 1.65 2015/09/25 18:50:31 thor Exp $
+ ** $Id: sio.cpp,v 1.67 2016/12/04 17:30:54 thor Exp $
  **
  ** In this module: Generic emulation core for all kinds of serial hardware
  ** like printers or disk drives.
@@ -27,14 +27,15 @@ SIO::SIO(class Machine *mach)
   : Chip(mach,"SIO"), 
     DataFrame(NULL), DataFrameSize(0)
 {
-  pokey             = NULL;
-  SerIn_Cmd_Delay   = 50;
-  Write_Done_Delay  = 50;
-  Read_Done_Delay   = 50;
-  Format_Done_Delay = 400;
-  MotorEnabled      = false;
-  HaveWarned        = false;
-  ActiveDevice      = NULL;
+  pokey              = NULL;
+  SerIn_Cmd_Delay    = 50;
+  Write_Done_Delay   = 50;
+  Read_Done_Delay    = 50;
+  Read_Deliver_Delay = 2;
+  Format_Done_Delay  = 400;
+  MotorEnabled       = false;
+  HaveWarned         = false;
+  ActiveDevice       = NULL;
 }
 ///
 
@@ -353,7 +354,7 @@ void SIO::RequestInput(void)
   case AcknowledgeState:
     // Check whether the command got accepted by the device. Depending on the command
     // type, we either need to call the status collector, or the command acknowledge.
-    delay         = 0;
+    delay         = SerIn_Cmd_Delay;
     InputSpeed    = pokey->SerialReceiveSpeed();
     switch(CmdType) {
     case ReadCommand:
@@ -499,7 +500,7 @@ void SIO::RequestInput(void)
     // data into this buffer.
     //
     // No additional delay from the floppy
-    delay          = 0;
+    delay            = Read_Deliver_Delay;
     if (DataFrameIdx == 0) {
       // Here we have vacant space in this buffer. Refill it
       // before we continue unless we are already completed.
@@ -887,7 +888,7 @@ UBYTE SIO::RunSIOCommand(UBYTE device,UBYTE unit,UBYTE command,ADR mem,
 	}
 	//
 	// Check for the result code now.
-	if (result == 'A') {
+	if (result == 'A' || result == 'C') {
 	  error = 0x01; // is fine.
 	} else if (result) {
 	  // Return Device NAK if this doesn't fit.
@@ -1069,10 +1070,13 @@ void SIO::DisplayStatus(class Monitor *mon)
 void SIO::ParseArgs(class ArgParser *args)
 {
   args->DefineTitle("SIO");
+  
   args->DefineLong("SerInCmdDelay","serial command accept delay in HBlanks",
 		   0,240,SerIn_Cmd_Delay);
   args->DefineLong("ReadDoneDelay","serial read delay in HBlanks",
 		   0,240,Read_Done_Delay);
+  args->DefineLong("ReadDeliverDelay","serial deliver data delay in HBlanks",
+		   0,10,Read_Deliver_Delay);
   args->DefineLong("WriteDoneDelay","serial write delay in HBlanks",
 		   0,240,Write_Done_Delay);
   args->DefineLong("FormatDoneDelay","format done delay in HBlanks",

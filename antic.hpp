@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.hpp,v 1.69 2015/05/21 18:30:57 thor Exp $
+ ** $Id: antic.hpp,v 1.70 2015/12/11 16:27:35 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -402,6 +402,7 @@ private:
   //
   // Some Antic Preferences
   bool NTSC;                 // true if this is an NTSC antic
+  bool isAuto;               // true if video mode comes from the machine
   //
   LONG GTIAStart;            // Horizontal position where GTIA processing starts.
   LONG YPosIncSlot;          // horizontal position where YPos gets incremented
