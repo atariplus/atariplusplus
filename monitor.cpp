@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.103 2016/11/10 20:12:53 thor Exp $
+ ** $Id: monitor.cpp,v 1.104 2020/04/05 14:58:17 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -2111,6 +2111,8 @@ bool Monitor::Step::MainLoop(void)
     case KEY_F(10):
     case 'n':
     case 'N':
+    case 't':
+    case 'T':
       // Next command.
       // Check the CPU command at the current address. If this is a branch instruction,
       // we continue until we arrive at a PC larger than the current address. Otherwise,

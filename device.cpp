@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: device.cpp,v 1.26 2015/09/22 11:46:33 thor Exp $
+ ** $Id: device.cpp,v 1.27 2020/04/05 11:50:00 thor Exp $
  **
  ** In this module: CIO device interface
  **********************************************************************************/
@@ -48,9 +48,11 @@ void Device::SetResult(class CPU *cpu,class AdrSpace *adr,UBYTE result)
 void Device::ExtractFileName(class AdrSpace *adr,ADR mem,char *buf,int bufsize)
 {
   bool founddevice = false;
+  bool founddot    = false;
   char *start = buf;
   char c;
   int len;
+  int dlen = 0;
   
   bufsize--;
   len = 0;
@@ -59,6 +61,11 @@ void Device::ExtractFileName(class AdrSpace *adr,ADR mem,char *buf,int bufsize)
     c = ValidCharacter(char(adr->ReadByte(mem++)));
     if (c == 0)
       break;
+    if (founddot) {
+      dlen++;
+      if (dlen > 3)
+	break;
+    }
     if (c == ':' && !founddevice) { // Cut-off the device specifier
       buf = start;
       len = 0;
@@ -66,6 +73,11 @@ void Device::ExtractFileName(class AdrSpace *adr,ADR mem,char *buf,int bufsize)
       // We do not check whether we found a ":". We must have, as
       // CIO could not operate otherwise.
       continue;
+    }
+    if (c == '.' && !founddot) {
+      if (founddot)
+	break;
+      founddot = true;
     }
     *buf++ = c; // insert the character
     len++;

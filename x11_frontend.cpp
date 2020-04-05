@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.85 2015/10/18 16:48:17 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.88 2020/03/28 14:05:58 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -32,6 +32,13 @@
 #define XK_XKB_KEYS
 #include <X11/keysymdef.h>
 #include <X11/cursorfont.h>
+#include "time.hpp"
+#ifndef HAS_STRUCT_TIMEVAL
+struct timeval {
+  int tv_sec;       /* Seconds.  */
+  int tv_usec;      /* Microseconds.  */
+};
+#endif
 ///
 
 /// ErrorHandler
@@ -885,11 +892,44 @@ bool X11_FrontEnd::MouseMoveStick::TransmitStates(Display *d,Window w,
       button2 = (mask & Button3Mask)?true:false;
       //
       if (isrel) {
-	int dxl = (winx - lastx) << 12;
-	int dyl = (winy - lasty) << 12;
+	int dxl,dyl;
+	dxl = (winx - lastx) << 10;
+	dyl = (winy - lasty) << 10;
+#if HAVE_GETTIMEOFDAY
+	struct timeval tv;
+	if (gettimeofday(&tv,NULL) == 0) {
+	  int deltasec  = tv.tv_sec  - lastsec;
+	  int deltausec = tv.tv_usec - lastusec;
+	  
+	  lastsec  = tv.tv_sec;
+	  lastusec = tv.tv_usec;
+	  
+	  if (deltasec >= 0) {
+	    if (deltasec < (1L << 31) / (1000 * 1000)) {
+	      int deltatime = deltasec * 1000 * 1000 + deltausec;
+	      if (deltatime > 0) {
+		dxl = (((winx - lastx) << 24) / deltatime);
+		dyl = (((winy - lasty) << 24) / deltatime);
+	      }
+	    }
+	  }
+	}
+#endif	
 	//
 	lastx   = winx;
 	lasty   = winy;
+	//
+	// Avoid erratic non-movement due to no X-event on
+	// movement coming in.
+	if (dxl == 0 && dyl == 0 && (lastdx || lastdy)) {
+	  dxl = lastdx;
+	  dyl = lastdy;
+	  lastdx = 0;
+	  lastdy = 0;
+	} else {
+	  lastdx = dxl;
+	  lastdy = dyl;
+	}
 	//
 	dx      = (dxl > 32767)?(32767):((dxl < -32767)?(-32767):(dxl));
 	dy      = (dyl > 32767)?(32767):((dyl < -32767)?(-32767):(dyl));

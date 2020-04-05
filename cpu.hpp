@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.76 2015/10/20 19:39:38 thor Exp $
+ ** $Id: cpu.hpp,v 1.78 2020/04/05 11:50:00 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -1561,16 +1561,17 @@ public:
       ExecutionSteps++;
       AtomicExecutionOperand = current->Execute(AtomicExecutionOperand);
     }
-    CycleCounter++;
     // Bump the horizontal position.
     CurCycle++;
-    // Bump the profile counter
-    ProfileCounter++;
     //CurCycle - StolenCycles
     //
     // Advance the rest of the hardware by a single cycle
-    if (CurCycle <= LastCycle) 
+    if (CurCycle <= LastCycle) {
+      CycleCounter++;
+      // Bump the profile counter
+      ProfileCounter++;
       machine->Step();
+    }
   }
   //
   // Go for an indicated number of cycles and return the

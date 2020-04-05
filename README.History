@@ -1,5 +1,5 @@
 #
-# $Id: README.History,v 1.97 2016/12/15 13:02:29 thor Exp $
+# $Id: README.History,v 1.101 2020/04/05 14:58:17 thor Exp $
 #
 
 Atari++ 1.00:
@@ -1018,4 +1018,25 @@ Atari++ 1.81
 	  text window is closed by a screen-open command.
 	- Minor cleanup in the command line of the built-in Dos of Os++.
 	- Updated Basic++ to the latest version 1.06.
+	
+Atari++ 1.82
+	- Fixed bugs in the ATX support that send the total number of bytes in a sector
+	  over SIO, even though SIO can only deliver 128 or 256 bytes a time.
+	- Fixed a bug in GTIA argument parsing that triggered unnecessary warnings
+	  in case the arguments had to be reparsed.
+	- Improved rendering of artifacting.
+	- Updated Basic++ to version 1.08.
+	- Atari++ can now also override the math function of Basic++ to allow
+	  faster execution of its trigonometric functions.
+	  
+Atari++ 1.83
+	- The extension data for weak sectors in the ATX support was not properly parsed
+	  off.
+	- Disk status report for deleted sectors for the ATX was not correct.
+	- Timing for track seeking for the ATX support was updated.
+	- The CPU emulation did not count cycles correctly, and as a side effect, the ALSA
+	  sound output quality was degraded.
+	- Parsing off file names did not stop after 3 characters of the file extension and
+	  as such caused spurious file name errors, i.e. error 165.
+	- The warning requester in the headless mode did not accept "E - quit" as an option.
 	

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.hpp,v 1.42 2015/10/18 16:48:17 thor Exp $
+ ** $Id: x11_frontend.hpp,v 1.45 2020/03/28 14:05:58 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -96,13 +96,21 @@ class X11_FrontEnd : public XFront {
     // Previous position. Used to detect motion in the relative mode.
     int  lastx,lasty;
     //
+    // Last time the position was checked
+    int  lastsec,lastusec;
+    //
+    // Last movement, to avoid erratic non-movements.
+    int  lastdx,lastdy;
+    //
     // Absolute or relative mouse movements?
     bool isrel;
     //
   public:
     // Constructor: This class is called MouseStick
     MouseMoveStick(class Machine *mach,const char *name,bool relative)
-      : GamePort(mach,name,0), lastx(0), lasty(0), isrel(relative)
+      : GamePort(mach,name,0), lastx(0), lasty(0),
+	lastsec(0), lastusec(0),
+	lastdx(0), lastdy(0), isrel(relative)
     { }
     //
     ~MouseMoveStick(void)

@@ -3,7 +3,7 @@
 ## Makefile.atari                                                                
 ##                                                                               
 ## This makefile defines compiler-independent dependencies                       
-## $Id: Makefile.atari,v 1.107 2015/09/25 09:33:26 thor Exp $
+## $Id: Makefile.atari,v 1.110 2020/03/28 13:10:00 thor Exp $
 ##
 ###################################################################################
 
@@ -28,7 +28,7 @@ FILES		=	new list adrspace debugadrspace monitor instruction serialdevice \
 			argparser gamecontrollernode \
 			gamecontroller page yconnector \
 			atari gameport patch timer \
-			basicrom basdist gtia pdevice rdevice types \
+			basicrom basicmathpatch basdist gtia pdevice rdevice types \
 			cartctrl hdevice edevice pia \
 			vbiaction hbiaction cycleaction \
 			cartrom cartridge cart8k cart16k cart32k \
@@ -47,7 +47,7 @@ FILES		=	new list adrspace debugadrspace monitor instruction serialdevice \
 			cpu memcontroller rompage \
 			deviceadapter device mmu \
 			ramextension xeextension axlonextension \
-			romxlchecksum mathpackpatch \
+			romxlchecksum mathsupport mathpackpatch \
 			patchprovider sighandler \
 			irqsource keyboardstick \
 			sdlport sdlclient sdl_frontend \

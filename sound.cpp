@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sound.cpp,v 1.19 2015/05/21 18:52:43 thor Exp $
+ ** $Id: sound.cpp,v 1.20 2020/04/05 11:50:00 thor Exp $
  **
  ** In this module: Os interface towards sound output
  **********************************************************************************/
@@ -48,44 +48,53 @@ ULONG Sound::GenerateSamples(ULONG numsamples,ULONG fragsize)
   struct AudioBufferBase *ab;
   UBYTE offset,*writeptr;
   int disp;
+  ULONG generate = numsamples;
   //
   // Check whether we still have a buffer pending that could take the samples. 
   // The candidate is the tail of the ready buffer list.
-  ab = ReadyBuffers.Last();
-  if (ab == NULL || ab->FreeSamples() < numsamples) {
-    ULONG newsize = numsamples;
-    // No, we cannot extend this buffer. Get a new one and make it at
-    // least as large as a fragment.
-    if (newsize < fragsize) {
-      newsize = fragsize;
+  while(generate) {
+    ULONG todo = 0;
+    if ((ab = ReadyBuffers.Last())) 
+      todo = ab->FreeSamples();
+    if (todo > generate)
+      todo = generate;
+    if (todo == 0) {
+      ULONG newsize = generate;
+      // No, we cannot extend this buffer. Get a new one and make it at
+      // least as large as a fragment.
+      if (newsize < fragsize) {
+	newsize = fragsize;
+      }
+      // Remove the next available audio buffer from the free-list, or rebuild one.
+      ab = FreeBuffers.RemHead();
+      if (ab == NULL) {
+	ab = AudioBufferBase::NewBuffer(SignedSamples,Stereo,SixteenBit,LittleEndian,Interleaved);
+      }   
+      //
+      // Queue this into the tail of the audio device output queue immediately as not to
+      // loose it if someone throws.  
+      ReadyBuffers.AddTail(ab);
+      ab->Realloc(newsize);
+      todo = generate;
     }
-    // Remove the next available audio buffer from the free-list, or rebuild one.
-    ab = FreeBuffers.RemHead();
-    if (ab == NULL) {
-      ab = AudioBufferBase::NewBuffer(SignedSamples,Stereo,SixteenBit,LittleEndian,Interleaved);
-    }   
-    //
-    // Queue this into the tail of the audio device output queue immediately as not to
-    // loose it if someone throws.  
-    ReadyBuffers.AddTail(ab);
-    ab->Realloc(newsize);
-  }
-  // Compute the offset for the console speaker.
-  offset = 0;
-  if (EnableConsoleSpeaker && ConsoleSpeakerStat) {
-    offset = UBYTE(ConsoleVolume);
-  }
-  // One way or another, we have now a sample buffer. 
-  // Now ask pokey to compute more samples. This also adds the console speaker offset
-  // right away.
-  writeptr = ab->WritePtr;
-  LeftPokey->ComputeSamples(ab,numsamples,SamplingFreq,offset);
-  // If we are generating interleaved samples, we must have a second pokey for that
-  // and now fill in the other half of the samples.
-  if ((disp = ab->ChannelOffset())) {
-    ab->WritePtr  = writeptr + disp;
-    RightPokey->ComputeSamples(ab,numsamples,SamplingFreq,offset);
-    ab->WritePtr -= disp;
+    // Compute the offset for the console speaker.
+    offset = 0;
+    if (EnableConsoleSpeaker && ConsoleSpeakerStat) {
+      offset = UBYTE(ConsoleVolume);
+    }
+    // One way or another, we have now a sample buffer. 
+    // Now ask pokey to compute more samples. This also adds the console speaker offset
+    // right away.
+    writeptr = ab->WritePtr;
+    LeftPokey->ComputeSamples(ab,todo,SamplingFreq,offset);
+    // If we are generating interleaved samples, we must have a second pokey for that
+    // and now fill in the other half of the samples.
+    if ((disp = ab->ChannelOffset())) {
+      ab->WritePtr  = writeptr + disp;
+      RightPokey->ComputeSamples(ab,todo,SamplingFreq,offset);
+      ab->WritePtr -= disp;
+    }
+    generate -= todo;
   }
   //
   // Now return the total number of generated samples.

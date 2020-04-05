@@ -2,16 +2,18 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: basicrom.cpp,v 1.25 2015/09/13 14:58:06 thor Exp $
+ ** $Id: basicrom.cpp,v 1.31 2020/03/28 14:05:58 thor Exp $
  **
  ** In this module: Administration/loading of the Basic ROM
  **********************************************************************************/
 
 /// Includes
+#include "types.h"
 #include "argparser.hpp"
 #include "monitor.hpp"
 #include "adrspace.hpp"
 #include "basicrom.hpp"
+#include "basicmathpatch.hpp"
 #include "basdist.hpp"
 #include "cartridge.hpp"
 #include "exceptions.hpp"
@@ -19,10 +21,25 @@
 #include "stdio.hpp"
 ///
 
+/// BasicROM::BasicOffsets
+// These are the entry points for the math functions
+// of basic++ 1.07. Should it be recompiled,
+// make sure the offsets are adjusted accordingly.
+const ADR BasicROM::BasicOffsets[6] = {
+  0xB5E9, // SQRT
+  0xB42A, // POW
+  0xB3F7, // INT
+  0xB57A, // COS
+  0xB571, // SIN
+  0xB507  // ATAN
+};
+///
+
 /// BasicROM::BasicROM
 BasicROM::BasicROM(class Machine *mach)
-  : Chip(mach,"BasicROM"), basic_type(Basic_Auto),
-    basicapath(NULL), basicbpath(NULL), basiccpath(NULL)
+  : Chip(mach,"BasicROM"), PatchProvider(mach), basic_type(Basic_Auto),
+    basicapath(NULL), basicbpath(NULL), basiccpath(NULL),
+    mppatch(false)
 {
 }
 ///
@@ -30,6 +47,8 @@ BasicROM::BasicROM(class Machine *mach)
 /// BasicROM::~BasicROM
 BasicROM::~BasicROM(void)
 {
+  DisposePatches();
+  
   delete[] basicapath;
   delete[] basicbpath;
   delete[] basiccpath;
@@ -221,6 +240,11 @@ void BasicROM::LoadROM(void)
   case Basic_Builtin:
     // This is special as it doesn't require a source file.
     PatchFromDump(basdist,32);
+    //
+    // Potentially install the basic math patch
+    if (mppatch)
+      new class BasicMathPatch(machine,this,BasicOffsets);
+    //
     break;
   case Basic_Disabled:
     // Nothing...
@@ -273,13 +297,42 @@ void BasicROM::LoadFromFile(const char *path,const char *name)
 }
 ///
 
+/// BasicROM::PatchByte
+// Patch a byte of the ROM image.
+void BasicROM::PatchByte(ADR where,UBYTE value)
+{
+  if (where >= 0xa000 && where < 0xc000) {
+    int page = (where - 0xa000) >> 8;
+    
+    Rom[page].PatchByte(where,value);
+  }
+}
+///
+
 /// BasicROM::Initialize
 // Pre-Coldstart-Phase: Load the selected ROM
 // then install the patches.
 void BasicROM::Initialize(void)
 {
+  DisposePatches();
+  
   try {
     LoadROM();
+    //
+    // Now allocate the ESC codes and hack the patches in.
+    // Since the MMU does not map basic at this time,
+    // create a private address space, map the cart in there
+    // and then install the patches there.
+    // The address space can go away as soon as we are done.
+    if (mppatch) {
+      class AdrSpace adr;
+      //
+      for(int i = 0;i < 32;i++) {
+	adr.MapPage(0xa000 + (i << 8),Rom + i);
+      }
+      InstallPatchList(&adr);
+    }
+    //
   } catch(...) {
     basic_type = Basic_Disabled;
     throw;
@@ -291,6 +344,8 @@ void BasicROM::Initialize(void)
 // Run a warmstart. Nothing happens here
 void BasicROM::WarmStart(void)
 {
+  // This is the reset method of the patch provider.
+  Reset();
 }
 ///
 
@@ -298,6 +353,7 @@ void BasicROM::WarmStart(void)
 // Nothing happens here.
 void BasicROM::ColdStart(void)
 {
+  Reset();
 }
 ///
 
@@ -315,6 +371,7 @@ void BasicROM::ParseArgs(class ArgParser *args)
       {NULL    ,0}
     };
  LONG basictype = basic_type;
+ bool oldmpp    = mppatch;
 
  if (machine->MachType() != Mach_5200) {
    args->DefineTitle("Basic ROM");
@@ -326,6 +383,12 @@ void BasicROM::ParseArgs(class ArgParser *args)
    if (basictype != basic_type)
      args->SignalBigChange(ArgParser::ColdStart);
    basic_type = (BasicType)basictype;
+#if HAVE_MATH
+   if (basic_type == Basic_Builtin)
+     args->DefineBool("InstallMathPatch","install fast math pack patch",mppatch);
+   if (mppatch != oldmpp)
+     args->SignalBigChange(ArgParser::ColdStart);
+#endif   
    //
    // Now check whether the requirements for the selection are satisfied.
    switch(ROMType()) {
@@ -391,10 +454,12 @@ void BasicROM::DisplayStatus(class Monitor *mon)
 		   "\tBasic Type    : %s\n"
 		   "\tBasicAPath    : %s\n"
 		   "\tBasicBPath    : %s\n"
-		   "\tBasicCPath    : %s\n",
+		   "\tBasicCPath    : %s\n"
+		   "\tMathPackPatch : %s\n",
 		   type,
 		   basicapath,
 		   basicbpath,
-		   basiccpath);
+		   basiccpath,
+		   (mppatch)?("on"):("off"));
 }
 ///

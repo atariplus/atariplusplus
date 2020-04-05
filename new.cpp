@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: new.cpp,v 1.3 2015/05/21 18:52:41 thor Exp $
+ ** $Id: new.cpp,v 1.4 2020/03/28 13:10:01 thor Exp $
  **
  ** In this module: Customized memory handling functions
  **********************************************************************************/
@@ -55,7 +55,17 @@ void operator delete (void *a) throw()
   free(a);
 }
 
+void operator delete (void *a,size_t) throw()
+{
+  free(a);
+}
+
 void operator delete[] (void *a) throw()
+{
+  free(a);
+}
+
+void operator delete[] (void *a,size_t) throw()
 {
   free(a);
 }

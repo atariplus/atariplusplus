@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.32 2015/03/21 14:31:27 thor Exp $
+ ** $Id: alsasound.cpp,v 1.34 2020/04/05 11:50:00 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -51,6 +51,7 @@ AlsaSound::~AlsaSound(void)
   // get rid of all data within here.
   if (SoundStream) {
     // This also unlinks the pcm handler.
+    SuspendAudio();
     snd_pcm_close(SoundStream);
     SoundStream = NULL;
   }
@@ -422,24 +423,27 @@ void AlsaSound::AlsaCallBack(void)
       avail &= -(1L << FragSize);
       // Get the next buffer we want to play back.
       if (PlayingBuffer == NULL) {
+	struct AudioBufferBase *next = ReadyBuffers.First();
 	// No playing buffer. Pull a new one from the list of ready buffers.
-	PlayingBuffer = ReadyBuffers.RemHead();
-	if (PlayingBuffer == NULL) {
-	  // Ok, check whether we may launch pokey directly here. This might
-	  // be valid if the main thread is waiting in the VBI anyhow.	   
-	  assert(BufferedSamples == 0);
-	  //printf("AlsaCallBack based ");
-	  AdjustUnderrun();
-	  if (MayRunPokey) {
-	    //printf("Alsa buffer run out of data, must generate more now\n");
-	    GenerateSamples(avail);
-	    continue;
-	  } else {
-	    // Unfortunately, we cannot directly call pokey
-	    // here since we don't know the state of it and whether something
-	    // else is currently playing with it.
-	    return;
-	  }
+	if (next && next->FreeSamples() == 0) {
+	  next->Remove();
+	  PlayingBuffer = next;
+	}
+      }
+      if (PlayingBuffer == NULL) {
+	// Ok, check whether we may launch pokey directly here. This might
+	// be valid if the main thread is waiting in the VBI anyhow.	   
+	//printf("AlsaCallBack based ");
+	AdjustUnderrun();
+	if (MayRunPokey) {
+	  //printf("Alsa buffer run out of data, must generate more now\n");
+	  GenerateSamples(avail);
+	  continue;
+	} else {
+	  // Unfortunately, we cannot directly call pokey
+	  // here since we don't know the state of it and whether something
+	  // else is currently playing with it.
+	  return;
 	}
       }
       if (PlayingBuffer) {
@@ -524,7 +528,7 @@ void AlsaSound::HBI(void)
     // number of samples to generate this time.
     samples        = (remaining * cycles + CycleCarry) / (PokeyFreq * 114);         
     // keep the number of samples we did not take due to round-off   
-    CycleCarry    += remaining  * cycles - samples * PokeyFreq * UQUAD(114); 
+    CycleCarry    += remaining  * cycles - samples * PokeyFreq * UQUAD(114);
     assert(CycleCarry >= 0);
     UpdateSamples += samples;
     //
@@ -591,11 +595,11 @@ void AlsaSound::AdjustOverrun(void)
   // The buffer is running too full. This means we are
   // generating samples too fast. Reduce the sampling frequency.
   // We must do this very carefully as overruns accumulate data
-  newfreq = (EffectiveFreq * 4015) >> 12;
+  newfreq = (EffectiveFreq * 4095) >> 12;
   if (newfreq >= EffectiveFreq)
     newfreq--;
   EffectiveFreq      = newfreq;
-  DifferentialAdjust = -(LONG(BufferedSamples - BufferSize) * newfreq) >> 12;
+  DifferentialAdjust = -(LONG(BufferedSamples - BufferSize) * newfreq) >> 13;
   if (-DifferentialAdjust >= (newfreq >> 1))
     DifferentialAdjust = -(newfreq >> 1);
   // Drop buffer bytes we should have generated so far.
@@ -691,7 +695,8 @@ void AlsaSound::ParseArgs(class ArgParser *args)
 		   4,16,NumFrags);  
   // Re-read the base frequency
   PokeyFreq = LeftPokey->BaseFrequency();
-  if (SoundStream) {    
+  if (SoundStream) {
+    SuspendAudio();
     snd_pcm_close(SoundStream);
     SoundStream = NULL;
     CleanBuffer();

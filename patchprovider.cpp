@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: patchprovider.cpp,v 1.9 2015/05/21 18:52:41 thor Exp $
+ ** $Id: patchprovider.cpp,v 1.12 2020/03/28 13:10:01 thor Exp $
  **
  ** In this module: Interface class that bundles patches into a group
  **********************************************************************************/
@@ -20,11 +20,20 @@
 void PatchProvider::InstallPatchList(void)
 {
   class AdrSpace *ram = Machine->MMU()->CPURAM();
+  //
+  InstallPatchList(ram);
+}
+///
+
+/// PatchProvider::InstallPatchList
+// Install all patches on the list in the given address space.
+void PatchProvider::InstallPatchList(class AdrSpace *adr)
+{
   class Patch *patch  = patchList.First();
   //
   // Now allocate the ESC codes and hack the patches in.
   while(patch) {
-    patch->InstallPatchList(Machine,ram);
+    patch->InstallPatchList(Machine,adr);
     patch = patch->NextOf();
   }
 }

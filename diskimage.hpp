@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskimage.hpp,v 1.5 2015/07/14 20:01:00 thor Exp $
+ ** $Id: diskimage.hpp,v 1.6 2020/04/04 18:01:41 thor Exp $
  **
  ** In this module: Abstract base class for disk images
  **********************************************************************************/
@@ -37,7 +37,8 @@ public:
     DRQ       = 2, // index hole interrupt or data request. Just set this bit.
     LostData  = 4, // lost data error
     CRCError  = 8, // sector checksum invalid
-    NotFound  = 32, // record not found: Sector is not there.
+    NotFound  = 16, // record not found: Sector is not there.
+    Deleted   = 32, // Sector was marked deleted.
     Protected = 64, // disk is write protected.
     NotReady  = 128  // if no disk is present.
   };

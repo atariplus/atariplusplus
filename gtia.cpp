@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.cpp,v 1.129 2015/12/11 16:27:35 thor Exp $
+ ** $Id: gtia.cpp,v 1.130 2020/03/21 20:51:44 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -981,7 +981,7 @@ void GTIA::DisplayGenerator00FiddledArtefacted::PostProcessClock(UBYTE *out,UBYT
 	// edge, and to the second for a light->dark edge.
 	// Now combine the hue from the hue of the background with the weighted
 	// average of the values.
-	*out  = HueMix[((back & 0xf0) >> 3) | (((diff >> 4) ^ i) & 1)] + (((other & 0x0f) * 3 + (back  & 0x0f)) >> 2);
+	*out  = HueMix[((back & 0xf0) >> 3) | (((diff >> 4) ^ i) & 1)] + (((other & 0x0f) + (back  & 0x0f)) >> 1);
       } else {
 	// No artifacting since no difference in value.
 	*out  = back;
@@ -2446,12 +2446,12 @@ void GTIA::SetupArtifacting(void)
     ColorLookup[Playfield_Artifact2] = 0xc0; // green
     break;
   case GTIA_1:
-    ColorLookup[Playfield_Artifact1] = 0xc0; // green
-    ColorLookup[Playfield_Artifact2] = 0x80; // blue
+    ColorLookup[Playfield_Artifact1] = 0xa0; // green
+    ColorLookup[Playfield_Artifact2] = 0x40; // blue
     break;
   case GTIA_2:
-    ColorLookup[Playfield_Artifact1] = 0x30; // red
-    ColorLookup[Playfield_Artifact2] = 0x90; // blue
+    ColorLookup[Playfield_Artifact1] = 0x90; // red
+    ColorLookup[Playfield_Artifact2] = 0x20; // blue
     break;
   }
   //
@@ -2555,6 +2555,7 @@ void GTIA::ParseArgs(class ArgParser *args)
   LONG val,gen;
   char cmaskname[64];
   int i;
+  bool ntsc;
   static const struct ArgParser::SelectionVector videovector[] = 
     { {"Auto"         ,2    },
       {"PAL"          ,0    },
@@ -2585,6 +2586,8 @@ void GTIA::ParseArgs(class ArgParser *args)
   val = NTSC?1:0;
   if (isAuto)
     val = 2;
+  ntsc = NTSC;
+  
   gen = ChipGeneration;
   args->DefineTitle("GTIA");
   args->DefineSelection("GTIAVideoMode","set GTIA video mode",videovector,val);
@@ -2596,11 +2599,6 @@ void GTIA::ParseArgs(class ArgParser *args)
   args->DefineLong("PlayerResizeDelay","half color clocks required to resize a player",0,32,PMResize);
   args->DefineLong("PlayerReshapeDelay","half color clocks required to change the graphics of a player",0,32,PMShape);
   args->DefineFile("ColorMapName","name of an external color map to be used",ColorMapToLoad,false,true,false);
-  if (NTSC != ((val)?(true):(false))) {
-    // Changed video mode => requires a rebuild
-    // of the palette
-    args->SignalBigChange(ArgParser::Reparse);
-  }
   switch(val) {
   case 0:
     NTSC   = false;
@@ -2614,6 +2612,11 @@ void GTIA::ParseArgs(class ArgParser *args)
     NTSC   = machine->isNTSC();
     isAuto = true;
     break;
+  }
+  if (NTSC != ntsc) {
+    // Changed video mode => requires a rebuild
+    // of the palette
+    args->SignalBigChange(ArgParser::Reparse);
   }
   switch(gen) {
   case CTIA:

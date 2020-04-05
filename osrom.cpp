@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.cpp,v 1.50 2015/05/21 18:52:41 thor Exp $
+ ** $Id: osrom.cpp,v 1.53 2020/03/28 14:05:58 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/
@@ -445,7 +445,7 @@ void OsROM::ParseArgs(class ArgParser *args)
     args->DefineBool("InstallEDevice","install E: CIO patch",epatch);
     args->DefineBool("InstallRDevice","install R: CIO patch",rpatch);
     args->DefineBool("InstallHAsDisk","install host handler as D: device",hAsd); 
-#if HAVE_MATHPACKPATCH   
+#if HAVE_MATH
     args->DefineBool("InstallMathPatch","install fast math pack patch",mppatch);
 #endif
 
@@ -564,10 +564,10 @@ void OsROM::DisplayStatus(class Monitor *mon)
 		   "\tOsBPath       : %s\n"
 		   "\tOs1200Path    : %s\n"
 		   "\tOsXLPath      : %s\n"
-		   "\tH1 diretory   : %s\n"
-		   "\tH2 diretory   : %s\n"
-		   "\tH3 diretory   : %s\n"
-		   "\tH4 diretory   : %s\n",
+		   "\tH1 directory  : %s\n"
+		   "\tH2 directory  : %s\n"
+		   "\tH3 directory  : %s\n"
+		   "\tH4 directory  : %s\n",
 		   (siopatch)?("on"):("off"),
 		   (ppatch)?("on"):("off"),
 		   (hpatch)?("on"):("off"),

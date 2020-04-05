@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: basicrom.hpp,v 1.15 2015/09/13 14:30:31 thor Exp $
+ ** $Id: basicrom.hpp,v 1.18 2020/03/28 13:10:01 thor Exp $
  **
  ** In this module: Administration/loading of the Basic ROM
  **********************************************************************************/
@@ -13,6 +13,7 @@
 /// Includes
 #include "chip.hpp"
 #include "memcontroller.hpp"
+#include "patchprovider.hpp"
 #include "rompage.hpp"
 #include "cart8k.hpp"
 ///
@@ -26,7 +27,7 @@ class MMU;
 /// Class BasicROM
 // This class implements the loading of the Basic ROM. This doesn't come
 // unexpected, though.
-class BasicROM : public Chip, private Cart8K {
+class BasicROM : public Chip, public PatchProvider, private Cart8K {
   //
   //
 public:
@@ -42,6 +43,9 @@ public:
   //
 private:
   //
+  // Offsets within Basic++ of math entry points.
+  static const ADR      BasicOffsets[6];
+  //
   // Basic preferences:
   //
   // The type of the basic that is used here.
@@ -51,6 +55,9 @@ private:
   char                 *basicapath;
   char                 *basicbpath;
   char                 *basiccpath;
+  //
+  // Install the math pack patch?
+  bool                  mppatch;
   //
   // Load the selected ROM from disk
   void LoadROM(void);
@@ -105,6 +112,16 @@ public:
   {
     return (basic_type != Basic_Disabled);
   }
+  //
+  // Service for the math pack patch: Check whether this is the
+  // build-in basic.
+  bool isBuiltin(void) const
+  {
+    return (basic_type == Basic_Builtin);
+  }
+  //
+  // Patch a byte of the ROM image.
+  void PatchByte(ADR where,UBYTE value);
 };
 ///
 

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mathpackpatch.hpp,v 1.7 2015/08/28 18:59:58 thor Exp $
+ ** $Id: mathpackpatch.hpp,v 1.10 2020/03/28 14:05:58 thor Exp $
  **
  ** In this module: Replacements for MathPack calls for speedup
  **********************************************************************************/
@@ -14,9 +14,7 @@
 #include "types.h"
 #include "types.hpp"
 #include "patch.hpp"
-#if HAVE_MATH_H && HAVE_POW && HAVE_EXP && HAVE_LOG && HAVE_LOG10 && HAVE_STRTOD
-#define HAVE_MATHPACKPATCH 1
-#endif
+#include "mathsupport.hpp"
 ///
 
 /// Forwards
@@ -26,40 +24,8 @@ class PatchProvider;
 ///
 
 /// Class MathPackPatch
-#ifdef HAVE_MATHPACKPATCH
-class MathPackPatch : public Patch {
-  //
-  // The following table contains positive powers
-  // of ten for conversion between BCD and IEEE
-  // floating point numbers. The powers are
-  // 10^2,10^4,10^8,...,10^128
-  static const double PosTenPowers[7];
-  // The same negative powers
-  static const double NegTenPowers[7];
-  // Initinalizer for the maximal number
-  static const double Huge;
-  //
-  // A BCD number as used by the MathPack
-  struct BCD {
-    UBYTE SignExponent;   // contains sign and exponent to the base of 100 with bias 64
-    UBYTE Mantissa[5];    // five bytes BCD encoded mantissa
-    // The implied decimal dot is between Mantissa[0] and Mantissa[1]
-  };
-  //
-  // Helper functions:
-  //
-  // Convert a BCD number to an IEEE float
-  static double BCDToIEEE(const struct BCD &in);
-  //
-  // Convert an IEEE float to a BCD number
-  static void IEEEToBCD(double ieee,struct BCD &out);
-  //
-  // Extract FR0
-  double ReadFR0(class AdrSpace *adr);
-  // Extract FR1
-  double ReadFR1(class AdrSpace *adr);
-  // Set FR0
-  void SetFR0(class AdrSpace *adr,double val);
+#ifdef HAVE_MATH
+class MathPackPatch : public Patch, private MathSupport {
   //
   // Convert ASCII to BCD in FR0. Set carry flag on error
   void AFP(class AdrSpace *adr,class CPU *cpu);
@@ -124,6 +90,7 @@ class MathPackPatch : public Patch {
   void TESTDIGIT(class AdrSpace *adr,class CPU *cpu);
   // Multiply fr0 by ten.
   void FR0TIMESTEN(class AdrSpace *adr,class CPU *cpu);
+  //
 protected:
   // Implemenation of the patch interface:
   // We can only provide the RunPatch interface. 
