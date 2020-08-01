@@ -10,7 +10,7 @@
 .PHONY:		install uninstall distrib deb
 
 CXX		= @CXX@
-MAKEFILE	= makefile
+MAKEFILE	= Makefile
 CFLAGS		= @CPPFLAGS@ @X_CFLAGS@ @SDL_CFLAGS@ -x c++ -c @WARNING_FLAGS@ #-no-rtti breaks exception handling
 
 OPTIMIZER	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 @OPTIMIZER_FLAGS@
