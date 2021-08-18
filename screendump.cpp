@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: screendump.cpp,v 1.12 2013/12/05 20:37:14 thor Exp $
+ ** $Id: screendump.cpp,v 1.13 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Creation of screendumps into a file
  **********************************************************************************/
@@ -291,7 +291,7 @@ void ScreenDump::DumpPNM(UBYTE *buffer,FILE *file)
   UBYTE *p;
   int x,y;
 
-  fprintf(file,"P6\n" LD " " LD "\n255\n",Width,Height);
+  fprintf(file,"P6\n" ATARIPP_LD " " ATARIPP_LD "\n255\n",Width,Height);
   p = buffer + LeftEdge + TopEdge * Modulo;
   for(y = 0;y<Height;y++) {
     for(x = 0;x<Width;x++) {
@@ -318,7 +318,7 @@ void ScreenDump::DumpPNM(PackedRGB *buffer,FILE *file)
   PackedRGB *p;
   int x,y;
 
-  fprintf(file,"P6\n" LD " " LD "\n255\n",Width,Height);
+  fprintf(file,"P6\n" ATARIPP_LD " " ATARIPP_LD "\n255\n",Width,Height);
   p = buffer + LeftEdge + TopEdge * Modulo;
   for(y = 0;y<Height;y++) {
     for(x = 0;x<Width;x++) {

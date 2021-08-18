@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osrom.cpp,v 1.53 2020/03/28 14:05:58 thor Exp $
+ ** $Id: osrom.cpp,v 1.54 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Administration/loading of Os ROMs
  **********************************************************************************/
@@ -151,8 +151,8 @@ void OsROM::PatchFromDump(const unsigned char *dump,int pages)
 // Erase the math pack, replace by HLT instructions.
 void OsROM::KillMathPack(void)
 {
-  class RomPage *page = rom + ((0xd800 - 0xc000) >> PAGE_SHIFT);
-  int pages           = (0xe000 - 0xd800) >> PAGE_SHIFT;
+  class RomPage *page = rom + ((0xd800 - 0xc000) >> Page::Page_Shift);
+  int pages           = (0xe000 - 0xd800) >> Page::Page_Shift;
   UBYTE offset;
   //
   do {

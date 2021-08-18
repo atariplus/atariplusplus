@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.hpp,v 1.70 2015/12/11 16:27:36 thor Exp $
+ ** $Id: gtia.hpp,v 1.71 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -76,13 +76,7 @@ private:
   // we have to insert the fiddled color here as well, and we need to
   // mask out bit #0 here manually.
   //
-#ifndef HAS_PRIVATE_ACCESS // compiler workaround
-public:
-#endif
   UBYTE ColorLookup[PreComputedEntries];
-#ifndef HAS_PRIVATE_ACCESS
-private:
-#endif
   //
   // The player/missile graphics generator. We have one per player and one for the missiles
   struct PMObject {
@@ -544,17 +538,9 @@ private:
   UBYTE           *PlayerMissileScanLine;  
   //
   //
-#ifndef HAS_PRIVATE_ACCESS
-  // g++ 2.95 bug workaround.
-public:
-#endif
-  //
   // Color artifact hue mixer. Input is bit 0: artefacted hue,
   // bits 4..1: Background hue. Output is effective output hue.
   UBYTE           *HueMix;
-#ifndef HAS_PRIVATE_ACCESS
-private:
-#endif
   //
   // Pointer to the previous line buffer, required for PAL artefacting.
   //
@@ -592,9 +578,6 @@ private:
   // Setup the artifacting colors of GTIA.
   void SetupArtifacting(void);
   //
-#ifndef HAS_PRIVATE_ACCESS // compiler workaround
-public:
-#endif
   // The following is the main method of the priority engine. It should
   // better be fast as it is called on a per-pixel basis. Arguments are the playfield PreComputedColor,
   // the player bitmask and the playfield color in Atari notation. The latter
@@ -603,10 +586,6 @@ public:
   // This method updates the collision masks of the player/missile collisions
   // for the passed in player/playfield masks
   void UpdateCollisions(int pf,int pl,const UBYTE *collisionmask);
-  //
-#ifndef HAS_PRIVATE_ACCESS // compiler workaround
-private:
-#endif
   //
   // Render the missiles into the scanline buffer. The first is the
   // base address into the player scanline, the second the address into

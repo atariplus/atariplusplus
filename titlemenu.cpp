@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: titlemenu.cpp,v 1.23 2015/09/13 18:33:02 thor Exp $
+ ** $Id: titlemenu.cpp,v 1.25 2021/07/03 16:12:52 thor Exp $
  **
  ** In this module: Definition of the class describing the short menu in the
  ** title bar
@@ -287,7 +287,8 @@ int TitleMenu::FeedEvent(struct Event &event)
 	    }
 	  }
 	}
-	// Runs into the following to abort the menu
+	// Also abort the menu.
+	// Intentionally falls through.
       case Event::MenuAbort:
 	change = TitleMenu::TA_Exit;
 	event  = sent;
@@ -341,6 +342,7 @@ void TitleMenu::AcceptOptionChange(void)
   ArgParser::ArgumentChange changeflag;
   // An option may have changed now. Remove the menu just in case...
   RemoveMenu();
+  ReparseState();
   // This may cause an exception because one of the preferences is bad.
   // We need to capture this here.
   try {

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartrom.cpp,v 1.52 2015/05/21 18:52:37 thor Exp $
+ ** $Id: cartrom.cpp,v 1.53 2020/07/18 15:20:39 thor Exp $
  **
  ** In this module: Administration/loading of cartridges
  **********************************************************************************/
@@ -333,7 +333,7 @@ LONG CartROM::BuildSelectionVector(bool withheader,LONG size,LONG type)
     // All cart types for the A800.
     // The right cart slot exists only on the A800.
     AddSelectionVector(cnt,withheader,size,type,CartRight8K::CartSizes,vec,Cartridge::Cart_8K,          "Right8K");
-    // runs into the following...
+    // Falls through.
   default:
     AddSelectionVector(cnt,withheader,size,type,Cart8K::CartSizes     ,vec,Cartridge::Cart_8K,          "8K");
     AddSelectionVector(cnt,withheader,size,type,Cart16K::CartSizes    ,vec,Cartridge::Cart_16K,         "16K");

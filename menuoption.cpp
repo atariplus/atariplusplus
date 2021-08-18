@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menuoption.cpp,v 1.27 2015/05/21 18:52:40 thor Exp $
+ ** $Id: menuoption.cpp,v 1.28 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Definition of an option within the graphical fronent, i.e.
  ** something that is selectable/adjustable under a topic
@@ -248,7 +248,7 @@ bool OptionCollector::LongOption::ParseGadget(void)
 /// OptionCollector::LongOption::SaveOption
 void OptionCollector::LongOption::SaveOption(FILE *to)
 {
-  fprintf(to,"%s\t=\t" LD "\n",Name,Setting);
+  fprintf(to,"%s\t=\t" ATARIPP_LD "\n",Name,Setting);
 }
 ///
 

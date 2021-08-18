@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: digitaljoystick.cpp,v 1.17 2015/05/21 18:52:39 thor Exp $
+ ** $Id: digitaljoystick.cpp,v 1.18 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Frontend for the Linux /dev/jsx handler with interface
  ** adapter for Amiga/Atari style joysticks
@@ -343,13 +343,13 @@ void DigitalJoystick::DisplayStatus(class Monitor *mon)
 #ifdef USE_JOYSTICK
   mon->PrintStatus("Joystick #%d status:\n"
 		   "\tJoystick available: %s\n"
-		   "\tUp button line    : " LD "\n"
-		   "\tDown button line  : " LD "\n"
-		   "\tLeft button line  : " LD "\n"
-		   "\tRight button line : " LD "\n"
+		   "\tUp button line    : " ATARIPP_LD "\n"
+		   "\tDown button line  : " ATARIPP_LD "\n"
+		   "\tLeft button line  : " ATARIPP_LD "\n"
+		   "\tRight button line : " ATARIPP_LD "\n"
 		   "\tTrigger input axis: %s\n"
 		   "\tCalibration axis  : %s\n"
-		   "\tTrigger threshold : " LD "\n"
+		   "\tTrigger threshold : " ATARIPP_LD "\n"
 		   "\tInvert trigger    : %s\n",
 		   unit,
 		   IsAvailable()?("yes"):("no"),

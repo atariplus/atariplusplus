@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: topicgadget.cpp,v 1.11 2015/05/21 18:52:43 thor Exp $
+ ** $Id: topicgadget.cpp,v 1.12 2020/07/18 15:20:39 thor Exp $
  **
  ** In this module: Definition of a meta-gadget that holds all items of
  ** one topic, i.e. one "configurable" element.
@@ -111,7 +111,7 @@ bool TopicGadget::HitTest(struct Event &ev)
 	break;
       case Event::Request:
 	ActiveGadget = NULL;
-	// runs into the following
+	// Fall through.
       default:
 	ev.Object    = NULL;
 	return false;

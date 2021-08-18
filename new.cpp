@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: new.cpp,v 1.4 2020/03/28 13:10:01 thor Exp $
+ ** $Id: new.cpp,v 1.5 2020/07/18 16:32:40 thor Exp $
  **
  ** In this module: Customized memory handling functions
  **********************************************************************************/
@@ -20,6 +20,8 @@
 #error "the system does not provide malloc"
 #endif
 ///
+
+#ifndef VALGRIND
 
 /// Replacement operator new, new[], delete and delete[]
 void *operator new(size_t s)
@@ -50,6 +52,27 @@ void *operator new[] (size_t s)
   return mem;
 }
 
+#ifdef HAS_NOEXCEPT
+void operator delete (void *a) noexcept
+{
+  free(a);
+}
+
+void operator delete (void *a,size_t) noexcept
+{
+  free(a);
+}
+
+void operator delete[] (void *a) noexcept
+{
+  free(a);
+}
+
+void operator delete[] (void *a,size_t) noexcept
+{
+  free(a);
+}
+#else
 void operator delete (void *a) throw()
 {
   free(a);
@@ -69,4 +92,7 @@ void operator delete[] (void *a,size_t) throw()
 {
   free(a);
 }
+#endif
 ///
+
+#endif

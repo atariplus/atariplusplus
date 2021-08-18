@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartright8k.cpp,v 1.3 2015/05/21 18:52:37 thor Exp $
+ ** $Id: cartright8k.cpp,v 1.4 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of a plain 8K cart for
  ** the right slot of the 800. This is almost a standard 8K cart
@@ -75,8 +75,8 @@ bool CartRight8K::MapCart(class MMU *mmu)
 {
   ADR i;
 
-  for(i=0x8000;i<0xa000;i+=PAGE_LENGTH) {
-    mmu->MapPage(i,Rom + ((i-0x8000)>>PAGE_SHIFT));
+  for(i=0x8000;i<0xa000;i+=Page::Page_Length) {
+    mmu->MapPage(i,Rom + ((i-0x8000)>>Page::Page_Shift));
   }
 
   return true;

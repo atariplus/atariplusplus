@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartxegs.cpp,v 1.16 2015/05/21 18:52:37 thor Exp $
+ ** $Id: cartxegs.cpp,v 1.17 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of an XEGS Supercart
  **********************************************************************************/
@@ -96,14 +96,14 @@ bool CartXEGS::MapCart(class MMU *mmu)
     // Get the first bank and map it into 0x8000 to 0x9fff
     // 8K = 2^13
     displacement = (ActiveBank << 13) - 0x8000;
-    for(i=0x8000;i<0xa000;i+=PAGE_LENGTH) {
-      mmu->MapPage(i,Rom+((i+displacement)>>PAGE_SHIFT));
+    for(i=0x8000;i<0xa000;i+=Page::Page_Length) {
+      mmu->MapPage(i,Rom+((i+displacement)>>Page::Page_Shift));
     }
     //
     // Now map the last bank into the area of 0xa000 and up.
     displacement  = ((TotalBanks - 1) << 13) - 0xa000;
-    for(i=0xa000;i<0xc000;i+=PAGE_LENGTH) {
-      mmu->MapPage(i,Rom+((i+displacement)>>PAGE_SHIFT));
+    for(i=0xa000;i<0xc000;i+=Page::Page_Length) {
+      mmu->MapPage(i,Rom+((i+displacement)>>Page::Page_Shift));
     }
     return true;
   }

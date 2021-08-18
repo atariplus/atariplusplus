@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: atari.cpp,v 1.38 2014/01/08 13:09:53 thor Exp $
+ ** $Id: atari.cpp,v 1.39 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Main loop of the emulator
  **********************************************************************************/
@@ -315,8 +315,8 @@ void Atari::DisplayStatus(class Monitor *mon)
 {
   mon->PrintStatus("Speed Status:\n"
 		   "\tRefreshRate is : %s\n"
-		   "\tFrameRate      : " LD "\n"
-		   "\tMaxMiss        : " LD "\n"
+		   "\tFrameRate      : " ATARIPP_LD "\n"
+		   "\tMaxMiss        : " ATARIPP_LD "\n"
 		   "\tVideoMode      : %s\n",
 		   (CustomRate)?("unlocked"):("locked"),
 		   RefreshRate,MaxMiss,

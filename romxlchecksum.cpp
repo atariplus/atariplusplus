@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: romxlchecksum.cpp,v 1.9 2015/05/21 18:52:42 thor Exp $
+ ** $Id: romxlchecksum.cpp,v 1.10 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Patch the ROM XL checksum to its proper value
  **********************************************************************************/
@@ -43,7 +43,7 @@ UWORD RomXLChecksum::CheckSum(ADR lo,ADR hi)
   hi -= 0xc000;
 
   do {
-    sum += UWORD(rom[lo >> PAGE_SHIFT].ReadByte(lo));
+    sum += UWORD(rom[lo >> Page::Page_Shift].ReadByte(lo));
     lo++;
   } while(lo<hi);
   

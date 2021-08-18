@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: string.hpp,v 1.10 2015/11/07 18:53:12 thor Exp $
+ ** $Id: string.hpp,v 1.11 2020/07/18 16:32:40 thor Exp $
  **
  ** In this module: Os compatibility layer for string management.
  ** This file takes definitions from "types.h" build by autoconf/configure
@@ -29,7 +29,11 @@
 
 /// Check for memchr function and provide a replacement if we don't have it.
 #if !HAVE_MEMCHR
+#ifdef HAS_NOEXCEPT
+inline static void *memchr(const void *s, int c, size_t n) noexcept
+#else
 inline static void *memchr(const void *s, int c, size_t n) throw()
+#endif
 {
   const unsigned char *in = (const unsigned char *)s;
 
@@ -47,7 +51,11 @@ inline static void *memchr(const void *s, int c, size_t n) throw()
 /// Check for the memmove function and provide a replacement if we don't have it.
 #if !HAVE_MEMMOVE
 // This is not overly efficient, but it should at least work...
+#ifdef HAS_NOEXCEPT
+inline static void *memmove(void *dest, const void *src, size_t n) noexcept
+#else
 inline static void *memmove(void *dest, const void *src, size_t n) throw()
+#endif
 {
   unsigned char       *d = (unsigned char *)dest;
   const unsigned char *s = (const unsigned char *)src;
@@ -75,7 +83,11 @@ inline static void *memmove(void *dest, const void *src, size_t n) throw()
 
 /// Check for the memset function and provide a replacement if we don't
 #if !HAVE_MEMSET
+#ifdef HAS_NOEXCEPT
+inline static void *memset(void *s, int c, size_t n) noexcept
+#else
 inline static void *memset(void *s, int c, size_t n) throw()
+#endif
 {
   unsigned char *d = (unsigned char *)s;
   
@@ -97,7 +109,11 @@ inline static void *memset(void *s, int c, size_t n) throw()
 #endif
 #if !HAVE_STRCASECMP
 #include <ctype.h>
+#ifdef HAS_NOEXCEPT
+inline static int strcasecmp(const char *s1, const char *s2) noexcept
+#else
 inline static int strcasecmp(const char *s1, const char *s2) throw()
+#endif
 {
   int d;
   
@@ -117,7 +133,11 @@ inline static int strcasecmp(const char *s1, const char *s2) throw()
 #endif
 #if !HAVE_STRNCASECMP
 #include <ctype.h>
+#ifdef HAS_NOEXCEPT
+inline static int strncasecmp(const char *s1, const char *s2,size_t l) noexcept
+#else
 inline static int strncasecmp(const char *s1, const char *s2,size_t l) throw()
+#endif
 {
   int d;
   
@@ -133,7 +153,11 @@ inline static int strncasecmp(const char *s1, const char *s2,size_t l) throw()
 
 /// Check for availibility of the strchr function and provide a replacement if there is none.
 #if !HAVE_STRCHR
+#ifdef HAS_NOEXCEPT
+inline static char *strchr(const char *s, int c) noexcept
+#else
 inline static char *strchr(const char *s, int c) throw()
+#endif
 {
   while(*s) {
     if (*s == c) return const_cast<char *>(s);
@@ -153,7 +177,11 @@ inline static char *strchr(const char *s, int c) throw()
 
 /// Check for strrchr function and provide a replacement.
 #if !HAVE_STRRCHR
+#ifdef HAS_NOEXCEPT
+inline static char *strrchr(const char *s, int c) noexcept
+#else
 inline static char *strrchr(const char *s, int c) throw()
+#endif
 {
   const char *t = s + strlen(s);
   

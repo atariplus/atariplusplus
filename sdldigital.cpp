@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdldigital.cpp,v 1.6 2015/05/21 18:52:42 thor Exp $
+ ** $Id: sdldigital.cpp,v 1.7 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: SDL digitial el-cheapo joystick interface
  **********************************************************************************/
@@ -232,13 +232,13 @@ void SDLDigital::DisplayStatus(class Monitor *mon)
 {
   mon->PrintStatus("Joystick #%d status:\n"
 		   "\tJoystick available: %s\n"
-		   "\tUp button line    : " LD "\n"
-		   "\tDown button line  : " LD "\n"
-		   "\tLeft button line  : " LD "\n"
-		   "\tRight button line : " LD "\n"
+		   "\tUp button line    : " ATARIPP_LD "\n"
+		   "\tDown button line  : " ATARIPP_LD "\n"
+		   "\tLeft button line  : " ATARIPP_LD "\n"
+		   "\tRight button line : " ATARIPP_LD "\n"
 		   "\tTrigger input axis: %s\n"
 		   "\tCalibration axis  : %s\n"
-		   "\tTrigger threshold : " LD "\n"
+		   "\tTrigger threshold : " ATARIPP_LD "\n"
 		   "\tInvert trigger    : %s\n",
 		   unit,
 		   IsAvailable()?("yes"):("no"),

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdlsound.cpp,v 1.34 2015/11/23 20:24:01 thor Exp $
+ ** $Id: sdlsound.cpp,v 1.35 2021/08/16 10:31:01 thor Exp $
  **
  ** In this mdoule: This class implements audio output thru the SDL library
  ** as available.
@@ -425,9 +425,9 @@ void SDLSound::DisplayStatus(class Monitor *mon)
   mon->PrintStatus("Audio Output Status:\n"
 		   "\tAudio output enable     : %s\n"
 		   "\tConsole speaker enable  : %s\n"
-		   "\tConsole speaker volume  : " LD "\n"
-		   "\tSampling frequency      : " LD "Hz\n"
-		   "\tFragment size exponent  : " LD "\n"
+		   "\tConsole speaker volume  : " ATARIPP_LD "\n"
+		   "\tSampling frequency      : " ATARIPP_LD "Hz\n"
+		   "\tFragment size exponent  : " ATARIPP_LD "\n"
 		   "\tChannel duplication     : %s\n"
 		   "\tStereo sound            : %s\n"
 		   "\tChannel bit depth       : %d\n"

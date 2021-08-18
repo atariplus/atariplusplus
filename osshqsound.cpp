@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osshqsound.cpp,v 1.27 2015/05/21 18:52:41 thor Exp $
+ ** $Id: osshqsound.cpp,v 1.28 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Os interface towards sound output by Oss
  ** with somewhat more quality
@@ -437,13 +437,13 @@ void HQSound::DisplayStatus(class Monitor *mon)
   mon->PrintStatus("Audio Output Status:\n"
 		   "\tAudio output enable            : %s\n"
 		   "\tConsole speaker enable         : %s\n"
-		   "\tConsole speaker volume         : " LD "\n"
+		   "\tConsole speaker volume         : " ATARIPP_LD "\n"
 		   "\tAudio output device            : %s\n"
-		   "\tSampling frequency             : " LD "Hz\n"
-		   "\tFragment size exponent         : " LD "\n"
-		   "\tNumber of fragments            : " LD "\n"
-		   "\tNumber of samples in the queue : " LD "\n"
-		   "\tEffective sampling frequency   : " LD "Hz\n"
+		   "\tSampling frequency             : " ATARIPP_LD "Hz\n"
+		   "\tFragment size exponent         : " ATARIPP_LD "\n"
+		   "\tNumber of fragments            : " ATARIPP_LD "\n"
+		   "\tNumber of samples in the queue : " ATARIPP_LD "\n"
+		   "\tEffective sampling frequency   : " ATARIPP_LD "Hz\n"
 		   "\tChannel duplication            : %s\n"
 		   "\tStereo sound                   : %s\n"
 		   "\tChannel bit depth              : %d\n"

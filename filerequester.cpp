@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filerequester.cpp,v 1.5 2015/05/21 18:52:39 thor Exp $
+ ** $Id: filerequester.cpp,v 1.7 2021/06/20 09:13:27 thor Exp $
  **
  ** In this module: A requester class that requests a file name from the user
  **********************************************************************************/
@@ -67,8 +67,28 @@ int FileRequester::HandleEvent(struct Event &event)
 #endif
     // Is the request successful?
     if (event.Button) {
+      struct stat info;
       // Extract the result from the file list
       result = FileSelections->GetStatus();
+      //
+      // Check whether this is a file or a directory, and abort
+      // if it is not the proper type.
+      if (stat(result,&info)) {
+	// On error, do not allow this selection if directories are
+	// requested. Files can be created.
+	if (DirsOnly || !Saving)
+	  return RQ_Nothing;
+      } else {
+	// Check whether the type fits.
+	if (info.st_mode & S_IFDIR) {
+	  if (FilesOnly)
+	    return RQ_Nothing;
+	} else {
+	  if (DirsOnly)
+	    return RQ_Nothing;
+	}
+      }
+      //
       // Copy the result into the result variable.
       Result = new char[strlen(result) + 1];
       strcpy(Result,result);

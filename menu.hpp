@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.hpp,v 1.53 2015/05/21 18:52:40 thor Exp $
+ ** $Id: menu.hpp,v 1.54 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/
@@ -39,12 +39,6 @@ class Menu : private OptionCollector {
   //
   class Keyboard   *Keyboard;
   //
-  //
-#ifndef HAS_PRIVATE_ACCESS
-  // Compiler workaround: Substructures of a class are part of the class and have hence
-  // access to private data.
-public:
-#endif
   // Global actions we need to execute, either driver by the
   // preferences reloader or by the "control topic" directly
   // by the user. Unfortunately, we must put this into an int
@@ -63,9 +57,6 @@ public:
     MA_Exit,          // exit the menu
     MA_Quit           // quit the emulator
   };
-#ifndef HAS_PRIVATE_ACCESS
-private:
-#endif
   //
   // The control function of the global menu. This is the topmost topic
   // we create by hand and which is not given by the preferences.

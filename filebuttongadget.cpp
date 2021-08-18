@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filebuttongadget.cpp,v 1.4 2015/05/21 18:52:39 thor Exp $
+ ** $Id: filebuttongadget.cpp,v 1.6 2021/07/03 15:48:34 thor Exp $
  **
  ** In this module: Definition of a graphical button gadget 
  ** that brings up a file requester
@@ -55,6 +55,7 @@ bool FileButtonGadget::HitTest(struct Event &ev)
       Refresh();
       return true;
     }
+    return false;
   default:
     return false;
   }

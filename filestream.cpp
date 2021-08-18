@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filestream.cpp,v 1.7 2015/05/21 18:52:39 thor Exp $
+ ** $Id: filestream.cpp,v 1.8 2021/05/16 10:07:31 thor Exp $
  **
  ** In this module: Disk image source stream interface towards stdio
  **********************************************************************************/
@@ -51,6 +51,9 @@ void FileStream::OpenImage(const char *name)
   if (stat(name,&info)) {
     ThrowIo("FileStream::OpenImage","unable to stat the image file");
   }
+  if (info.st_mode & S_IFDIR) {
+    Throw(InvalidParameter,"FileStream::OpenImage","image MUST be a file, not a directory");
+  }
   if (info.st_mode & S_IWUSR) {
     // We may write to it.
     IsProtected = false;
@@ -70,11 +73,15 @@ void FileStream::OpenImage(const char *name)
   // Now find some characteristics, namely the file size.
   // For that, seek to the end of the file.
   if (fseek(File,0,SEEK_END)) {
+    fclose(File);
+    File = NULL;
     ThrowIo("FileStream::OpenImage","unable to seek in the image file");
   }
   // Now get the size of the image.
   here = ftell(File);
   if (here < 0) {
+    fclose(File);
+    File = NULL;
     ThrowIo("FileStream::OpenImage","unable to get the file pointer location in the image file");
   }
   Size = here;

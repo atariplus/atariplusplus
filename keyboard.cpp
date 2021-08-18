@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboard.cpp,v 1.36 2015/05/21 18:52:40 thor Exp $
+ ** $Id: keyboard.cpp,v 1.38 2021/07/03 16:12:51 thor Exp $
  **
  ** In this module: Definition of the interface towards keyboard input
  **********************************************************************************/
@@ -552,7 +552,8 @@ void Keyboard::HandleSpecial(bool press,SpecialKey key,bool shift,bool control)
       case Shift:
 	// These two also generate a shift keyboard key.
 	BreakIRQPending  = true; // this happens synchroniously.
-	// Runs into the following: Also generates a regular keyboard event.
+	// Also generates a regular keyboard event.
+	// Intentionally falls through.
       case Start:
       case Select:
       case Option:

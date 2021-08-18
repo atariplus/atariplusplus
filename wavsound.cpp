@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: wavsound.cpp,v 1.32 2013/06/02 20:41:14 thor Exp $
+ ** $Id: wavsound.cpp,v 1.33 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Os interface for .wav file output
  **********************************************************************************/
@@ -325,7 +325,7 @@ bool WavSound::OpenOssStream(void)
     outputfreq = (dspfreq << 6) / 63;
     machine->PutWarning("Due to a limitation of your audio hardware,\n"
 			"I annot set the WAV output frequency to the\n"
-			"desired " LD " Hz but are using now " LD " Hz instead.\n"
+			"desired " ATARIPP_LD " Hz but are using now " ATARIPP_LD " Hz instead.\n"
 			"To avoid this feature, disable audio playback.\n",SamplingFreq,outputfreq);
     SamplingFreq = outputfreq;
   }
@@ -696,12 +696,12 @@ void WavSound::DisplayStatus(class Monitor *mon)
 		   "\tAudio Playback enable   : %s\n"
 		   "\tAudio recording active  : %s\n"
 		   "\tConsole speaker enable  : %s\n"
-		   "\tConsole speaker volume  : " LD "\n"
+		   "\tConsole speaker volume  : " ATARIPP_LD "\n"
 		   "\tWav output file         : %s\n"
 		   "\tPlayback audio device   : %s\n"
-		   "\tSampling frequency      : " LD "Hz\n"
-		   "\tFragment size exponent  : " LD "\n"
-		   "\tNumber of fragments     : " LD "\n",
+		   "\tSampling frequency      : " ATARIPP_LD "Hz\n"
+		   "\tFragment size exponent  : " ATARIPP_LD "\n"
+		   "\tNumber of fragments     : " ATARIPP_LD "\n",
 		   (EnableSound)?("on"):("off"),
 		   (Playback)?("on"):("off"),
 		   (Recording)?("on"):("off"),

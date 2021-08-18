@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart16k.cpp,v 1.9 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cart16k.cpp,v 1.10 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of a plain 16K cart
  **********************************************************************************/
@@ -73,8 +73,8 @@ bool Cart16K::MapCart(class MMU *mmu)
 {
   ADR i;
 
-  for(i=0x8000;i<0xc000;i+=PAGE_LENGTH) {
-    mmu->MapPage(i,Rom + ((i-0x8000)>>PAGE_SHIFT));
+  for(i=0x8000;i<0xc000;i+=Page::Page_Length) {
+    mmu->MapPage(i,Rom + ((i-0x8000)>>Page::Page_Shift));
   }
 
   return true;

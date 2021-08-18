@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: axlonextension.cpp,v 1.8 2015/10/25 09:11:22 thor Exp $
+ ** $Id: axlonextension.cpp,v 1.9 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: This RAM extension implements various AXLON compatible
  ** RAM extensions.
@@ -143,7 +143,7 @@ bool AxlonExtension::MapExtension(class AdrSpace *adr,bool forantic)
   //
   // Otherwise: Each bank is 16K in size and starts at 0x4000.
   ram = RAM + ((ControlPage.ActiveBank & ControlPage.BankMask) << 6);
-  for(i = 0x4000;i < 0x8000; i += PAGE_LENGTH) {
+  for(i = 0x4000;i < 0x8000; i += Page::Page_Length) {
     adr->MapPage(i,ram);
     ram++;
   }

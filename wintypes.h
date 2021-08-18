@@ -22,15 +22,8 @@
 /* Define to 1 if integer constants are valid template arguments */
 #define HAS_INT_TEMPLATE_ARGS 1
 
-/* Define to 1 if templated subclasses are correctly in the namespace of the
-   parent class */
-#define HAS_LOCAL_TEMPLATES 1
-
 /* Define to 1 if initializers of static const integral members work */
 #define HAS_MEMBER_INIT 1
-
-/* Define to 1 if subclasses have access to private members */
-#define HAS_PRIVATE_ACCESS 1
 
 /* Define to 1 if the ALSA NEW_HW_PARAMS_API is available */
 /* #define HAS_PROPER_ALSA 1 */

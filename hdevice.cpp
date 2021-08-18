@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: hdevice.cpp,v 1.52 2015/09/25 18:50:30 thor Exp $
+ ** $Id: hdevice.cpp,v 1.55 2021/07/03 16:16:44 thor Exp $
  **
  ** In this module: H: emulated device for emulated disk access.
  **********************************************************************************/
@@ -598,14 +598,15 @@ UBYTE HDevice::HandlerChannel::ToDirEntry(void)
 {
   size_t i,len;
   struct stat info;
-  char fullname[256];
+  char fullname[257];
   const char *name = de_name(fib);
   const char *dot;
 
   if (strlen(basedir) + 3 + strlen(name) > 256) {
     return 0xa5;
   }
-  snprintf(fullname,255,"%s/%s",basedir,name);
+  if (snprintf(fullname,sizeof(fullname),"%s/%s",basedir,name) > int(sizeof(fullname)))
+    return 0xa5; // invalid file name
   if (stat(fullname,&info) == -1) {
     return AtariError(errno);
   }
@@ -1147,7 +1148,8 @@ UBYTE HDevice::Rename(struct HandlerChannel *ch,char *pattern)
     return 0xa5;
   //
   // Build the destination name
-  snprintf(destpath,255,"%s/%s",ch->basedir,dst);
+  if (snprintf(destpath,sizeof(destpath),"%s/%s",ch->basedir,dst) > int(sizeof(destpath)))
+    return 0xa5; // Invalid file name
 
   result = ch->MatchFirst(pattern);
   while(result == 0x01) {
@@ -1162,7 +1164,8 @@ UBYTE HDevice::Rename(struct HandlerChannel *ch,char *pattern)
       }
     }
     // Worked so far. Now run the rename.
-    snprintf(sourcepath,255,"%s/%s",ch->basedir,de_name(ch->fib));
+    if (snprintf(sourcepath,sizeof(sourcepath),"%s/%s",ch->basedir,de_name(ch->fib)) > int(sizeof(sourcepath)))
+      return 0xa5; // invalid file name
     if (rename(sourcepath,destpath) < 0) {
       return ch->AtariError(errno);
     }
@@ -1186,7 +1189,8 @@ UBYTE HDevice::Delete(struct HandlerChannel *ch,char *pattern)
 
   result = ch->MatchFirst(pattern);
   while (result == 0x01) {
-    snprintf(target,255,"%s/%s",ch->basedir,de_name(ch->fib));
+    if (snprintf(target,sizeof(target),"%s/%s",ch->basedir,de_name(ch->fib)) > int(sizeof(target)))
+      return 0xa5; // Invalid file name
     // Now check whether this file is "protected". If so,
     // deliver an error and do not delete it.
     if (stat(target,&info) == -1) {
@@ -1277,7 +1281,8 @@ UBYTE HDevice::Protect(struct HandlerChannel *ch,char *pattern)
 
   result = ch->MatchFirst(pattern);
   while (result == 0x01) {
-    snprintf(target,255,"%s/%s",ch->basedir,de_name(ch->fib));
+    if (snprintf(target,sizeof(target),"%s/%s",ch->basedir,de_name(ch->fib)) > int(sizeof(target)))
+      return 0xa5; // Invalid file name
     // Get the info for this file.
     if (stat(target,&info) < 0) {
       return ch->AtariError(errno);
@@ -1307,7 +1312,8 @@ UBYTE HDevice::Unprotect(struct HandlerChannel *ch,char *pattern)
 
   result = ch->MatchFirst(pattern);
   while (result == 0x01) {
-    snprintf(target,255,"%s/%s",ch->basedir,de_name(ch->fib));
+    if (snprintf(target,sizeof(target),"%s/%s",ch->basedir,de_name(ch->fib)) > int(sizeof(target)))
+      return 0xa5; // Invalid file name
     // Get the info for this file.
     if (stat(target,&info) < 0) {
       return ch->AtariError(errno);

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: keyboardstick.cpp,v 1.10 2015/05/21 18:52:40 thor Exp $
+ ** $Id: keyboardstick.cpp,v 1.11 2020/07/18 16:32:40 thor Exp $
  **
  ** In this module: An emulation layer for keyboard driven joysticks
  **********************************************************************************/
@@ -175,11 +175,11 @@ KeyboardStick::~KeyboardStick(void)
 
   for(dy = 0;dy <= 2;dy++) {
     for(dx = 0;dx <= 2;dx++) {
-      delete DirectionNames[dx][dy];
+      delete[] DirectionNames[dx][dy];
     }
   }
   for(b = 0;b < 2;b++) {
-    delete ButtonNames[b];
+    delete[] ButtonNames[b];
   }
 }
 ///
@@ -353,7 +353,7 @@ void KeyboardStick::CodeToName(char *&name,int code)
 { 
   const char *newname;
   
-  delete name;
+  delete[] name;
   name = NULL;
   newname = KeyName(code);
   if (newname == NULL)

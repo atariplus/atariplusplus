@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: types.hpp,v 1.17 2015/05/21 18:52:43 thor Exp $
+ ** $Id: types.hpp,v 1.18 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Thor's pecularities, my type definitions
  **********************************************************************************/
@@ -22,11 +22,6 @@
 ///
 
 /// Compiler workarounds
-#ifdef HAS_LOCAL_TEMPLATES
-#define T(super,type) type
-#else
-#define T(super,type) super::type
-#endif
 #ifdef HAS_MEMBER_INIT
 #define INIT(a) = a
 #else
@@ -62,15 +57,15 @@ typedef unsigned int        UWORD;   /* an 16 bit unsigned integer */
 #if SIZEOF_LONG  == 4
 typedef signed long int     LONG;    /* an 32 bit signed integer */
 typedef unsigned long int   ULONG;   /* an 32 bit unsigned integer */
-#define LD "%ld"
-#define LX "%lx"
-#define LU "%lu"
+#define ATARIPP_LD "%ld"
+#define ATARIPP_LX "%lx"
+#define ATARIPP_LU "%lu"
 #elif SIZEOF_INT == 4
 typedef signed int          LONG;    /* an 32 bit signed integer */
 typedef unsigned int        ULONG;   /* an 32 bit unsigned integer */
-#define LD "%d"
-#define LX "%x"
-#define LU "%u"
+#define ATARIPP_LD "%d"
+#define ATARIPP_LX "%x"
+#define ATARIPP_LU "%u"
 #else
 # error "No 32 bit integer type available"
 #endif

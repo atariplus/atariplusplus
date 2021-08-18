@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_xvideobuffer.cpp,v 1.3 2013/12/20 23:54:08 thor Exp $
+ ** $Id: x11_xvideobuffer.cpp,v 1.4 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -464,13 +464,13 @@ void X11_XVideoBuffer::WarmStart(void)
 void X11_XVideoBuffer::DisplayStatus(class Monitor *mon)
 {
   mon->PrintStatus("X11_XVideoBuffer status:\n"
-		   "\tPixel width           : " LD "\n"
-		   "\tPixel height          : " LD "\n"
+		   "\tPixel width           : " ATARIPP_LD "\n"
+		   "\tPixel height          : " ATARIPP_LD "\n"
 		   "\tTrue Color Renderer   : on\n"
-		   "\tLeftEdge              : " LD "\n"
-		   "\tTopEdge               : " LD "\n"
-		   "\tWidth                 : " LD "\n"
-		   "\tHeight                : " LD "\n",
+		   "\tLeftEdge              : " ATARIPP_LD "\n"
+		   "\tTopEdge               : " ATARIPP_LD "\n"
+		   "\tWidth                 : " ATARIPP_LD "\n"
+		   "\tHeight                : " ATARIPP_LD "\n",
 		   PixelWidth,PixelHeight,
 		   LeftEdge,TopEdge,Width,Height);
 }

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: xeextension.cpp,v 1.13 2015/05/21 18:52:44 thor Exp $
+ ** $Id: xeextension.cpp,v 1.14 2021/08/16 10:31:02 thor Exp $
  **
  ** In this module: This RAM extension implements the 130XE 64K of
  ** additional RAM.
@@ -71,7 +71,7 @@ bool XEExtension::MapExtension(class AdrSpace *adr,bool forantic)
       // 0x4000 and up. These are 16K, making 64 pages or a left-
       // shift by six.
       ram = RAM + (AnticBank << 6);
-      for(i = 0x4000;i<0x8000; i += PAGE_LENGTH) {
+      for(i = 0x4000;i<0x8000; i += Page::Page_Length) {
 	adr->MapPage(i,ram);
 	ram++;
       }
@@ -84,7 +84,7 @@ bool XEExtension::MapExtension(class AdrSpace *adr,bool forantic)
       class RamPage *ram;
       ADR i;
       ram = RAM + (CPUBank << 6);
-      for(i = 0x4000;i<0x8000; i += PAGE_LENGTH) {
+      for(i = 0x4000;i<0x8000; i += Page::Page_Length) {
 	adr->MapPage(i,ram);
 	ram++;
       }
@@ -253,7 +253,7 @@ void XEExtension::DisplayStatus(class Monitor *monitor)
 
   monitor->PrintStatus("\tXE banks CPU access     : %s\n"
 		       "\tXE banks ANTIC access   : %s\n"
-		       "\tXE number of banks bits : " LD "\n"
+		       "\tXE number of banks bits : " ATARIPP_LD "\n"
 		       "\tXE PIA Port B bank mask : 0x%02x\n"
 		       "\tXE active bank          : %d\n",
 		       (CPUAccess)?("on"):("off"),

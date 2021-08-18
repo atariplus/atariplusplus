@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartoss8k.cpp,v 1.2 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cartoss8k.cpp,v 1.3 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of an Oss Supercart
  **********************************************************************************/
@@ -87,13 +87,13 @@ bool CartOSS8K::MapCart(class MMU *mmu)
   if (Disabled == false) {      
     // Map upper part of Oss cart now. This is in the lower part of
     // the ROM.
-    for(i=0xb000;i<0xc000;i+=PAGE_LENGTH) {
-      mmu->MapPage(i,Rom+((i-0xb000)>>PAGE_SHIFT));
+    for(i=0xb000;i<0xc000;i+=Page::Page_Length) {
+      mmu->MapPage(i,Rom+((i-0xb000)>>Page::Page_Shift));
     }
     // Map lower part of the Oss cart, this comes from the upper part of
     // the ROM.
-    for(i=0xa000;i<0xb000;i+=PAGE_LENGTH) {
-      mmu->MapPage(i,Rom+(((i-0xa000)>>PAGE_SHIFT)) + 16);
+    for(i=0xa000;i<0xb000;i+=Page::Page_Length) {
+      mmu->MapPage(i,Rom+(((i-0xa000)>>Page::Page_Shift)) + 16);
     }
     return true;
   }

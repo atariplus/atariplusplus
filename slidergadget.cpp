@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: slidergadget.cpp,v 1.9 2015/05/21 18:52:43 thor Exp $
+ ** $Id: slidergadget.cpp,v 1.11 2021/07/03 15:48:34 thor Exp $
  **
  ** In this module: Definition of a slider gadget representing a range.
  **********************************************************************************/
@@ -214,6 +214,7 @@ bool SliderGadget::HitTest(struct Event &ev)
       Dragging  = false;
       return true;
     }
+    return false;
   default:
     return false;
   }

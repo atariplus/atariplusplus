@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rompage.hpp,v 1.11 2015/10/25 09:11:23 thor Exp $
+ ** $Id: rompage.hpp,v 1.12 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Definition of a page of ROM
  **********************************************************************************/
@@ -28,7 +28,7 @@ protected:
   //
   virtual UBYTE ComplexRead(ADR mem)
   {
-    return romimage[mem & PAGE_MASK];
+    return romimage[mem & Page::Page_Mask];
   }
   //
   virtual void ComplexWrite(ADR,UBYTE)
@@ -40,7 +40,7 @@ public:
   //
   // The constructor also constructs the memory here.
   RomPage(void)
-    : romimage(new UBYTE[256])
+    : romimage(new UBYTE[Page::Page_Length])
   { }
   //
   ~RomPage(void)
@@ -54,7 +54,7 @@ public:
   // Read a byte. Returns the byte read.
   UBYTE ReadByte(ADR mem)
   {
-    return romimage[mem & PAGE_MASK];
+    return romimage[mem & Page::Page_Mask];
   }
   //
   // Write a byte to a page.
@@ -65,13 +65,13 @@ public:
   // Blank a rompage to all zeros
   void Blank(void)
   {
-    memset(romimage,0,256);
+    memset(romimage,0,Page::Page_Length);
   }  
   //
   // Patch a byte into a ROM. 
   virtual void PatchByte(ADR mem,UBYTE val)
   {
-    romimage[mem & PAGE_MASK] = val;
+    romimage[mem & Page::Page_Mask] = val;
   }
   //
   // Return an indicator whether this is an I/O area or not.

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: directxsound.cpp,v 1.14 2015/05/21 18:52:39 thor Exp $
+ ** $Id: directxsound.cpp,v 1.15 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Sound frontend for direct X sound output under Win32
  ** and related M$ "operating systems".
@@ -414,12 +414,12 @@ void DirectXSound::DisplayStatus(class Monitor *mon)
   mon->PrintStatus("Audio Output Status:\n"
 		   "\tAudio output enable            : %s\n"
 		   "\tConsole speaker enable         : %s\n"
-		   "\tConsole speaker volume         : " LD "\n"
-		   "\tSampling frequency             : " LD "Hz\n"
-		   "\tFragment size exponent         : " LD "\n"
-		   "\tNumber of fragments            : " LD "\n"
-		   "\tNumber of samples in the queue : " LD "\n"
-		   "\tEffective sampling frequency   : " LD "Hz\n"
+		   "\tConsole speaker volume         : " ATARIPP_LD "\n"
+		   "\tSampling frequency             : " ATARIPP_LD "Hz\n"
+		   "\tFragment size exponent         : " ATARIPP_LD "\n"
+		   "\tNumber of fragments            : " ATARIPP_LD "\n"
+		   "\tNumber of samples in the queue : " ATARIPP_LD "\n"
+		   "\tEffective sampling frequency   : " ATARIPP_LD "Hz\n"
 		   "\tChannel duplication            : %s\n"
 		   "\tStereo sound                   : %s\n"
 		   "\tChannel bit depth              : %d\n"

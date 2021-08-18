@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: analogjoystick.cpp,v 1.28 2015/05/21 18:52:35 thor Exp $
+ ** $Id: analogjoystick.cpp,v 1.29 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Frontend for the Linux /dev/jsx handler
  **********************************************************************************/
@@ -261,12 +261,12 @@ void AnalogJoystick::DisplayStatus(class Monitor *mon)
 #ifdef USE_JOYSTICK
   mon->PrintStatus("Joystick #%d status:\n"
 		   "\tJoystick available     : %s\n"
-		   "\tFirst Polled button  # : " LD "\n"
-		   "\tSecond Polled button # : " LD "\n"
-		   "\tThird Polled button  # : " LD "\n"
-		   "\tFourth Polled button # : " LD "\n"
-		   "\tHorizontal Axis      # : " LD "\n"
-		   "\tVertical Axis        # : " LD "\n",
+		   "\tFirst Polled button  # : " ATARIPP_LD "\n"
+		   "\tSecond Polled button # : " ATARIPP_LD "\n"
+		   "\tThird Polled button  # : " ATARIPP_LD "\n"
+		   "\tFourth Polled button # : " ATARIPP_LD "\n"
+		   "\tHorizontal Axis      # : " ATARIPP_LD "\n"
+		   "\tVertical Axis        # : " ATARIPP_LD "\n",
 		   unit,
 		   IsAvailable()?("yes"):("no"),
 		   ButtonId[0],ButtonId[1],ButtonId[2],ButtonId[3],

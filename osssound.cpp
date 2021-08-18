@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: osssound.cpp,v 1.41 2015/05/21 18:52:41 thor Exp $
+ ** $Id: osssound.cpp,v 1.42 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Os interface towards sound output by Oss
  **********************************************************************************/
@@ -323,12 +323,12 @@ void OssSound::DisplayStatus(class Monitor *mon)
   mon->PrintStatus("Audio Output Status:\n"
 		   "\tAudio output enable     : %s\n"
 		   "\tConsole speaker enable  : %s\n"
-		   "\tConsole speaker volume  : " LD "\n"
+		   "\tConsole speaker volume  : " ATARIPP_LD "\n"
 		   "\tAudio output device     : %s\n"
-		   "\tSampling frequency      : " LD "Hz\n"
-		   "\tBuffer refill frequency : " LD "Hz\n"
-		   "\tFragment size exponent  : " LD "\n"
-		   "\tNumber of fragments     : " LD "\n"
+		   "\tSampling frequency      : " ATARIPP_LD "Hz\n"
+		   "\tBuffer refill frequency : " ATARIPP_LD "Hz\n"
+		   "\tFragment size exponent  : " ATARIPP_LD "\n"
+		   "\tNumber of fragments     : " ATARIPP_LD "\n"
 		   "\tChannel duplication     : %s\n"
 		   "\tStereo sound            : %s\n"
 		   "\tChannel bit depth       : %d\n"

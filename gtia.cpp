@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: gtia.cpp,v 1.130 2020/03/21 20:51:44 thor Exp $
+ ** $Id: gtia.cpp,v 1.132 2021/07/03 16:12:51 thor Exp $
  **
  ** In this module: GTIA graphics emulation
  **********************************************************************************/
@@ -731,7 +731,7 @@ UBYTE GTIA::PixelColor(int pf_pixel,int pm_pixel,int pf_color)
     // the remaining color fiddling entries for 0,1 and 1,0
     // transitions.
     pfcol  = ColorLookup[Playfield_2];
-    // runs intentionally into the following...
+    // Intentionally falls through.
   case Playfield_2:
   case Playfield_3:
     // Now disable the playfield if the players have priority.
@@ -2057,6 +2057,7 @@ UBYTE GTIA::TrigRead(int n)
 	return 0; // no cart inserted
       }
     }
+    return 0; // shut up the compiler.
   default:
     Throw(NotImplemented,"GTIA::TrigRead","Unknown machine type");
     return 0;

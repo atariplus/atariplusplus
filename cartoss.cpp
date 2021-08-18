@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartoss.cpp,v 1.11 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cartoss.cpp,v 1.12 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of an Oss Supercart
  **********************************************************************************/
@@ -90,32 +90,32 @@ bool CartOSS::MapCart(class MMU *mmu)
   if (Disabled == false) {      
     // Map upper part of Oss cart now. This is always ROM A hi
     // upper.
-    for(i=0xb000;i<0xc000;i+=PAGE_LENGTH) {
-      mmu->MapPage(i,Rom+((i-0xa000)>>PAGE_SHIFT));
+    for(i=0xb000;i<0xc000;i+=Page::Page_Length) {
+      mmu->MapPage(i,Rom+((i-0xa000)>>Page::Page_Shift));
     }
     switch(ActiveBank) {
     case 0:
       // ROM A Lo here (0xd503)
-      for(i=0xa000;i<0xb000;i+=PAGE_LENGTH) {
-	mmu->MapPage(i,Rom+(((i-0xa000)>>PAGE_SHIFT)));
+      for(i=0xa000;i<0xb000;i+=Page::Page_Length) {
+	mmu->MapPage(i,Rom+(((i-0xa000)>>Page::Page_Shift)));
       }
       break;
     case 0xff: 
       // map blank area here (0xd502)
-      for(i=0xa000;i<0xb000;i+=PAGE_LENGTH) {
+      for(i=0xa000;i<0xb000;i+=Page::Page_Length) {
 	mmu->MapPage(i,&Blank);
       }
       break;
     case 2: 
       // ROM B Lo here (0xd500)
-      for(i=0xa000;i<0xb000;i+=PAGE_LENGTH) {
-	mmu->MapPage(i,Rom+((i-0xa000)>>PAGE_SHIFT) + 32);
+      for(i=0xa000;i<0xb000;i+=Page::Page_Length) {
+	mmu->MapPage(i,Rom+((i-0xa000)>>Page::Page_Shift) + 32);
       }
       break;
     case 3: 
       // ROM B Hi here (0xd504)
-      for(i=0xa000;i<0xb000;i+=PAGE_LENGTH) {
-	mmu->MapPage(i,Rom+(((i-0xa000)>>PAGE_SHIFT) + 32 + 16));
+      for(i=0xa000;i<0xb000;i+=Page::Page_Length) {
+	mmu->MapPage(i,Rom+(((i-0xa000)>>Page::Page_Shift) + 32 + 16));
       }
       break;
     }

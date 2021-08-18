@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: binaryimage.cpp,v 1.20 2015/11/07 18:53:12 thor Exp $
+ ** $Id: binaryimage.cpp,v 1.22 2021/07/03 15:48:34 thor Exp $
  **
  ** In this module: Disk image class for binary load files
  **********************************************************************************/
@@ -516,7 +516,7 @@ void BinaryImage::RunPatch(class AdrSpace *adr,class CPU *cpu,UBYTE)
     // No need to go through another CPU cycle if we proceed directly to the loader.
     if (BootStage != Loader)
       break;
-    // otherwise, run into here.
+    // Falls through - otherwise, run into here.
   case Loader: // bytes are ready in the buffer, run the binary loader.
     do {
       if (NextByte < AvailBytes) {
@@ -533,12 +533,13 @@ void BinaryImage::RunPatch(class AdrSpace *adr,class CPU *cpu,UBYTE)
     JumpInitStage(adr,cpu);
     if (BootStage != JumpRun)
       break;
+    // Falls through.
   case JumpRun:
     JumpRunStage(adr,cpu);
     break;
   case JumpInitReturn:
     JumpInitReturnStage(adr,cpu);
-    // runs into the following
+    // Falls through.
   case WaitVBI:
     WaitVBIStage(adr,cpu);
     break;

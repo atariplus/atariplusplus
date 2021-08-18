@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: buttongadget.cpp,v 1.5 2015/05/21 18:52:36 thor Exp $
+ ** $Id: buttongadget.cpp,v 1.7 2021/07/03 15:48:34 thor Exp $
  **
  ** In this module: Definition of the button gadget
  **********************************************************************************/
@@ -66,6 +66,7 @@ bool ButtonGadget::HitTest(struct Event &ev)
       Refresh();
       return true;
     }
+    return false;
   default:
     return false;
   }

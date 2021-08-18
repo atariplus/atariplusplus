@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: printer.cpp,v 1.39 2015/05/21 18:52:41 thor Exp $
+ ** $Id: printer.cpp,v 1.40 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Support for printer output.
  **********************************************************************************/
@@ -483,7 +483,7 @@ void Printer::DisplayStatus(class Monitor *mon)
 		   "\tPrinter output queue is: %s\n"
 		   "\tPrinter is             : %s\n"
 		   "\tTranspose EOL->LF      : %s\n"
-		   "\tFlush delay is         : " LD "sec\n"
+		   "\tFlush delay is         : " ATARIPP_LD "sec\n"
 		   "\tPrint command is       : %s\n"
 		   "\tPrint target file is   : %s\n"
 		   "\tPrinting into          : %s\n"

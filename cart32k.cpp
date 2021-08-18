@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart32k.cpp,v 1.13 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cart32k.cpp,v 1.14 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of a plain 32K cart
  **********************************************************************************/
@@ -75,7 +75,7 @@ void Cart32K::ReadFromFile(FILE *fp)
 void Cart32K::DisplayStatus(class Monitor *mon)
 {  
   mon->PrintStatus("Cart type inserted : %s\n"
-		   "Size of the cart   : " LD "K\n",
+		   "Size of the cart   : " ATARIPP_LD "K\n",
 		   CartType(),
 		   Size);
 }
@@ -93,8 +93,8 @@ bool Cart32K::MapCart(class MMU *mmu)
   // Compute the mask for the incomplete mapping.
   adrmask = (Size << 10) - 1;
   //
-  for(i=0x4000;i<0xc000;i+=PAGE_LENGTH) {
-    mmu->MapPage(i,Rom + (((i-0x4000) & adrmask)>>PAGE_SHIFT));
+  for(i=0x4000;i<0xc000;i+=Page::Page_Length) {
+    mmu->MapPage(i,Rom + (((i-0x4000) & adrmask)>>Page::Page_Shift));
   }
 
   return true;

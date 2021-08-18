@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: alsasound.cpp,v 1.34 2020/04/05 11:50:00 thor Exp $
+ ** $Id: alsasound.cpp,v 1.38 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Os interface towards sound output for the alsa sound system
  **********************************************************************************/
@@ -256,14 +256,12 @@ bool AlsaSound::InitializeDsp(void)
   }
   //
   // Narrow the configuration space for formats.
+  // Note: Apparently, some alsa backends do not support narrowing.
+  // Just ignore the error then...
   format = SND_PCM_FORMAT_S8;
-  if ((err = snd_pcm_hw_params_set_format_first(SoundStream,HWParms,&format)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","failed to narrow the format space");
-  }
+  snd_pcm_hw_params_set_format_first(SoundStream,HWParms,&format);
   format = SND_PCM_FORMAT_U16_BE;
-  if ((err = snd_pcm_hw_params_set_format_last(SoundStream,HWParms,&format)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","failed to narrow the format space");
-  }
+  snd_pcm_hw_params_set_format_last(SoundStream,HWParms,&format);
   //
   // Now query the format. We support quite some, but not all formats.
   // What happens if more than one format is available?
@@ -330,39 +328,37 @@ bool AlsaSound::InitializeDsp(void)
   }
   //
   // Hardware setup done. Now write the data back into the device.
-  if ((err = snd_pcm_hw_params(SoundStream,HWParms)) <0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to define the hardware parameters");
-  }
+  // Apparently, this may also fail on some ^$?$!! devices.
+  snd_pcm_hw_params(SoundStream,HWParms);
   //
   // Setup the software buffering here.
   //
   // Get the current software parameters here.
-  if ((err = snd_pcm_sw_params_current(SoundStream,SWParms)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to query the software parameters");
-  }
-  //
-  // Start the playback if the buffer is almost full.
-  if ((err = snd_pcm_sw_params_set_start_threshold(SoundStream,SWParms,(NumFrags - 2)<<FragSize)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the playback start threshold");
-  }
-  //
-  // Set the wakeup point: Signal an error if less than this is available.
-  if ((err = snd_pcm_sw_params_set_avail_min(SoundStream,SWParms,1<<FragSize)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the wakeup point");
-  }
-  //
-  /*
-  ** This is deprecated, and not even needed
-  // Align all transfers to one sample. I've no idea why this is useful.
-  if ((err = snd_pcm_sw_params_set_xfer_align(SoundStream,SWParms,1)) < 0) {
+  if ((err = snd_pcm_sw_params_current(SoundStream,SWParms)) >= 0) {
+    //
+    // Start the playback if the buffer is almost full.
+    if ((err = snd_pcm_sw_params_set_start_threshold(SoundStream,SWParms,(NumFrags - 2)<<FragSize)) < 0) {
+      ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the playback start threshold");
+    }
+    //
+    // Set the wakeup point: Signal an error if less than this is available.
+    if ((err = snd_pcm_sw_params_set_avail_min(SoundStream,SWParms,1<<FragSize)) < 0) {
+      ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the wakeup point");
+    }
+    //
+    /*
+    ** This is deprecated, and not even needed
+    // Align all transfers to one sample. I've no idea why this is useful.
+    if ((err = snd_pcm_sw_params_set_xfer_align(SoundStream,SWParms,1)) < 0) {
     ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to set the transfer align to one");
-  }
-  **
-  */
-  //
-  // Write the parameters to the playback device now.
-  if ((err = snd_pcm_sw_params(SoundStream,SWParms)) < 0) {
-    ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to write back the software parameters");
+    }
+    **
+    */
+    //
+    // Write the parameters to the playback device now.
+    if ((err = snd_pcm_sw_params(SoundStream,SWParms)) < 0) {
+      ThrowAlsa(err,"AlsaSound::InitializeDsp","unable to write back the software parameters");
+    }
   }
   //
   // Setup the effective buffering frequency.
@@ -642,13 +638,13 @@ void AlsaSound::DisplayStatus(class Monitor *mon)
   mon->PrintStatus("Audio Output Status:\n"
 		   "\tAudio output enable           : %s\n"
 		   "\tConsole speaker enable        : %s\n"
-		   "\tConsole speaker volume        : " LD "\n"
+		   "\tConsole speaker volume        : " ATARIPP_LD "\n"
 		   "\tAudio output card             : %s\n"
-		   "\tSampling frequency            : " LD "Hz\n"
-		   "\tFragment size exponent        : " LD "\n"
-		   "\tNumber of fragments           : " LD "\n"
-		   "\tNumber of frames in the queue : " LD "\n"
-		   "\tEffective sampling frequency  : " LD "Hz\n"
+		   "\tSampling frequency            : " ATARIPP_LD "Hz\n"
+		   "\tFragment size exponent        : " ATARIPP_LD "\n"
+		   "\tNumber of fragments           : " ATARIPP_LD "\n"
+		   "\tNumber of frames in the queue : " ATARIPP_LD "\n"
+		   "\tEffective sampling frequency  : " ATARIPP_LD "Hz\n"
 		   "\tChannel duplication           : %s\n"
 		   "\tStereo sound                  : %s\n"
 		   "\tChannel bit depth             : %d\n"

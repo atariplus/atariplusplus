@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: list.hpp,v 1.11 2015/05/21 18:52:40 thor Exp $
+ ** $Id: list.hpp,v 1.12 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Generic list header
  **********************************************************************************/
@@ -29,10 +29,6 @@ template <class T> class List;
 template <class T> class Node {
   // The List may enter here
   friend class  List<T>;
-  //
-#ifndef HAS_PRIVATE_ACCESS
-public:
-#endif
   //
   // Linkage pointers aLONG the node.
   T             *Next,*Prev;

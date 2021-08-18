@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.cpp,v 1.88 2020/03/28 14:05:58 thor Exp $
+ ** $Id: x11_frontend.cpp,v 1.89 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -1169,13 +1169,13 @@ void X11_FrontEnd::DisplayStatus(class Monitor *mon)
 		   "\tSyncX                 : %s\n"
 		   "\tScreen dump base name : %s\n"
 		   "\tIndirect rendering    : %s\n"
-		   "\tPixel width           : " LD "\n"
-		   "\tPixel height          : " LD "\n"
+		   "\tPixel width           : " ATARIPP_LD "\n"
+		   "\tPixel height          : " ATARIPP_LD "\n"
 		   "\tTrue color display    : %s\n"
-		   "\tLeftEdge              : " LD "\n"
-		   "\tTopEdge               : " LD "\n"
-		   "\tWidth                 : " LD "\n"
-		   "\tHeight                : " LD "\n",
+		   "\tLeftEdge              : " ATARIPP_LD "\n"
+		   "\tTopEdge               : " ATARIPP_LD "\n"
+		   "\tWidth                 : " ATARIPP_LD "\n"
+		   "\tHeight                : " ATARIPP_LD "\n",
 		   PrivateCMap?("on"):("off"),
 		   SyncX?("on"):("off"),
 		   PictureBaseName,		   

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: requester.hpp,v 1.7 2015/05/21 18:52:42 thor Exp $
+ ** $Id: requester.hpp,v 1.8 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: A generic requester class
  **********************************************************************************/
@@ -61,11 +61,6 @@ class Requester {
     virtual bool HitTest(struct Event &ev);
   }                      *TopLevel;
   //
-#ifndef HAS_PRIVATE_ACCESS
-  // Compiler workaround: Substructures of a class are part of the class and have hence
-  // access to private data. This bug has been fixed in the GCC 3.xx series.
-public:
-#endif
   // The following virtual class is here to install additional gadgets.
   // This hook must be provided by all implementors of requesters.
   virtual void BuildGadgets(List<Gadget> &glist,class RenderPort *rport)   = 0;  
@@ -77,10 +72,6 @@ public:
   // signal requester abortion.
   //
   virtual int HandleEvent(struct Event &event) = 0;
-  //
-#ifndef HAS_PRIVATE_ACCESS
-private:
-#endif
   //
   // Build the requester and all the gadgets.
   // This internal method prepares the graphics

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.94 2016/12/04 17:30:53 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.97 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -978,6 +978,7 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD 
   case 0x72:
   case 0xd2: // doubler fast read
     speed = SpeedControl + 7;
+    // Falls through.
   case 0x52: // Read (read command)  
     if (DriveModel == USTurbo && (sector & 0x8000)) {
       sector &= 0x7fff; // remove high speed indicator.
@@ -992,10 +993,12 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD 
   case 0xd3: // Doubler fast read?
   case 0x73:
     speed = SpeedControl + 7;
+    // Falls through.
   case 0x53: // Status (read command)
     return DriveStatus(buffer);
   case 0xa1:
     speed = SpeedControl + 7;
+    // Falls through.
   case 0x21 : // single density format
   case 0x20 : // Speedy format auto.
   case 0x23 : // Indus and XF551 format with sector skew command.
@@ -1007,6 +1010,7 @@ UBYTE DiskDrive::ReadBuffer(const UBYTE *commandframe,UBYTE *buffer,int &,UWORD 
     return FormatSingle(buffer,sector);
   case 0xa2:
     speed = SpeedControl + 7;
+    // Falls through.
   case 0x22:
     if (DriveModel == USTurbo && (sector & 0x8000)) {
       sector &= 0x7fff; // remove high speed indicator.
@@ -1270,7 +1274,7 @@ void DiskDrive::ParseArgs(class ArgParser *args)
     throw AtariException("unsupported disk format","DiskDrive::ParseArgs","%s",warning);
   }
 }
-///   
+///
 
 /// DiskDrive::DisplayStatus
 // Status display: Present details about the contents of the
@@ -1403,9 +1407,9 @@ void DiskDrive::DisplayStatus(class Monitor *mon)
 		     "\tImage file       : %s\n"
 		     "\tDisk format      : %s\n"
 		     "\tImage file format: %s\n"
-		     "\tSectors          : " LU "\n"
+		     "\tSectors          : " ATARIPP_LU "\n"
 		     "\tSector size      : %d\n"
-		     "\tSectors per track: " LU "\n",
+		     "\tSectors per track: " ATARIPP_LU "\n",
 		     drivetype,ImageName,disktype,imagetype,SectorCount,SectorSize,SectorsPerTrack);
   }
   mon->PrintStatus("\n");

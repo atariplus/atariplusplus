@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: antic.hpp,v 1.70 2015/12/11 16:27:35 thor Exp $
+ ** $Id: antic.hpp,v 1.71 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Antic graphics emulation
  **
@@ -71,9 +71,6 @@ public:
   static const int WindowHeight        INIT(DisplayHeight - DisplayStart);
   // Total number of rows visible.
   static const int WindowWidth         INIT(DisplayWidth - 32);
-#ifndef HAS_PRIVATE_ACCESS
-public:
-#endif
   //
   // DMA slot allocation models for various ANTIC DMA activities:
   // Pre-allocated DMA slots for memory refresh
@@ -92,10 +89,6 @@ public:
   static const UBYTE Playfield24Fetch[103];
   // Pre-allocated DMA slots for playfield graphics requiring at most 48 bytes data
   static const UBYTE Playfield48Fetch[103];
-  //
-#ifdef HAS_PRIVATE_ACCESS
-private:
-#endif
   //
   // Pointer to the CPU for the computations
   class CPU        *Cpu;

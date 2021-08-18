@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartctrl.cpp,v 1.23 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cartctrl.cpp,v 1.24 2020/07/18 15:20:39 thor Exp $
  **
  ** In this module: Cart Control logic for Oss Super Carts
  **********************************************************************************/
@@ -116,7 +116,7 @@ void CartCtrl::State(class SnapShot *sn)
   int i = 0;
   char buffer[16];
 
-  while(c) {
+  while(c && i < 8) {
     snprintf(buffer,15,"CartCtrl.%d",i);
     sn->DefineTitle(buffer);
     c->State(sn);

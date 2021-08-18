@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cmdlineparser.cpp,v 1.25 2015/05/21 18:52:37 thor Exp $
+ ** $Id: cmdlineparser.cpp,v 1.27 2021/08/18 11:28:38 thor Exp $
  **
  ** In this module: Parser subclass that reads data from the command line
  **********************************************************************************/
@@ -269,7 +269,7 @@ void CmdLineParser::PrintError(const char *fmt,...)
 /// CmdLineParser::PreParseArgs
 // Run an argument parser from the command line arguments
 // This also filters for --help or -h or -help
-bool CmdLineParser::PreParseArgs(int argc,char **argv,const char *info)
+bool CmdLineParser::PreParseArgs(int argc,const char *const *argv,const char *info)
 {
   struct Argument **last;
   //
@@ -285,7 +285,7 @@ bool CmdLineParser::PreParseArgs(int argc,char **argv,const char *info)
   argv++;
   while(argc > 0) {
     size_t len;
-    char  *s = *argv; // source where to copy from
+    const char *s = *argv; // source where to copy from
     //
     // Get the length of the source.
     len = strlen(s);
@@ -395,7 +395,7 @@ bool CmdLineParser::PreParseArgs(FILE *file,const char *info)
     len = strlen(line);
     // Check whether the line overflows
     if (len >= 512) {
-      PrintError("Configuration file %s line # " LD " too LONG.\n",ParseSource,lineno);
+      PrintError("Configuration file %s line # " ATARIPP_LD " too LONG.\n",ParseSource,lineno);
       return false;
     }
     // Check whether this is a comment or an empty line. If so, skip
@@ -405,7 +405,7 @@ bool CmdLineParser::PreParseArgs(FILE *file,const char *info)
     // scan for the "=" separating argument from value (hopefully)
     sep = strchr(line,'=');
     if (sep == NULL) {
-      PrintError("Configuration file %s line # " LD " misses an '=' sign to\n"
+      PrintError("Configuration file %s line # " ATARIPP_LD " misses an '=' sign to\n"
 		 "separate argument from value:\n%s\n",ParseSource,lineno,line);
       return false;
     }
@@ -435,7 +435,7 @@ bool CmdLineParser::PreParseArgs(FILE *file,const char *info)
     // Check against overLONG arguments.
     len = strlen(arg);
     if (len >= 256) {
-      PrintError("Configuration file %s line # " LD " argument is too LONG,\n"
+      PrintError("Configuration file %s line # " ATARIPP_LD " argument is too LONG,\n"
 		 "must be smaller than 256 characters.\n",ParseSource,lineno);
       return false;
     }
@@ -465,7 +465,7 @@ bool CmdLineParser::PreParseArgs(FILE *file,const char *info)
     // Now check again for the argument value
     len = strlen(value);
     if (len >= 256) {
-      PrintError("Configuration file %s line # " LD " argument value of argument %s\n"
+      PrintError("Configuration file %s line # " ATARIPP_LD " argument value of argument %s\n"
 		 "is too LONG, must be smaller than 256 characters.\n",ParseSource,lineno,arg);
       return false;
     }
@@ -574,7 +574,7 @@ void CmdLineParser::DefineLong(const char *argname,const char *help,
   const char *arg;
 
   if (IsHelpOnly()) {
-    PrintHelp("\t-%s <" LD ".." LD "> [Default=" LD "] : %s\n",
+    PrintHelp("\t-%s <" ATARIPP_LD ".." ATARIPP_LD "> [Default=" ATARIPP_LD "] : %s\n",
 	      argname,min,max,var,help);
   } 
   if ((arg = FindArgument(argname))) {
@@ -583,7 +583,7 @@ void CmdLineParser::DefineLong(const char *argname,const char *help,
       Throw(InvalidParameter,"ArgParser::DefineLong","argument is not numeric");
     }
     if (value < min || value > max) {
-      PrintError("%s argument " LD " in %s is out of range. Must be >= " LD " and <= " LD ".\n",
+      PrintError("%s argument " ATARIPP_LD " in %s is out of range. Must be >= " ATARIPP_LD " and <= " ATARIPP_LD ".\n",
 		 argname,value,ParseSource,min,max);
       Throw(OutOfRange,"ArgParser::DefineLong","argument is out of range");
     }

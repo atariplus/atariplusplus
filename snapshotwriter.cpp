@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: snapshotwriter.cpp,v 1.10 2015/05/21 18:52:43 thor Exp $
+ ** $Id: snapshotwriter.cpp,v 1.11 2021/08/16 10:31:01 thor Exp $
  **
  ** This class implements the snapshot interface for writing a snapshot
  ** out to a file.
@@ -176,8 +176,8 @@ void SnapShotWriter::DefineLong(const char *argname,const char *help,
     Throw(ObjectDoesntExist,"SnapShotWriter::DefineLong",
 	  "snapshot file or title missing");
 #endif
-  fprintf(File,"#%s (numeric between " LD " and " LD ")\n"
-	  "+%s::%s = " LD "\n",
+  fprintf(File,"#%s (numeric between " ATARIPP_LD " and " ATARIPP_LD ")\n"
+	  "+%s::%s = " ATARIPP_LD "\n",
 	  help,min,max,CurrentTopic,argname,var);
 }
 ///

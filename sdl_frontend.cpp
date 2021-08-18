@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: sdl_frontend.cpp,v 1.94 2015/05/21 18:52:42 thor Exp $
+ ** $Id: sdl_frontend.cpp,v 1.96 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: A frontend using the sdl library
  **
@@ -554,6 +554,7 @@ void SDL_FrontEnd::RefreshPaletteLine(UBYTE *hwp,UBYTE *swp,LONG width,LONG heig
       case 8:
 	*((ULONG *)hwd) = Quadrupler[*sws];
 	hwd            += 4;
+	// Falls through.
       case 4:
 	*((ULONG *)hwd) = Quadrupler[*sws];
 	hwd            += 4;
@@ -573,9 +574,11 @@ void SDL_FrontEnd::RefreshPaletteLine(UBYTE *hwp,UBYTE *swp,LONG width,LONG heig
       case 7:
 	*hwd++ = *sws;
 	*hwd++ = *sws;
+	// Falls through.
       case 5:
 	*hwd++ = *sws;
 	*hwd++ = *sws;
+	// Falls through.
       case 3:
 	*hwd++ = *sws;
 	*hwd++ = *sws;
@@ -623,16 +626,22 @@ void SDL_FrontEnd::RefreshTruecolorLine(PackedRGB *hwp,PackedRGB *swp,LONG width
       switch(PixelWidth) {
       case 8:
 	*hwd++          = *sws;
+	// Falls through.
       case 7:
 	*hwd++          = *sws;
+	// Falls through.
       case 6:
  	*hwd++          = *sws;
+	// Falls through.
       case 5:
  	*hwd++          = *sws;
+	// Falls through.
       case 4:
  	*hwd++          = *sws;
+	// Falls through.
       case 3:
  	*hwd++          = *sws;
+	// Falls through.
       case 2:
  	*hwd++          = *sws;
  	*hwd++          = *sws;
@@ -1519,10 +1528,10 @@ void SDL_FrontEnd::DisplayStatus(class Monitor *mon)
 		   "\tScreen Dump Base Name: %s\n"
 		   "\tTrue color display   : %s\n"
 		   "\tDeblocking filter    : %s\n"
-		   "\tLeftEdge             : " LD "\n"
-		   "\tTopEdge              : " LD "\n"
-		   "\tWidth                : " LD "\n"
-		   "\tHeight               : " LD "\n",
+		   "\tLeftEdge             : " ATARIPP_LD "\n"
+		   "\tTopEdge              : " ATARIPP_LD "\n"
+		   "\tWidth                : " ATARIPP_LD "\n"
+		   "\tHeight               : " ATARIPP_LD "\n",
 		   ScreenBaseName,
 		   truecolor?("on"):("off"),
 		   Deblocking?("on"):("off"),

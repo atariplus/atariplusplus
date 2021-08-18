@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: amdchip.cpp,v 1.5 2015/05/21 18:52:35 thor Exp $
+ ** $Id: amdchip.cpp,v 1.6 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Emulation of AMD FlashROM chips by Mark Keates
  **********************************************************************************/
@@ -177,7 +177,7 @@ bool AmdChip::RomAreaWrite(ADR mem,UBYTE val)
       }
       break;
     case CmdProgram:
-      fp = Rom[(ActiveBank<<5)+((mem-0xA000)>>PAGE_SHIFT)];
+      fp = Rom[(ActiveBank<<5)+((mem-0xA000)>>Page::Page_Shift)];
       b  = fp->ReadByte(mem);
       fp->PatchByte(mem, b & val); // The flash process can only reset bytes.
       //printf("Post-Programmed Mem : %04X=%02X (%02X)\n", mem, fp->ReadByte(mem), b);
@@ -299,8 +299,8 @@ bool AmdChip::MapChip(class MMU *mmu,UBYTE activebank)
     // 8K = 2^13
     ActiveBank   = activebank;
     displacement = (activebank << 13) - 0xa000;
-    for(i=0xa000;i<0xc000;i+=PAGE_LENGTH) {
-      mmu->MapPage(i,Rom[(i+displacement)>>PAGE_SHIFT]);
+    for(i=0xa000;i<0xc000;i+=Page::Page_Length) {
+      mmu->MapPage(i,Rom[(i+displacement)>>Page::Page_Shift]);
     }
     return true;
   }

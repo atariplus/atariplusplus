@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.hpp,v 1.78 2020/04/05 11:50:00 thor Exp $
+ ** $Id: cpu.hpp,v 1.79 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -29,11 +29,6 @@ class Patch;
 
 /// Class CPU
 class CPU : public Chip, public Saveable, private HBIAction {
-#ifndef HAS_PRIVATE_ACCESS
-  // Compiler workaround: Substructures of a class are part of the class and have hence
-  // access to private data. This bug has been fixed in the GCC 3.xx series.
-public:
-#endif
   // The register set of the CPU follows here.
   UWORD GlobalPC;   // program counter
   UBYTE GlobalA;    // Accumulator
@@ -107,11 +102,6 @@ private:
     bool         ReleaseHalt;      // set by the main thread if WSync gets released.
   };
   //
-#ifndef HAS_PRIVATE_ACCESS
-  // Compiler workaround: Substructures of a class are part of the class and have hence
-  // access to private data. This bug has been fixed in the GCC 3.xx series.
-public:
-#endif
   // A pointer to the monitor 
   class Monitor       *monitor;
   //
@@ -383,7 +373,7 @@ public:
   // its operand. This is the second step in an (indirect,x) addressing mode.
   // It always adds one additional wait.
   class AddXUnitWait : public AtomicExecutionUnit<class AdrSpace> {
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     AddXUnitWait(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -415,7 +405,7 @@ public:
   // boundary is crossed. This is the second step in an absolute,X addressing
   // step.
   class AddXUnit : public AtomicExecutionUnit<class AdrSpace> {
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     AddXUnit(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -436,7 +426,7 @@ public:
   // its operand. This is the thrid step in an (indirect),y addressing mode
   // and *may* add a wait state.
   class AddYUnitWait : public AtomicExecutionUnit<class AdrSpace> {
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     AddYUnitWait(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -468,7 +458,7 @@ public:
   // its operand. This is the thrid step in an (indirect),y addressing mode
   // and *may* add a wait state.
   class AddYUnit : public AtomicExecutionUnit<class AdrSpace> {
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     AddYUnit(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -525,7 +515,7 @@ public:
   // The 65C02 fixes this behaivour
   class IndirectionUnitExtendFixed : public AtomicExecutionUnit<class AdrSpace> {
     // Used to create a wait-state
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     IndirectionUnitExtendFixed(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -1001,7 +991,7 @@ public:
   class ADCUnitFixed : public AtomicExecutionUnit<class AdrSpace> {
     // The wait state we may insert here for the 65C02
     // in decimal mode.
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     ADCUnitFixed(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -1030,7 +1020,7 @@ public:
   class SBCUnitFixed : public AtomicExecutionUnit<class AdrSpace> { 
     // The wait state we may insert here for the 65C02
     // in decimal mode.
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     SBCUnitFixed(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -1101,7 +1091,7 @@ public:
   // be inserted directly, but it should be part of the BranchDetectUnit step.
   class BranchUnit : public AtomicExecutionUnit<class AdrSpace> {
     // The wait state we may insert here.
-    T(CPU,Cat1)<WaitUnit> Wait;
+    Cat1<WaitUnit> Wait;
   public:
     BranchUnit(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Wait(cpu)
@@ -1115,7 +1105,7 @@ public:
   // may or may not insert additional steps.
   template<UBYTE mask,UBYTE value>
   class BranchDetectUnit : public AtomicExecutionUnit<class AdrSpace> {
-    T(CPU,Cat1)<BranchUnit> Branch;
+    Cat1<BranchUnit> Branch;
   public:
     BranchDetectUnit(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Branch(cpu)
@@ -1127,8 +1117,8 @@ public:
   // The BranchBitTestUnit, used for the Rockwell BBR/BBS instructions.
   template<UBYTE bitmask,UBYTE bitvalue>
   class BranchBitTestUnit : public AtomicExecutionUnit<class AdrSpace> {
-    T(CPU,Cat1)<BranchUnit> Branch;
-    T(CPU,Cat1)<WaitUnit>   Wait;
+    Cat1<BranchUnit> Branch;
+    Cat1<WaitUnit>   Wait;
   public:
     BranchBitTestUnit(class CPU *cpu)
       : AtomicExecutionUnit<AdrSpace>(cpu), Branch(cpu), Wait(cpu)

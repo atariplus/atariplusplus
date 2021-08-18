@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: dpms.cpp,v 1.4 2013/12/06 19:46:13 thor Exp $
+ ** $Id: dpms.cpp,v 1.5 2021/07/03 16:12:51 thor Exp $
  **
  ** In this module: DPMS interfaces for X11
  **********************************************************************************/
@@ -22,13 +22,15 @@ extern "C" {
 }
 #endif
 
+#ifdef USE_DPMS
 static bool statesaved    = false;
 static bool enabled       = true;
 static int  timeout       = 0;
+#endif
 
+#ifdef USE_DPMS
 void disableDPMS(Display *display,bool really)
 { 
-#ifdef USE_DPMS
   int dummy, interval, prefer_blank, allow_exp;
 
   if (display) {
@@ -52,12 +54,16 @@ void disableDPMS(Display *display,bool really)
       }
     }
   }
-#endif
 }
+#else
+void disableDPMS(Display *,bool)
+{
+}
+#endif
 
+#ifdef USE_DPMS
 void enableDPMS(Display *display)
 {
-#ifdef USE_DPMS
   int dummy, interval, prefer_blank, allow_exp;
   
   if (display && statesaved) {
@@ -76,17 +82,25 @@ void enableDPMS(Display *display)
       statesaved = false;
     }
   }
-#endif
 }
+#else
+void enableDPMS(Display *)
+{
+}
+#endif
 
 
 /// Force DPMS level to on
+#ifdef USE_DPMS
 void enableMonitor(Display *display)
 {
-#ifdef USE_DPMS
   DPMSForceLevel(display,DPMSModeOn);
-#endif
 }
+#else
+void enableMonitor(Display *)
+{
+}
+#endif
 ///
 
 #endif

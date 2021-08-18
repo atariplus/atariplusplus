@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cmdlineparser.hpp,v 1.10 2015/05/21 18:52:37 thor Exp $
+ ** $Id: cmdlineparser.hpp,v 1.11 2021/08/18 11:28:38 thor Exp $
  **
  ** In this module: Parser subclass that reads data from the command line
  **********************************************************************************/
@@ -67,7 +67,7 @@ public:
   }
   //
   // Run an argument parser from the command line arguments
-  bool PreParseArgs(int argc,char **argv,const char *info);
+  bool PreParseArgs(int argc,const char* const *argv,const char *info);
   //
   // Run an argument parser from a configuration file
   bool PreParseArgs(FILE *file,const char *info);

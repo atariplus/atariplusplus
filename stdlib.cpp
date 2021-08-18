@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: stdlib.cpp,v 1.6 2015/05/21 18:52:43 thor Exp $
+ ** $Id: stdlib.cpp,v 1.7 2020/07/18 16:32:40 thor Exp $
  **
  ** In this module: Os compatibility layer
  ** This file takes definitions from "types.h" build by autoconf/configure
@@ -20,7 +20,11 @@
 #else
 // Do not trust errno, limits and ctype. We know nothing about this system. Yuck.
 // Perform a minimal installation that is good enough for our purposes.
+#ifdef HAS_NOEXCEPT
+LONG int strtol(const char *nptr, char **endptr, int base) noexcept
+#else
 LONG int strtol(const char *nptr, char **endptr, int base) throw()
+#endif
 {
   LONG n        = 0;
   bool negative = false;

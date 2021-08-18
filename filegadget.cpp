@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filegadget.cpp,v 1.6 2015/05/21 18:52:39 thor Exp $
+ ** $Id: filegadget.cpp,v 1.7 2020/07/18 15:20:39 thor Exp $
  **
  ** In this module: A string gadget with a file requester attached
  **********************************************************************************/
@@ -61,6 +61,7 @@ bool FileGadget::HitTest(struct Event &ev)
 	  ev.Object    = NULL;
 	}
       }
+      // Fall through.
     default:
       return true;
     }

@@ -42,12 +42,11 @@
 /* Define to 1 if curses provides the LINES global variable */
 #undef HAS_LINES
 
-/* Define to 1 if templated subclasses are correctly in the namespace of the
-   parent class */
-#undef HAS_LOCAL_TEMPLATES
-
 /* Define to 1 if initializers of static const integral members work */
 #undef HAS_MEMBER_INIT
+
+/* Define to 1 if the noexcept keyword is supported */
+#undef HAS_NOEXCEPT
 
 /* Define to 1 if OFDEL is a valid termios flag */
 #undef HAS_OFDEL_DEFINE
@@ -57,9 +56,6 @@
 
 /* Define to 1 if OLCUC is a valid termios flag */
 #undef HAS_OLCUC_DEFINE
-
-/* Define to 1 if subclasses have access to private members */
-#undef HAS_PRIVATE_ACCESS
 
 /* Define to 1 if the ALSA NEW_HW_PARAMS_API is available */
 #undef HAS_PROPER_ALSA

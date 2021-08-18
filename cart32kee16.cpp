@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cart32kee16.cpp,v 1.3 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cart32kee16.cpp,v 1.4 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of a 5200 16K cart with
  ** incomplete mapping
@@ -74,14 +74,14 @@ bool Cart32KEE16::MapCart(class MMU *mmu)
 {
   ADR i;
 
-  for(i=0x4000;i<0x6000;i+=PAGE_LENGTH) {
-    mmu->MapPage(i,Rom + ((i-0x4000)>>PAGE_SHIFT));
+  for(i=0x4000;i<0x6000;i+=Page::Page_Length) {
+    mmu->MapPage(i,Rom + ((i-0x4000)>>Page::Page_Shift));
   }
-  for(i=0x6000;i<0xa000;i+=PAGE_LENGTH) {
-    mmu->MapPage(i,Rom + ((i-0x6000)>>PAGE_SHIFT));
+  for(i=0x6000;i<0xa000;i+=Page::Page_Length) {
+    mmu->MapPage(i,Rom + ((i-0x6000)>>Page::Page_Shift));
   }
-  for(i=0xa000;i<0xc000;i+=PAGE_LENGTH) {
-    mmu->MapPage(i,Rom + ((i-0xa000 + 0x2000)>>PAGE_SHIFT));
+  for(i=0xa000;i<0xc000;i+=Page::Page_Length) {
+    mmu->MapPage(i,Rom + ((i-0xa000 + 0x2000)>>Page::Page_Shift));
   }
 
   return true;

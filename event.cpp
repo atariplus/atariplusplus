@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: event.cpp,v 1.11 2015/05/21 18:52:39 thor Exp $
+ ** $Id: event.cpp,v 1.12 2021/06/20 09:13:27 thor Exp $
  **
  ** In this module: Definition of GUI events
  **********************************************************************************/
@@ -128,7 +128,7 @@ int EventFeeder::ForwardEvent(struct Event &ev)
 	}
 	if (dx || dy)
 	  PositionMouse(dx,dy);
-      } else if (!sent.DownUp && !sent.Control && (sent.Key == 0x0a || sent.Key == 0x0d)) {
+      } else if (sent.DownUp && !sent.Control && (sent.Key == 0x0a || sent.Key == 0x0d)) {
 	// Return->Button press
 	return ClickMouse();
       }

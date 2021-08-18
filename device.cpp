@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: device.cpp,v 1.27 2020/04/05 11:50:00 thor Exp $
+ ** $Id: device.cpp,v 1.28 2020/07/18 16:32:40 thor Exp $
  **
  ** In this module: CIO device interface
  **********************************************************************************/
@@ -175,7 +175,7 @@ void Device::Close(class CPU *cpu,class AdrSpace *adr)
 void Device::Get(class CPU *cpu,class AdrSpace *adr)
 {
   UBYTE channel = UBYTE(cpu->X() >> 4);       // get IOCB address
-  UBYTE result,data;
+  UBYTE result,data = 0x9b; // Shut up the compiler
 
   if (channel < 8 && (cpu->X() & 0x0f) == 0) {
     // Let the real handler do the job for us.

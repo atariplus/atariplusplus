@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartphoenix.cpp,v 1.3 2015/05/21 18:52:37 thor Exp $
+ ** $Id: cartphoenix.cpp,v 1.5 2021/08/18 11:28:38 thor Exp $
  **
  ** In this module: The implementation of the Phoenix and Blizzard carts
  **********************************************************************************/
@@ -93,12 +93,12 @@ bool CartPhoenix::MapCart(class MMU *mmu)
     // Get the first bank and map it into 0xa000 to 0xbfff
     // 8K = 2^13
     if (Banks == 1) {
-      for(i=0xa000;i<0xc000;i+=PAGE_LENGTH) {
-	mmu->MapPage(i,Rom+((i-0xa000)>>PAGE_SHIFT));
+      for(i=0xa000;i<0xc000;i+=Page::Page_Length) {
+	mmu->MapPage(i,Rom+((i-0xa000)>>Page::Page_Shift));
       }
     } else {
-      for(i=0x8000;i<0xc000;i+=PAGE_LENGTH) {
-	mmu->MapPage(i,Rom+((i-0x8000)>>PAGE_SHIFT));
+      for(i=0x8000;i<0xc000;i+=Page::Page_Length) {
+	mmu->MapPage(i,Rom+((i-0x8000)>>Page::Page_Shift));
       }
     }
     return true;

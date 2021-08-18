@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.cpp,v 1.68 2015/09/13 18:33:02 thor Exp $
+ ** $Id: menu.cpp,v 1.69 2020/07/18 15:20:39 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/
@@ -451,7 +451,7 @@ void Menu::EnterMenu(void)
       switch(action) {
       case ErrorRequester::ERQ_Monitor:
 	Machine->LaunchMonitor() = true;
-	// runs into the following
+	// Falls through.
       case ErrorRequester::ERQ_Menu:
       case ErrorRequester::ERQ_Retry:
 	quit = false;

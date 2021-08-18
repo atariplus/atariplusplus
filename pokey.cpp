@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.142 2016/12/05 21:04:20 thor Exp $
+ ** $Id: pokey.cpp,v 1.143 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -1831,8 +1831,8 @@ void Pokey::DisplayStatus(class Monitor *mon)
 		   "\tMax0    : %04x\tMax1    : %04x\tMax2    : %04x\tMax3      : %04x\n"
 		   "\tAudioCtrl : %02x\tSkStat    : %02x\tSkCtrl    : %02x\tKeyCode   : %02x\n"
 		   "\tIRQStat   : %02x\tIRQEnable : %02x\n"
-		   "\tSerInDly  : " LD "\tSerOutDly : " LD "\tSerXmtDly : " LD "\n"
-		   "\tSerInCnt  : " LD "\tSerOutCnt : " LD "\tSerXmtCnt : " LD "\n"
+		   "\tSerInDly  : " ATARIPP_LD "\tSerOutDly : " ATARIPP_LD "\tSerXmtDly : " ATARIPP_LD "\n"
+		   "\tSerInCnt  : " ATARIPP_LD "\tSerOutCnt : " ATARIPP_LD "\tSerXmtCnt : " ATARIPP_LD "\n"
 		   "\tSerInBytes: %d\tSerInData : %c%c\n",
 		   Unit,
 		   Ch[0].AudioF,Ch[1].AudioF,Ch[2].AudioF,Ch[3].AudioF,

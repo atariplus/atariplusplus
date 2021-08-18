@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cpu.cpp,v 1.133 2015/10/25 09:11:22 thor Exp $
+ ** $Id: cpu.cpp,v 1.134 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: CPU 6502 emulator
  **********************************************************************************/
@@ -4616,7 +4616,7 @@ void CPU::DisplayStatus(class Monitor *mon)
 		   "PC   : %04x\tA    : %02x\tX    : %02x\tY    : %02x\n"
 		   "P    : %02x\t%c%c%c%c%c%c%c%c\tS    : 01%02x\n"
 		   "HPos          : %d \t\tVPos         : %d\n"
-		   "WSyncPosition : " LD "\t\tTraceOnReset : %s\t\tTraceInterrupts: %s\n",
+		   "WSyncPosition : " ATARIPP_LD "\t\tTraceOnReset : %s\t\tTraceInterrupts: %s\n",
 		   (Emulate65C02)?"65C02":"6502",
 		   GlobalPC,GlobalA,GlobalX,GlobalY,GlobalP,
 		   (GlobalP & 0x80)?('N'):('_'),

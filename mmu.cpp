@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: mmu.cpp,v 1.56 2015/05/21 18:52:41 thor Exp $
+ ** $Id: mmu.cpp,v 1.57 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: Definition of all MMU functions required for the Atari emulator
  **********************************************************************************/
@@ -108,8 +108,8 @@ void MMU::BuildLowRam(void)
   ADR i;
   
   // Map the zero page up to 0x4000 to plain RAM.
-  for(i=0x0000;i<0x4000;i+=PAGE_LENGTH) {
-    MapPage(i,rp + (i >> PAGE_SHIFT));
+  for(i=0x0000;i<0x4000;i+=Page::Page_Length) {
+    MapPage(i,rp + (i >> Page::Page_Shift));
   }
 }
 ///
@@ -139,8 +139,8 @@ void MMU::BuildMedRam(void)
     }
     if (!mapped) {
       // RAM disk not active. Map conservative RAM here.
-      for(i=0x4000;i<0x8000;i+=PAGE_LENGTH) {
-	MapCPUPage(i,rp + (i >> PAGE_SHIFT));
+      for(i=0x4000;i<0x8000;i+=Page::Page_Length) {
+	MapCPUPage(i,rp + (i >> Page::Page_Shift));
       }
     }
     //
@@ -151,8 +151,8 @@ void MMU::BuildMedRam(void)
     }
     if (!mapped) {
       // RAM disk not active. Map conservative RAM here.
-      for(i=0x4000;i<0x8000;i+=PAGE_LENGTH) {
-	MapANTICPage(i,rp + (i >> PAGE_SHIFT));
+      for(i=0x4000;i<0x8000;i+=Page::Page_Length) {
+	MapANTICPage(i,rp + (i >> Page::Page_Shift));
       }
     }
     //
@@ -163,8 +163,8 @@ void MMU::BuildMedRam(void)
 			    osrom->RomType() == OsROM::Os_Builtin ||
 			    osrom->RomType() == OsROM::Os_Rom1200)) {
       class RomPage *rom = osrom->OsPages();
-      for(i=0x5000;i<0x5800;i+=PAGE_LENGTH) {
-	MapPage(i,rom + (16 + ((i - 0x5000) >> PAGE_SHIFT)));
+      for(i=0x5000;i<0x5800;i+=Page::Page_Length) {
+	MapPage(i,rom + (16 + ((i - 0x5000) >> Page::Page_Shift)));
       }
     }
   }
@@ -191,12 +191,12 @@ void MMU::BuildCartArea(void)
   // By default, map the area from 0x8000 to 0xc000 as RAM or blank. Insert this
   // mapping first, then modify later.
   if (machine->MachType() == Mach_5200) {
-    for(i=0x8000;i<0xc000;i+=PAGE_LENGTH) {
+    for(i=0x8000;i<0xc000;i+=Page::Page_Length) {
       MapPage(i,blank);
     }
   } else {
-    for(i=0x8000;i<0xc000;i+=PAGE_LENGTH) {
-      MapPage(i,rp + (i>>PAGE_SHIFT));
+    for(i=0x8000;i<0xc000;i+=Page::Page_Length) {
+      MapPage(i,rp + (i>>Page::Page_Shift));
     }
   }
   //
@@ -233,8 +233,8 @@ void MMU::BuildOsArea(void)
   //
   // Check whether we have a 5200. This has a 1K ROM from 0xf800 and up
   if (machine->MachType() == Mach_5200) {
-    for(i=0xf800;i<0x10000;i+=PAGE_LENGTH) {
-      MapPage(i,rom + ((i-0xf800)>>PAGE_SHIFT));
+    for(i=0xf800;i<0x10000;i+=Page::Page_Length) {
+      MapPage(i,rom + ((i-0xf800)>>Page::Page_Shift));
     }
     //
     // No axlon RAM disk support here, obviously.
@@ -244,27 +244,27 @@ void MMU::BuildOsArea(void)
     // or blank, or RAM if the Os is disabled.      
     //
     // The default is RAM here, unless the Os overlays it.
-    cfpage = rp + (0xcf00 >> PAGE_SHIFT);
+    cfpage = rp + (0xcf00 >> Page::Page_Shift);
     //
     if (rom_disabled) {
-      for(i=0xc000;i<0xd000;i+=PAGE_LENGTH) {
-	MapPage(i,rp + (i>>PAGE_SHIFT));
+      for(i=0xc000;i<0xd000;i+=Page::Page_Length) {
+	MapPage(i,rp + (i>>Page::Page_Shift));
       }
     } else {
       if (osrom->RomType() == OsROM::Os_RomXL   || 
 	  osrom->RomType() == OsROM::Os_Builtin ||
 	  osrom->RomType() == OsROM::Os_Rom1200) {
 	// map the XL rom here
-	for(i=0xc000;i<0xd000;i+=PAGE_LENGTH) {
-	  MapPage(i,rom + ((i-0xc000)>>PAGE_SHIFT));
+	for(i=0xc000;i<0xd000;i+=Page::Page_Length) {
+	  MapPage(i,rom + ((i-0xc000)>>Page::Page_Shift));
 	}
-	cfpage = rom + ((0xcf00 - 0xc000) >> PAGE_SHIFT);
+	cfpage = rom + ((0xcf00 - 0xc000) >> Page::Page_Shift);
       } else if (extended_4K) {
-	for(i=0xc000;i<0xd000;i+=PAGE_LENGTH) {
-	  MapPage(i,rp + (i>>PAGE_SHIFT));
+	for(i=0xc000;i<0xd000;i+=Page::Page_Length) {
+	  MapPage(i,rp + (i>>Page::Page_Shift));
 	}
       } else {
-	for(i=0xc000;i<0xd000;i+=PAGE_LENGTH) {
+	for(i=0xc000;i<0xd000;i+=Page::Page_Length) {
 	  MapPage(i,blank);
 	}
 	cfpage = blank;
@@ -281,26 +281,26 @@ void MMU::BuildOsArea(void)
     // 0xd800 to 0xe000 is either math pack or RAM if math pack or
     // os is disabled.
     if (rom_disabled || mathpack_disable) {
-      for(i=0xd800;i<0xe000;i+=PAGE_LENGTH) {
-	MapPage(i,rp + (i>>PAGE_SHIFT));
+      for(i=0xd800;i<0xe000;i+=Page::Page_Length) {
+	MapPage(i,rp + (i>>Page::Page_Shift));
       }
     } else {
       switch(osrom->RomType()) {
       case OsROM::Os_RomA:
       case OsROM::Os_RomB:
-	for(i=0xd800;i<0xe000;i+=PAGE_LENGTH) {
-	  MapPage(i,rom + ((i-0xd800) >> PAGE_SHIFT));
+	for(i=0xd800;i<0xe000;i+=Page::Page_Length) {
+	  MapPage(i,rom + ((i-0xd800) >> Page::Page_Shift));
 	}
 	break;
       case OsROM::Os_Rom1200:
       case OsROM::Os_RomXL:
       case OsROM::Os_Builtin:
-	for(i=0xd800;i<0xe000;i+=PAGE_LENGTH) {
-	  MapPage(i,rom + ((i-0xc000) >> PAGE_SHIFT));
+	for(i=0xd800;i<0xe000;i+=Page::Page_Length) {
+	  MapPage(i,rom + ((i-0xc000) >> Page::Page_Shift));
 	}
 	break;
       case OsROM::Os_5200:
-	for(i=0xd800;i<0xe000;i+=PAGE_LENGTH) {
+	for(i=0xd800;i<0xe000;i+=Page::Page_Length) {
 	  MapPage(i,blank);
 	}
 	break;
@@ -311,30 +311,30 @@ void MMU::BuildOsArea(void)
     //
     // 0xe000 to 0x10000 is Os, or RAM
     if (rom_disabled) {
-      for(i=0xe000;i<0x10000;i+=PAGE_LENGTH) {
-	MapPage(i,rp + (i>>PAGE_SHIFT));
+      for(i=0xe000;i<0x10000;i+=Page::Page_Length) {
+	MapPage(i,rp + (i>>Page::Page_Shift));
       }
     } else {
       switch(osrom->RomType()) {
       case OsROM::Os_RomA:
       case OsROM::Os_RomB:
-	for(i=0xe000;i<0x10000;i+=PAGE_LENGTH) {
-	  MapPage(i,rom + ((i-0xd800) >> PAGE_SHIFT));
+	for(i=0xe000;i<0x10000;i+=Page::Page_Length) {
+	  MapPage(i,rom + ((i-0xd800) >> Page::Page_Shift));
 	}
 	break;
       case OsROM::Os_Rom1200:
       case OsROM::Os_Builtin:
       case OsROM::Os_RomXL:
-	for(i=0xe000;i<0x10000;i+=PAGE_LENGTH) {
-	  MapPage(i,rom + ((i-0xc000) >> PAGE_SHIFT));
+	for(i=0xe000;i<0x10000;i+=Page::Page_Length) {
+	  MapPage(i,rom + ((i-0xc000) >> Page::Page_Shift));
 	}
 	break;
       case OsROM::Os_5200:
-	for(i=0xe000;i<0xf800;i+=PAGE_LENGTH) {
+	for(i=0xe000;i<0xf800;i+=Page::Page_Length) {
 	  MapPage(i,blank);
 	}
-	for(i=0xf800;i<0x10000;i+=PAGE_LENGTH) {
-	  MapPage(i,rom + ((i-0xf800) >> PAGE_SHIFT));
+	for(i=0xf800;i<0x10000;i+=Page::Page_Length) {
+	  MapPage(i,rom + ((i-0xf800) >> Page::Page_Shift));
 	}
 	break;
       default:
@@ -364,18 +364,18 @@ void MMU::BuildRamRomMapping(void)
   if (machine->MachType() == Mach_5200) {
     int i;
     // 0xc000 to 0xf800 is blank, with some IO blocks in the middle
-    for(i = 0xc000;i < 0xf800;i += PAGE_LENGTH) {
+    for(i = 0xc000;i < 0xf800;i += Page::Page_Length) {
       MapPage(i,blank);
     }
     // Map in GTIA, total range is C000 to D000.
-    for(i = 0xc000;i < 0xd000;i += PAGE_LENGTH) 
+    for(i = 0xc000;i < 0xd000;i += Page::Page_Length) 
       MapPage(i,machine->GTIA());  
     //
     // Antic starts here as in the main line.
     MapPage(0xd400,machine->Antic());
     //
     // Map in Pokey, again with a much larger address range
-    for(i = 0xe800;i < 0xf000;i += PAGE_LENGTH) 
+    for(i = 0xe800;i < 0xf000;i += Page::Page_Length) 
       MapPage(i,machine->PokeyPage());
   } else {
     // 0xd000 to 0xd800 is the IO space

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartbbob.cpp,v 1.10 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cartbbob.cpp,v 1.11 2021/08/16 10:31:01 thor Exp $
  **
  ** In this module: The implementation of the bounty bob cart
  **********************************************************************************/
@@ -154,7 +154,7 @@ bool CartBBOB::MapCart(class MMU *mmu)
   // and map it into 0x8000 to 0x8xfff. These are 4K,
   // or 16 pages.
   page = Rom + (Bank40.ActiveBank << 4); // each bank is 16 pages LONG.
-  for(mem = 0x4000;mem < 0x4f00;mem += PAGE_LENGTH) {
+  for(mem = 0x4000;mem < 0x4f00;mem += Page::Page_Length) {
     mmu->MapPage(mem,page);
     page++;
   }
@@ -165,7 +165,7 @@ bool CartBBOB::MapCart(class MMU *mmu)
   //
   // The very same, but this time for the upper bank.
   page = Rom + 16*4 + (Bank50.ActiveBank << 4); // each bank is again 16 pages LONG.
-  for(mem = 0x5000;mem < 0x5f00;mem += PAGE_LENGTH) {
+  for(mem = 0x5000;mem < 0x5f00;mem += Page::Page_Length) {
     mmu->MapPage(mem,page);
     page++;
   }
@@ -175,7 +175,7 @@ bool CartBBOB::MapCart(class MMU *mmu)
   //
   // Finally, map the last 8K in
   page = Rom + 16*4*2;
-  for(mem = 0xa000;mem < 0xc000;mem += PAGE_LENGTH) {
+  for(mem = 0xa000;mem < 0xc000;mem += Page::Page_Length) {
     mmu->MapPage(mem,page);
     page++;
   }
