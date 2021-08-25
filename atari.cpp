@@ -134,6 +134,7 @@ void Atari::EmulationLoop(void)
 	    missedframes = 0;
 	    events = true;
 	  }
+#ifdef USE_MENUS
 	  if (machine->LaunchMenu()) {	  
 	    // Sync the CPU state to an instruction boundary.
 	    machine->CPU()->Sync();
@@ -159,6 +160,7 @@ void Atari::EmulationLoop(void)
 	    missedframes = 0;
 	    events  = true;
 	  }
+#endif
 	} while(events);
 	//
 	if (machine->Quit() == false) {

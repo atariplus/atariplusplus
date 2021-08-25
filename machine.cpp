@@ -251,7 +251,9 @@ void Machine::BuildMachine(class ArgParser *args)
   atari      = new class Atari(this);
   keyboard   = new class Keyboard(this);
   monitor    = new class Monitor(this);
+#ifdef USE_MENUS
   menu       = new class Menu(this);
+#endif
   quickmenu  = new class TitleMenu(this);
   cartctrl   = new class CartCtrl(this);
   basicrom   = new class BasicROM(this);
@@ -508,6 +510,7 @@ void Machine::EnterMonitor(void)
 }
 ///
 
+#ifdef USE_MENUS
 /// Machine::QuickMenu
 // Run the quick menu in the title bar
 void Machine::QuickMenu(void)
@@ -524,6 +527,7 @@ void Machine::EnterMenu(void)
   if (!nogfx)
     menu->EnterMenu();
 }
+#endif
 ///
 
 /// Machine::ParseConfig

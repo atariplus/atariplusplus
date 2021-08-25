@@ -135,10 +135,13 @@ int main(int argc,char **argv)
       // to open a display, then we open at least the user menu.
       try {
 	// Now overload these settings by the command line argument.
+#ifdef USE_MENUS
 	if (domenu) {
 	  mach->EnterMenu();
 	  domenu = false;
-	} else {
+	} else
+#endif
+	{
 	  mach->ParseArgs(args);
 	  domenu = false;
 	}
