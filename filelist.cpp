@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filelist.cpp,v 1.17 2015/05/21 18:52:39 thor Exp $
+ ** $Id: filelist.cpp,v 1.18 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Definition of a gadget representing a list of files to
  ** choose from, i.e. the basic ingredience for a file requester.
@@ -20,7 +20,7 @@
 // Initialize a file requester gadget. This requires also an initial path, and a flag
 // whether we can accept only directories or only files.
 FileList::FileList(List<Gadget> &gadgets,class RenderPort *rp,LONG le,LONG te,LONG w,LONG h,
-		   const char *initial,bool save,bool filesonly,bool dirsonly)
+		   const char *initial,bool save,bool,bool dirsonly)
   : Gadget(gadgets,rp,le,te,w,h),
     DirHandle(NULL),
     // We insert the string and ok gadgets not into the vertical group directly as we do not
@@ -30,7 +30,7 @@ FileList::FileList(List<Gadget> &gadgets,class RenderPort *rp,LONG le,LONG te,LO
     OKButton(new class ButtonGadget(InternalGadgets,rp,le+w-76,te+h-12,76,12,"OK")),
     CancelButton(new class ButtonGadget(InternalGadgets,rp,le,te+h-12,76,12,"Cancel")),
     Directory(new class VerticalGroup(InternalGadgets,ClipRegion,le,0,w,h-24)),
-    DirsOnly(dirsonly), FilesOnly(filesonly), ForSave(save), ActiveGadget(NULL),
+    DirsOnly(dirsonly), ForSave(save), ActiveGadget(NULL),
     TmpPath(NULL), StatPath(NULL)
 { 
 }

@@ -4,7 +4,7 @@
 ## builds the makefiles with small 'm' which are then searched first
 ## for the real program.
 ##
-## $Id: Makefile,v 1.55 2015/09/20 15:47:16 thor Exp $
+## $Id: Makefile,v 1.57 2022/12/20 20:00:30 thor Exp $
 ##
 ###################################################################################
 
@@ -17,10 +17,6 @@ all:		atari
 final:		atari
 
 makefile:	makefile.in configure
-	./configure
-	touch types.h
-
-makefile.icc:	makefile.icc.in configure
 	./configure
 	touch types.h
 
@@ -38,11 +34,13 @@ types.h:	types.h.in configure.in configure
 realclean:	clean
 
 distclean:
-	@rm -rf types.h makefile makefile.icc *.o *.d *.dyn *.il atari++ \
+	@rm -rf types.h makefile \
+	*.o *.d *.dyn *.il atari++ \
 	core autom4te.cache config.* configure.scan atari++.tgz dox/hmtl manual
 
 clean:
-	@rm -rf configure types.h types.h.in makefile makefile.icc *.o *.d *.dyn *.il atari++ \
+	@rm -rf configure types.h types.h.in makefile \
+	*.o *.d *.dyn *.il atari++ \
 	core autom4te.cache config.* configure.scan atari++.tgz dox/hmtl manual
 
 atari:		types.h makefile
@@ -56,9 +54,6 @@ debug:		types.h makefile
 
 efence:		types.h makefile
 	$(MAKE) -f makefile efence
-
-atari-icc:	types.h makefile.icc
-	$(MAKE) -f makefile.icc atari
 
 profile:	types.h makefile
 	$(MAKE) -f makefile atari
@@ -78,7 +73,6 @@ atari++.tgz:
 	$(MAKE) -f Makefile configure
 	$(MAKE) -f Makefile manual
 	cd .. && tar -czf $(DIST)/atari++.tgz $(DIST)/*.cpp $(DIST)/*.hpp $(DIST)/Makefile $(DIST)/makefile.in \
-	$(DIST)/makefile.icc.in \
 	$(DIST)/wintypes.h $(DIST)/winmain.cpp $(DIST)/atari++.vcproj $(DIST)/atari++_vc8.vcproj \
 	$(DIST)/README.Compile.win \
 	$(DIST)/atari++.rc $(DIST)/icon1.ico \

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: listbrowsergadget.cpp,v 1.10 2015/05/21 18:52:40 thor Exp $
+ ** $Id: listbrowsergadget.cpp,v 1.11 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: A gadget showing a list of text gadgets
  **********************************************************************************/
@@ -55,8 +55,7 @@ ListBrowserGadget::ListBrowserGadget(List<Gadget> &glist,class RenderPort *rp,LO
 				     List<TextNode> *contents)
   : Gadget(glist,rp,le,te,w,h),
     ClipRegion(new class RenderPort(rp,le+1,te+1,w,h-2)), 
-    Vertical(new class VerticalGroup(SubGadgets,ClipRegion,0,0,w - 2,h - 2)),
-    Contents(contents)
+    Vertical(new class VerticalGroup(SubGadgets,ClipRegion,0,0,w - 2,h - 2))
 {
   // Now build-up all sub-gadgets. Problem is that if we fail here, then our
   // gadget counts as non-constructed and we have to dispose the sub-gadgets

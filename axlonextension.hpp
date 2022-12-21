@@ -2,14 +2,14 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: axlonextension.hpp,v 1.6 2015/10/25 09:11:22 thor Exp $
+ ** $Id: axlonextension.hpp,v 1.7 2022/12/20 18:01:32 thor Exp $
  **
  ** In this module: This RAM extension implements various AXLON compatible
  ** RAM extensions.
  **********************************************************************************/
 
 #ifndef AXLONEXTENSION_HPP
-#define AXLONEXTENSION_CPP
+#define AXLONEXTENSION_HPP
 
 /// Includes
 #include "types.hpp"

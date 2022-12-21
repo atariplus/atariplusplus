@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: pokey.cpp,v 1.143 2021/08/16 10:31:01 thor Exp $
+ ** $Id: pokey.cpp,v 1.144 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Pokey emulation 
  **
@@ -1559,7 +1559,7 @@ void Pokey::STimerWrite(void)
     Ch[0].DivNCnt -= 3;
     Ch[0].DivNIRQ -= 3;
   }
-  if ((AudioCtrl & 0x28) == 0x38) {
+  if ((AudioCtrl & 0x28) == 0x28) {
     // 1.79 Mhz clock on channel 2 also driving channel 3.
     Ch[0].DivNCnt -= 3;
     Ch[0].DivNIRQ -= 3;

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: amdchip.cpp,v 1.6 2021/08/16 10:31:01 thor Exp $
+ ** $Id: amdchip.cpp,v 1.7 2022/12/20 18:01:32 thor Exp $
  **
  ** In this module: Emulation of AMD FlashROM chips by Mark Keates
  **********************************************************************************/
@@ -18,9 +18,9 @@
 
 /// AmdChip::AmdChip
 // Constructor
-AmdChip::AmdChip(class Machine *mach,ChipType ct,const char *name,int unit,class CartFlash *cf)
+AmdChip::AmdChip(class Machine *mach,ChipType ct,const char *name,int unit,class CartFlash *)
   : Chip(mach,name), Saveable(mach,name,unit), cmdState(CmdRead), type(ct), 
-    Modified(false), Enabled(true), Unit(unit), Parent(cf), Rom(NULL)
+    Modified(false), Enabled(true), Rom(NULL)
 {
   int i;
   //

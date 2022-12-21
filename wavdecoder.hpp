@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: wavdecoder.hpp,v 1.7 2015/10/10 20:57:41 thor Exp $
+ ** $Id: wavdecoder.hpp,v 1.8 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: The two-tone tape decoder, reads WAV files and 
  ** creates records from them suitable for CAS type reading.
@@ -171,9 +171,6 @@ class WavDecoder : public TapeImage, private VBIAction {
     //
     class FilterPair *m_ppFilter[2 * m_iNFilters + 1];
     //
-    // The currently active filter
-    class FilterPair *m_pActiveFilter;
-    //
     // The best quality ratio we could find.
     double m_dRatio;
     //
@@ -239,9 +236,6 @@ class WavDecoder : public TapeImage, private VBIAction {
     // The currently active input
     int    m_iActiveInput;
     //
-    // The best quality ratio.
-    double m_dRatio;
-    //
   public:
     ChannelFilter(double samplingfreq);
     //
@@ -294,9 +288,6 @@ class WavDecoder : public TapeImage, private VBIAction {
     // Cycles used to scan an entire byte, excluding parts
     // of the stop bit.
     ULONG                m_ulCyclesPerByte;
-    //
-    // Checksum so far.
-    UBYTE                m_ucChecksum;
     //
     // Read a single bit, return the bit value. The current position must be at the
     // start of the bit, the baud-rate must be initialized correctly.

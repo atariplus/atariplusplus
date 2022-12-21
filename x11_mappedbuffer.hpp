@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_mappedbuffer.hpp,v 1.8 2014/01/08 19:02:01 thor Exp $
+ ** $Id: x11_mappedbuffer.hpp,v 1.9 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -45,9 +45,6 @@ public:
   static const int ScanBuffNum      INIT(256);
   //
 private:
-  //
-  // Pointer to the frontend that really displays our mess
-  class XFront    *xfront;
   //
   // Primary and secondary buffer
   UBYTE           *active; // screen we are currently rendering into

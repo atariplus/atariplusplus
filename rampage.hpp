@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: rampage.hpp,v 1.9 2021/08/16 10:31:01 thor Exp $
+ ** $Id: rampage.hpp,v 1.10 2022/12/20 16:35:48 thor Exp $
  **
  ** In this module: Definition of a page of memory
  **********************************************************************************/
@@ -18,12 +18,16 @@
 
 /// Class RamPage
 // Defines a single page of real memory
-class RamPage : public Page {  
+class RamPage : public Page {
+  //
+  // The used flags for statistical purposes.
+  UBYTE *UsedFlags;
+  //
 public:
   //
   // The constructor also constructs the memory here.
   RamPage(void)
-    : Page(new UBYTE[Page::Page_Length])
+    : Page(new UBYTE[Page::Page_Length]), UsedFlags(NULL)
   { }
   //
   ~RamPage(void)
@@ -32,12 +36,20 @@ public:
     delete[] memory;
   }
   //
+  // Tell the RAM where the used flags are (if any)
+  void setUsedFlags(UBYTE *flags)
+  {
+    UsedFlags = flags;
+  }
   //
   // We overload the memory access functions such that we have faster
   // access if the compiler is smart enough. Maybe it isn't.
   // Read a byte. Returns the byte read.
   UBYTE ReadByte(ADR mem)
   {
+    if (UsedFlags)
+      UsedFlags[mem & Page::Page_Mask] = 1;
+    
     return memory[mem & Page::Page_Mask];
   }
   //
@@ -53,6 +65,9 @@ public:
   // Read a byte. Returns the byte read.
   UBYTE ComplexRead(ADR mem)
   {
+    if (UsedFlags)
+      UsedFlags[mem & Page::Page_Mask] = 1;
+
     return memory[mem & Page::Page_Mask];
   }
   //

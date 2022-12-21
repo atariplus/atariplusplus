@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: amdchip.hpp,v 1.5 2015/05/21 18:52:35 thor Exp $
+ ** $Id: amdchip.hpp,v 1.6 2022/12/20 18:01:32 thor Exp $
  **
  ** In this module: Emulation of AMD FlashROM chips by Mark Keates
  **********************************************************************************/
@@ -73,13 +73,8 @@ private:
   // the mapping. Otherwise, no data is read.
   bool               Enabled;
   //
-  // Several copies of this chip might be available. The following
-  // is the unit number.
-  UBYTE              Unit;
-  //
   // Flag of the currently active bank.
   //
-  class CartFlash   *Parent;
   class FlashPage  **Rom;
   //
   // Private Methods:

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: page.hpp,v 1.18 2021/08/16 10:31:01 thor Exp $
+ ** $Id: page.hpp,v 1.19 2022/12/20 16:35:48 thor Exp $
  **
  ** In this module: Definition of an abstract page, keeping 256 in common
  **********************************************************************************/
@@ -59,11 +59,15 @@ public:
   // Read a byte. Returns the byte read.
   UBYTE ReadByte(ADR mem)
   {
+#if 0
     if (memory) {
       return memory[mem & Page_Mask];
     } else {
       return ComplexRead(mem);
     }
+#else
+    return ComplexRead(mem);
+#endif
   }
   //
   // Write a byte to a page, return the "vsync" flag to indicate whether the

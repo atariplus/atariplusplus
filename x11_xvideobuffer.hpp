@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_xvideobuffer.hpp,v 1.2 2013/12/20 23:15:40 thor Exp $
+ ** $Id: x11_xvideobuffer.hpp,v 1.3 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -51,9 +51,6 @@ class X11_XVideoBuffer : public X11_DisplayBuffer {
   // The video buffer primitive. This is a pImpl.
   struct XVideoShMem *VideoMem;
   //
-  // Pointer to the frontend that really displays our mess
-  class XFront       *xfront;
-  //
   bool indexdirty;
   bool enforcefullrefresh;
   //
@@ -66,8 +63,6 @@ class X11_XVideoBuffer : public X11_DisplayBuffer {
   UBYTE              *idxactive;
   UBYTE              *idxrow;
   //
-  // The currently active colormap
-  const struct ColorEntry *colormap;
 public:
   // Methods required for constructing and destrucing us
   X11_XVideoBuffer(class Machine *mach, class XFront *front);

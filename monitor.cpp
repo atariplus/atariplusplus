@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.cpp,v 1.109 2021/08/18 11:28:38 thor Exp $
+ ** $Id: monitor.cpp,v 1.111 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -683,34 +683,12 @@ Monitor::HistoryLine::HistoryLine(const char *line)
 }
 ///
 
-/// Monitor::HistoryLine::~HistoryLine
-Monitor::HistoryLine::~HistoryLine(void)
-{
-  delete[] Line;
-  Remove();
-}
-///
-
 /// Monitor::History::History
 // Constructor of the history: Just constructs the
 // list.
 Monitor::History::History(void)
   : HistorySize(0), ActiveLine(NULL)
 {
-}
-///
-
-/// Monitor::History::~History
-// Dispose the history again. Clears the list of lines
-// cached here, obviously.
-Monitor::History::~History(void)
-{    
-  struct HistoryLine *hl;
-
-  while((hl = First())) {
-    // History lines remove themselves from the history.
-    delete hl;
-  }
 }
 ///
 
@@ -1068,6 +1046,22 @@ void Monitor::VPrint(const char *fmt,va_list args) const
 }
 ///
 
+/// Monitor::WaitKey
+// Wait for the user to print any key to continue.
+void Monitor::WaitKey(void)
+{
+  Print("<Press RETURN to continue>\n");
+#ifdef USE_CURSES
+  int c;
+  do {
+    c = getch();
+  } while(c != KEY_ENTER && c != 0x0a && c != 0x0d && c != ' ');
+#else
+  fgetc(stdin);
+#endif
+}
+///
+
 /// Monitor::PrintCPUStatus
 // Print the CPU registers in human-readable form
 // this does less than a CPU->DisplayStatus
@@ -1314,14 +1308,6 @@ Monitor::Splt::Splt(class Monitor *mon,const char *lng,const char *shr,const cha
   : Command(mon,lng,shr,helper,'S'), 
     splitbuffer(NULL), splittmp(NULL), splitlines(0)
 { }
-///
-
-/// Monitor::Splt::~Splt
-Monitor::Splt::~Splt(void)
-{
-  delete[] splitbuffer;
-  delete[] splittmp;
-}
 ///
 
 /// Monitor::Splt::Apply
@@ -1921,13 +1907,6 @@ void Monitor::Regs::Apply(char e)
 Monitor::Step::Step(class Monitor *mon,const char *lng,const char *shr,const char *helper)
   : Command(mon,lng,shr,helper,'I'), lineaddresses(NULL), addressedlines(0)
 { }
-///
-
-/// Monitor::Step::~Step
-Monitor::Step::~Step(void)
-{
-  delete[] lineaddresses;
-}
 ///
 
 /// Monitor::Step::OpenDisplay

@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.hpp,v 1.40 2015/08/15 14:52:35 thor Exp $
+ ** $Id: diskdrive.hpp,v 1.41 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -24,12 +24,6 @@ class ImageStream;
 /// Class DiskDrive
 // This drive emulates an enhanced 1050 Atari disk drive
 class DiskDrive : public SerialDevice {
-  //
-#ifdef HAS_MEMBER_INIT
-  static const int MaxUserCommands = 16; // number of definable user commands
-#else
-#define            MaxUserCommands   16
-#endif
   //
   // Specification of the drive contents
   enum DiskType {
@@ -103,12 +97,6 @@ class DiskDrive : public SerialDevice {
     FDC_ReadTrack,  // read track, command type III
     FDC_WriteTrack  // write track, command type III
   }                      LastFDCCommand;
-  //
-  // Keeps user floppy commands for "Happy"s (FIXME: Not yet implmented)
-  struct FloppyCmd {
-    UBYTE                CmdChar;   // The command character
-    ADR                  Procedure; // what is to be called
-  }                      UserCommands[MaxUserCommands];
   //
   // Check whether this device is responsible for the indicated command frame
   // We must overload this method as the disk device exists twice.

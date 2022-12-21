@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: curses_frontend.cpp,v 1.11 2020/07/18 15:20:39 thor Exp $
+ ** $Id: curses_frontend.cpp,v 1.12 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: A frontend using the curses library for text output
  **********************************************************************************/
@@ -180,7 +180,7 @@ void Curses_FrontEnd::AnalyzeDisplay(void)
 	// comes into play.
 	if (ir & 0x10) {
 	  src     = display + 4 - ((Antic->HScrollOffset() & 0x0f) >> 2);
-	  display = (display & 0xf000) | ((display + (width == 48)?(48):(width + 8)) & 0x0fff);
+	  display = (display & 0xf000) | ((display + ((width == 48)?(48):(width + 8))) & 0x0fff);
 	} else {
 	  src     = display;
 	  display = (display & 0xf000) | ((display +  width) & 0x0fff);
@@ -235,7 +235,7 @@ void Curses_FrontEnd::AnalyzeDisplay(void)
 	// comes into play.
 	if (ir & 0x10) {
 	  src     = display + 2 - ((Antic->HScrollOffset() & 0x0f) >> 3);
-	  display = (display & 0xf000) | ((display + (width == 48)?(24):((width + 8) >> 1)) & 0x0fff);
+	  display = (display & 0xf000) | ((display + ((width == 48)?(24):((width + 8) >> 1))) & 0x0fff);
 	} else {
 	  src     = display;
 	  display = (display & 0xf000) | ((display + (width >> 1)) & 0x0fff);
@@ -280,7 +280,7 @@ void Curses_FrontEnd::AnalyzeDisplay(void)
       case 9:
 	lines += 4;
 	if (ir & 0x10) {
-	  display = (display & 0xf000) | ((display + (width == 48)?(12):((width + 8) >> 2)) & 0x0fff);
+	  display = (display & 0xf000) | ((display + ((width == 48)?(12):((width + 8) >> 2))) & 0x0fff);
 	} else {
 	  display = (display & 0xf000) | ((display + (width >> 2)) & 0x0fff);
 	}
@@ -294,7 +294,7 @@ void Curses_FrontEnd::AnalyzeDisplay(void)
       case 12:
 	lines += 1;
 	if (ir & 0x10) {
-	  display = (display & 0xf000) | ((display + (width == 48)?(24):((width + 8) >> 1)) & 0x0fff);
+	  display = (display & 0xf000) | ((display + ((width == 48)?(24):((width + 8) >> 1))) & 0x0fff);
 	} else {
 	  display = (display & 0xf000) | ((display + (width >> 1)) & 0x0fff);
 	}
@@ -306,7 +306,7 @@ void Curses_FrontEnd::AnalyzeDisplay(void)
       case 15:
 	lines += 1;
 	if (ir & 0x10) {
-	  display = (display & 0xf000) | ((display + (width == 48)?(24):((width + 8) >> 1)) & 0x0fff);
+	  display = (display & 0xf000) | ((display + ((width == 48)?(24):((width + 8) >> 1))) & 0x0fff);
 	} else {
 	  display = (display & 0xf000) | ((display + (width >> 1)) & 0x0fff);
 	}

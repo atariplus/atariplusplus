@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_truecolorbuffer.hpp,v 1.12 2014/01/08 19:02:01 thor Exp $
+ ** $Id: x11_truecolorbuffer.hpp,v 1.13 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Conversions from ANTIC/GTIA output to X11 draw commands
  **********************************************************************************/
@@ -48,9 +48,6 @@ private:
   //
   // The way how we pack colors into 24 bits.
   typedef AtariDisplay::PackedRGB PackedRGB;
-  //
-  // Pointer to the frontend that really displays our mess
-  class XFront    *xfront;
   //
   // Primary and secondary buffer
   PackedRGB       *active;      // screen we are currently rendering into

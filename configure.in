@@ -1,14 +1,14 @@
 #***********************************************************************************
 #**
-#** Atari++ emulator (c) 2002-2021 THOR-Software, Thomas Richter
+#** Atari++ emulator (c) 2002-2022 THOR-Software, Thomas Richter
 #**
-#** $Id: configure.in,v 1.135 2021/08/25 10:17:14 thor Exp $
+#** $Id: configure.in,v 1.138 2022/12/25 10:54:24 thor Exp $
 #**
 #** In this module: autoconf script for atari++
 #**********************************************************************************/
 #
 # Process this file with autoconf to produce a configure script.
-AC_INIT(atari++,1.84,thomas.richter@alumni.TU-Berlin.de)
+AC_INIT(atari++,1.85,thomas.richter@alumni.TU-Berlin.de)
 AC_CONFIG_SRCDIR([types.hpp])
 AC_CONFIG_HEADER([types.h])
 #AC_PREFIX_DEFAULT([/usr])
@@ -67,11 +67,6 @@ if test ${CXX} = icc; then
    AC_SUBST(PROFILIER_FLAGS,["-ip_no_inlining"])
    AC_SUBST(DEBUGGER_FLAGS,["-g"])
 else if test ${ac_compiler_gnu} = yes; then
-   # -no-rtti breaks exception handling for 2.95
-   # -Winline works for 3.3, but causes unnecessary warnings.
-   # -ffast-math breaks with 3.3.1
-   AC_SUBST(WARNING_FLAGS,["-Wall -W -Wunused -Wpointer-arith -pedantic -Wcast-qual -Wwrite-strings -Wno-long-long -Wredundant-decls -Wnon-virtual-dtor -Woverloaded-virtual -Wsign-promo"])
-   AC_SUBST(OPTIMIZER_FLAGS,["-funroll-loops -fstrict-aliasing -Wno-redundant-decls -fexpensive-optimizations -fstrength-reduce -fgcse -fcse-follow-jumps -fcse-skip-blocks -frerun-cse-after-loop -frerun-loop-opt -fforce-addr"])
    AC_SUBST(PROFILER_FLAGS,["-ggdb3 -pg -fno-omit-frame-pointer -fno-inline"])
    AC_SUBST(DEBUGGER_FLAGS,["-ggdb3 -fno-inline"])
  fi
@@ -79,21 +74,40 @@ fi
 #
 # We first check in the C language as autoconf seems to expect that
 # the compiler accepts conflicting prototypes. Wierd.
-AC_LANG(C)
-
-# Check for some advanced flags
-AC_MSG_CHECKING([whether -Wimplicit-fallthrough is available])
-ac_save_CFLAGS="$CFLAGS"
-ac_save_LDFLAGS="$LDFLAGS"
-CFLAGS="$CFLAGS -Wimplicit-fallthrough=3"
-AC_TRY_COMPILE([],[int n = 0;],[ac_has_wimplicit_fallthrough='yes';AC_SUBST(ADD_WARN_FLAGS,["-Wimplicit-fallthrough=3"])],
-[ac_has_wimplicit_fallthrough='no';AC_SUBST(ADD_WARN_FLAGS,[""])])
-AC_MSG_RESULT($ac_has_wimplicit_fallthrough)
-CFLAGS="$ac_save_CFLAGS"
-LDFLAGS="$ac_save_LDFLAGS"
+AC_LANG(C++)
 #
+# Check for additional optimizer flags
+if test ${ac_compiler_gnu} = yes; then
+   opt_flags=""
+   ac_save_CXXFLAGS="$CXXFLAGS"
+   for flag in "-funroll-loops" "-fstrict-aliasing" "-Wno-redundant-decls" "-fexpensive-optimizations" "-fstrength-reduce" "-fgcse" "-fcse-follow-jumps" "-fcse-skip-blocks" "-frerun-cse-after-loop" "-frerun-loop-opt" "-fforce-addr"; do
+        AC_MSG_CHECKING([whether $flag is available])
+        CXXFLAGS="$ac_save_CXXFLAGS -Werror $flag"
+        AC_TRY_RUN([int main(int argc,char **argv){return 0;}],
+    		    [ac_has_flag='yes';opt_flags="$opt_flags $flag"],
+    		    [ac_has_flag='no'])
+    	AC_MSG_RESULT($ac_has_flag)
+    	CXXFLAGS="$ac_save_CXXFLAGS"
+   done
+   AC_SUBST(OPTIMIZER_FLAGS,[$opt_flags])
+   #
+   warn_flags=""
+   ac_save_CXXFLAGS="$CXXFLAGS"
+   for flag in "-Wall" "-W" "-Wunused" "-Wpointer-arith" "-pedantic" "-Wcast-qual" "-Wwrite-strings" "-Wno-long-long" "-Wredundant-decls" "-Wnon-virtual-dtor" "-Woverloaded-virtual" "-Wsign-promo" "-Wimplicit-fallthrough=3"; do
+        AC_MSG_CHECKING([whether $flag is available])
+        CXXFLAGS="$ac_save_CXXFLAGS -Werror $flag"
+        AC_TRY_RUN([int main(int argc,char **argv){return 0;}],
+    		    [ac_has_flag='yes';opt_flags="$opt_flags $flag"],
+    		    [ac_has_flag='no'])
+    	AC_MSG_RESULT($ac_has_flag)
+    	CXXFLAGS="$ac_save_CXXFLAGS"
+   done
+   AC_SUBST(WARNING_FLAGS,[$warn_flags])
+   #   
+fi	
 
 # Check compiler features. We need long long and unsigned long long
+AC_LANG(C)
 AC_CHECK_TYPES([long long])
 AC_CHECK_TYPES([unsigned long long])
 AC_CHECK_TYPES([__int64])
@@ -620,5 +634,5 @@ fi
 #
 #
 #
-AC_CONFIG_FILES([makefile makefile.icc])
+AC_CONFIG_FILES([makefile])
 AC_OUTPUT

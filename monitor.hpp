@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: monitor.hpp,v 1.45 2015/11/07 18:53:12 thor Exp $
+ ** $Id: monitor.hpp,v 1.47 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Definition of the built-in monitor
  **********************************************************************************/
@@ -130,7 +130,11 @@ class Monitor {
     //
   public:
     HistoryLine(const char *line);
-    ~HistoryLine(void);
+    ~HistoryLine(void)
+    {
+      delete[] Line;
+      Remove();
+    }
   };
   //
   // And the list containing the history lines.
@@ -145,7 +149,15 @@ class Monitor {
     //
     // Constructors and destructors: Initialization
     History(void);
-    ~History(void);
+    ~History(void)
+    {
+      struct HistoryLine *hl;
+      
+      while((hl = First())) {
+	// History lines remove themselves from the history.
+	delete hl;
+      };
+    }
     //
     // Some methods: Attach a new line to the history, possibly reducing
     // its size.
@@ -331,7 +343,11 @@ class Monitor {
     //
   public:
     Splt(class Monitor *mon,const char *lng,const char *shr,const char *helper);
-    ~Splt(void);
+    ~Splt(void)
+    {
+      delete[] splitbuffer;
+      delete[] splittmp;
+    }
     void Apply(char e);
     //
     // Update the screen for the split buffer contents
@@ -385,7 +401,10 @@ class Monitor {
     //
   public:
     Step(class Monitor *mon,const char *lng,const char *shr,const char *helper);
-    ~Step(void);
+    ~Step(void)
+    {
+      delete[] lineaddresses;
+    }
     void Apply(char e);
     //
     // Refresh the output of the tracer window.
@@ -584,6 +603,9 @@ public:
   // Print a string formatted over the monitor output
   // channel.
   void PrintStatus(const char *fmt,...) PRINTF_STYLE;
+  //
+  // Wait for the user to print any key to continue.
+  void WaitKey(void);
   //
   // Enter the monitor by the front gate, by the monitor
   // hot-key F12

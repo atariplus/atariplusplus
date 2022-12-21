@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: menu.hpp,v 1.54 2021/08/16 10:31:01 thor Exp $
+ ** $Id: menu.hpp,v 1.55 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Definition of a graphical frontend with the build-in graphics
  **********************************************************************************/
@@ -87,7 +87,9 @@ class Menu : private OptionCollector {
   public:
     ControlTopic(class RenderPort *rp,const char *loadname,const char *savename,
 		 const char *loadstatename,const char *savestatename);
-    virtual ~ControlTopic(void);
+    virtual ~ControlTopic(void)
+    {
+    }
     //    
     // Create the right-hand menu of all options for the given
     // topic.

@@ -2,13 +2,13 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: flickerfixer.hpp,v 1.2 2015/05/21 18:52:39 thor Exp $
+ ** $Id: flickerfixer.hpp,v 1.3 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Flicker fixer postprocessor class
  **********************************************************************************/
 
 #ifndef FLICKERFIXER_HPP
-#define FLICERKFIXER_HPP
+#define FLICKERFIXER_HPP
 
 /// Includes
 #include "types.hpp"

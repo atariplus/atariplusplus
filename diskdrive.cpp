@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: diskdrive.cpp,v 1.97 2021/08/16 10:31:01 thor Exp $
+ ** $Id: diskdrive.cpp,v 1.98 2022/01/08 21:55:43 thor Exp $
  **
  ** In this module: Support for the serial (external) disk drive.
  **********************************************************************************/
@@ -1127,6 +1127,8 @@ void DiskDrive::EjectDisk(void)
     ImageType        = Unknown;
     ProtectionStatus = UnLoaded;
     LastFDCCommand   = FDC_Reset;
+    SectorSize       = 128;
+    SectorCount      = 720;
   }
 }
 ///
@@ -1271,6 +1273,8 @@ void DiskDrive::ParseArgs(class ArgParser *args)
   if (warning) {
     //machine->PutWarning("Disk format is not supported natively: %s",warning);
     EjectDisk();
+    delete[] ImageToLoad;
+    ImageToLoad      = NULL;
     throw AtariException("unsupported disk format","DiskDrive::ParseArgs","%s",warning);
   }
 }

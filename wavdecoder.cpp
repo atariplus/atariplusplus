@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: wavdecoder.cpp,v 1.9 2015/11/07 18:53:12 thor Exp $
+ ** $Id: wavdecoder.cpp,v 1.10 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: The two-tone tape decoder, reads WAV files and 
  ** creates records from them suitable for CAS type reading.
@@ -220,8 +220,7 @@ void WavDecoder::FilterPair::WriteByte(class WavFile *out,UBYTE byte,UWORD baudr
 
 /// WavDecoder::FilterCascade::FilterCascade
 WavDecoder::FilterCascade::FilterCascade(double samplingfreq)
-  : m_pActiveFilter(NULL), m_dRatio(0.0),
-    m_iOptimal(0), m_dHysteresis(1.2)
+  : m_dRatio(0.0), m_iOptimal(0), m_dHysteresis(1.2)
 {
   int i;
   double lshift = 1.0;
@@ -489,7 +488,7 @@ void WavDecoder::FilterCascade::NormalizeFilterGains(void)
 /// WavDecoder::ChannelFilter::ChannelFilter
 WavDecoder::ChannelFilter::ChannelFilter(double samplingfreq)
   : m_Left(samplingfreq), m_Right(samplingfreq), m_dHysteresis(2.0),
-    m_iActiveInput(0), m_dRatio(1.0)
+    m_iActiveInput(0)
 {
 }
 ///

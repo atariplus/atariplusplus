@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: listbrowsergadget.hpp,v 1.5 2015/05/21 18:52:40 thor Exp $
+ ** $Id: listbrowsergadget.hpp,v 1.6 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: A gadget showing a list of text gadgets
  **********************************************************************************/
@@ -49,10 +49,6 @@ class ListBrowserGadget : public Gadget {
   // The vertical group containing the gadgets. We do not derive
   // directly from it since we render into a clipped area here.
   class VerticalGroup    *Vertical;
-  //
-  //
-  // Pointer to the list we take the text from.
-  List<struct TextNode>  *Contents;
   //
   // A private descendent of the text gadget.
   class TextKeeperGadget : public TextGadget {

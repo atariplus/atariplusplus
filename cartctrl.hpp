@@ -2,13 +2,13 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: cartctrl.hpp,v 1.10 2015/05/21 18:52:36 thor Exp $
+ ** $Id: cartctrl.hpp,v 1.11 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Cart Control logic for Oss Super Carts
  **********************************************************************************/
 
 #ifndef CARTCTRL_HPP
-#define CARTCTRL_CPP
+#define CARTCTRL_HPP
 
 /// Includes
 #include "chip.hpp"

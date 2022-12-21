@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: filelist.hpp,v 1.4 2015/05/21 18:52:39 thor Exp $
+ ** $Id: filelist.hpp,v 1.5 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: Definition of a gadget representing a list of files to
  ** choose from, i.e. the basic ingredience for a file requester.
@@ -43,9 +43,6 @@ class FileList : public Gadget {
   //
   // If the following is set to true, then we're requesting a directory.
   bool                     DirsOnly;
-  // If the following is set to true, then we do not allow the selection of a directory as
-  // final element.
-  bool                     FilesOnly;
   // If the following is set to true, also non-existing entries will be accepted because
   // we want to save into something
   bool                     ForSave;

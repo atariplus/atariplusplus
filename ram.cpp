@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: ram.cpp,v 1.6 2015/05/21 18:52:42 thor Exp $
+ ** $Id: ram.cpp,v 1.7 2022/12/20 16:35:48 thor Exp $
  **
  ** In this module: Definition of the RAM as a complete object with a single
  ** state.
@@ -21,7 +21,7 @@
 // runs off.
 RAM::RAM(class Machine *mach)
   : Chip(mach,"RAM"), Saveable(mach,"RAM"),
-    Pages(new class RamPage[256])
+    Pages(new class RamPage[256]), UsedFlags(new UBYTE[256 * 256])
 {
 }
 ///
@@ -31,6 +31,7 @@ RAM::RAM(class Machine *mach)
 RAM::~RAM(void)
 {
   delete[] Pages;
+  delete[] UsedFlags;
 }
 ///
 
@@ -42,7 +43,9 @@ void RAM::ColdStart(void)
   // Clear memory pages to really emulate a coldstart
   for(i=0;i<256;i++) {
     Pages[i].Blank();
+    Pages[i].setUsedFlags(UsedFlags + (i << 8));
   }
+  memset(UsedFlags,0,256 * 256 * sizeof(UBYTE));
 }
 ///
 
@@ -63,8 +66,38 @@ void RAM::ParseArgs(class ArgParser *)
 // Print the status of the RAM. Is there anything to display?
 void RAM::DisplayStatus(class Monitor *mon)
 {
-  mon->PrintStatus("RAM status:\n"
-		   "\tThe RAM is fine.\n");
+  int i,o,lines = 0;
+
+  for(i=0;i<256;i++) {
+    int used = 0;
+    mon->PrintStatus("RAM status page 0x%02x:",i);
+    for(o = 0;o < 256;o++) {
+      used += UsedFlags[(i << 8) | o];
+    }
+    if (used == 0) {
+      mon->PrintStatus(" <untouched>\n");
+      lines++;
+    } else if (used == 256) {
+      mon->PrintStatus(" <all used>\n");
+      lines++;
+    } else {
+      for(o = 0;o < 256;o++) {
+	if ((o & 0x1f) == 0)
+	  mon->PrintStatus("\n");
+	if (UsedFlags[(i << 8) | o])
+	  mon->PrintStatus("*");
+	else
+	  mon->PrintStatus(".");
+      }
+      mon->PrintStatus("\n");
+      lines += 8 + 1;
+    }
+    if (lines > 32) {
+      mon->WaitKey();
+      lines = 0;
+    }
+  }
+  memset(UsedFlags,0,256 * 256 * sizeof(UBYTE));
 }
 ///
 

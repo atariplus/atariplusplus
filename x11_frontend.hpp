@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: x11_frontend.hpp,v 1.45 2020/03/28 14:05:58 thor Exp $
+ ** $Id: x11_frontend.hpp,v 1.46 2022/12/20 18:01:33 thor Exp $
  **
  ** In this module: A simple X11 frontend without further GUI
  **********************************************************************************/
@@ -60,7 +60,6 @@ class X11_FrontEnd : public XFront {
   bool            isinit;        // set to true as soon as we have the display
   bool            ismapped;      // set to true as soon as the window is mapped (first exposure)
   bool            dump;          // set if screen dump is required/enabled
-  bool            grab;          // set if we grab the mouse into the window
   bool            isgrabbed;     // set if the mouse is grabbed
   bool            havefocus;     // set if we have the input focus
   bool            truecolor;     // set if we would like a truecolor framebuffer

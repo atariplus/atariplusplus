@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: ram.hpp,v 1.4 2015/05/21 18:52:42 thor Exp $
+ ** $Id: ram.hpp,v 1.5 2022/12/20 16:35:48 thor Exp $
  **
  ** In this module: Definition of the RAM as a complete object with a single
  ** state.
@@ -31,6 +31,8 @@ class RAM : public Chip, public Saveable {
   // the RAM itself as 256 pages = 64K of memory.
   class RamPage *Pages;
   //
+  // An indicator map that tells which of the pages are actually used.
+  UBYTE         *UsedFlags;
   //
 public:
   RAM(class Machine *mach);

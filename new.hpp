@@ -2,7 +2,7 @@
  **
  ** Atari++ emulator (c) 2002 THOR-Software, Thomas Richter
  **
- ** $Id: new.hpp,v 1.4 2020/07/18 16:32:40 thor Exp $
+ ** $Id: new.hpp,v 1.5 2021/10/21 19:07:21 thor Exp $
  **
  ** In this module: Customized memory handling functions
  **********************************************************************************/
@@ -28,7 +28,7 @@ void operator delete[] (void *a,size_t) noexcept;
 void operator delete (void *a) throw();
 void operator delete[] (void *a) throw();
 void operator delete (void *a,size_t) throw();
-void operator delete[] (void *a,size_t) throw()
+void operator delete[] (void *a,size_t) throw();
 #endif
 #endif
 ///

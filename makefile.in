@@ -2,7 +2,7 @@
 ##
 ## GNU g++ makefile.in for the Atari++ emulator
 ##
-## $Id: makefile.in,v 1.22 2020/07/18 16:32:40 thor Exp $
+## $Id: makefile.in,v 1.23 2022/12/20 20:00:30 thor Exp $
 ##
 ##
 ###################################################################################
@@ -11,7 +11,7 @@
 
 CXX		= @CXX@
 MAKEFILE	= makefile
-CFLAGS		= @CPPFLAGS@ @X_CFLAGS@ @SDL_CFLAGS@ -x c++ -c @WARNING_FLAGS@ @ADD_WARN_FLAGS@ #-no-rtti breaks exception handling
+CFLAGS		= @CPPFLAGS@ @X_CFLAGS@ @SDL_CFLAGS@ -x c++ -c @WARNING_FLAGS@ #-no-rtti breaks exception handling
 
 OPTIMIZER	= -O3 -DDEBUG_LEVEL=0 -DCHECK_LEVEL=0 @OPTIMIZER_FLAGS@
 		  #-fschedule-insns # These give "register spill" errors.
